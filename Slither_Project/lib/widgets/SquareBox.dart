@@ -50,7 +50,23 @@ class SquareBoxState extends State<SquareBox> {
             Container(
               height: 10,
               width: 50,
-              color: Colors.grey,
+                color: getLineColor(up),
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if(up == 0 || up == 2) {
+                        up = 1;
+                      } else if(up == 1) {
+                        up = 0;
+                      } else if(up == -1) {
+                        up = -2;
+                      } else if(up == -2) {
+                        up = -1;
+                      }
+                      widget.up = up;
+                    });
+                  },
+                ),
             ),
             const SizedBox(
               width: 2.5,
@@ -69,7 +85,23 @@ class SquareBoxState extends State<SquareBox> {
             !isFirstColumn ? Container() : Container(
               height: 50,
               width: 10,
-              color: Colors.grey,
+              color: getLineColor(left),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if(left == 0 || left == 2) {
+                      left = 1;
+                    } else if(left == 1) {
+                      left = 0;
+                    } else if(left == -1) {
+                      left = -2;
+                    } else if(left == -2) {
+                      left = -1;
+                    }
+                    widget.left = left;
+                  });
+                },
+              ),
             ),
             Container(
               height: 50,
@@ -81,7 +113,23 @@ class SquareBoxState extends State<SquareBox> {
             Container(
               height: 50,
               width: 10,
-              color: Colors.grey,
+              color: getLineColor(right),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if(right == 0 || right == 2) {
+                      right = 1;
+                    } else if(right == 1) {
+                      right = 0;
+                    } else if(right == -1) {
+                      right = -2;
+                    } else if(right == -2) {
+                      right = -1;
+                    }
+                    widget.right = right;
+                  });
+                },
+              ),
             ),
           ],
         ),
@@ -104,7 +152,23 @@ class SquareBoxState extends State<SquareBox> {
             Container(
               height: 10,
               width: 50,
-              color: Colors.grey,
+              color: getLineColor(down),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if(down == 0 || down == 2) {
+                      down = 1;
+                    } else if(down == 1) {
+                      down = 0;
+                    } else if(down == -1) {
+                      down = -2;
+                    } else if(down == -2) {
+                      down = -1;
+                    }
+                    widget.down = down;
+                  });
+                },
+              ),
             ),
             const SizedBox(
               width: 2.5,
@@ -120,4 +184,29 @@ class SquareBoxState extends State<SquareBox> {
     );
   }
 
+  Color getLineColor(int type) {
+    Color color;
+
+    switch(type) {
+      case 0:
+        color = Colors.grey;
+        break;
+      case 1:
+        color = Colors.black;
+        break;
+      case 2:
+        color = Colors.yellowAccent;
+        break;
+      case -1:
+        color = Colors.grey.withOpacity(0.8);
+        break;
+      case -2:
+        color = Colors.red;
+        break;
+      default:
+        color = Colors.grey;
+    }
+
+    return color;
+  }
 }

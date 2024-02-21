@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
 
-import 'GameScene.dart';
+import 'GameSceneSquare.dart';
 import 'widgets/SquareBox.dart';
 
-class GameSceneState extends State<GameScene> {
+class GameSceneStateSquare extends State<GameSceneSquare> {
   late Size screenSize;
   static var puzzleWidth = 10;
   static var puzzleHeight = 5;
+  late List<Widget> squareField;
+
+  @override
+  void initState() {
+    super.initState();
+
+    squareField = buildSquarePuzzle(puzzleWidth, puzzleHeight);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,7 +30,7 @@ class GameSceneState extends State<GameScene> {
             body: Center(
               //interactiveViewer로 변경
               child: Column(
-                children: buildSquarePuzzle(puzzleWidth, puzzleHeight),
+                children: squareField,
               ),
             ),
           );
