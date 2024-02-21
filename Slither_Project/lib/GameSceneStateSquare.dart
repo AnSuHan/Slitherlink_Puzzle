@@ -29,8 +29,19 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           return Scaffold(
             body: Center(
               //interactiveViewer로 변경
-              child: Column(
-                children: squareField,
+              child: InteractiveViewer(
+                boundaryMargin: EdgeInsets.symmetric(
+                  horizontal: screenSize.width * 0.4,
+                  vertical: screenSize.height * 0.4,
+                ),
+                constrained: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 20),
+                  child: Column(
+                    children: squareField,
+                  ),
+                ),
               ),
             ),
           );
