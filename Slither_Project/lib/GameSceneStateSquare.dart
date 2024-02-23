@@ -95,27 +95,22 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       );
     }
     // puzzle[0][2].down = 1;
-    setPuzzle(width, height, puzzle);
+    setPuzzle2(puzzle);
 
     return columnChildren;
   }
 
-  static void setPuzzle(width, height, List<List<SquareBox>> puzzle) {
+  static void setPuzzle(width, int height, List<List<SquareBox>> puzzle) {
+    const minimumLineCount = 5;
+
     //cycle이 저장될 배열
-    List<List<int>> answer = List.generate(height, (index) {
+    List<List<int>> answer = List.generate(3 + (height - 1) * 2, (index) {
       if (index % 2 == 0) {
         return List<int>.filled(width, 0);
       } else {
         return List<int>.filled(width + 1, 0);
       }
     });
-
-    //배열 초기화
-    for(int i = 0 ; i < height ; i++) {
-      for(int j = 0 ; j < ((i % 2) == 0 ? width : (width + 1)) ; j++) {
-        answer[i][j] = 0;
-      }
-    }
 
     //print("answer : ${answer.length}"); //5
     //print("answer : ${answer[1].length}"); //10 or 11
@@ -147,7 +142,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
         print("nextDirection $nextDirection, nextRow : $currentRow, nextColumn : $currentColumn");
 
         //다음에 갈 셀의 값이 1이면 다시 반복해야 함 (잘못된 사이클이 생성)
-        var temp = [0, 0];
+        var temp = [0, 0];  //이동할 row, column
         switch(nextDirection) {
           case 0:
             temp[0] = -1;
@@ -158,24 +153,34 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           case 2:
             temp[1] = -1;
             break;
-          default:
-            temp[1] = -1;
+          case 3:
+            temp[1] = 1;
         }
-        //while에 걸린 조건을 통과한 경우에만 검사
-        if(!((nextDirection == 0 && currentRow == 0) ||
-            (nextDirection == 1 && currentRow == height) ||
-            (nextDirection == 2 && currentColumn == 0) ||
-            (nextDirection == 3 && currentColumn == width))) {
+        print("current : $currentRow, $currentColumn\ntemp : ${temp[0]}, ${temp[1]}");
+
+        //while에 걸린 조건을 통과할 예정인 경우에
+        //도착하는 셀이 이미 방문했는지 미리 확인하고, 방문한 적이 있으면 방문할 셀을 다시 검색
+        if((currentRow + temp[0] >= 0) && (currentRow + temp[0] < answer.length) &&
+            (currentColumn + temp[1] >= 0) && (currentColumn + temp[1] < answer[currentRow].length)) {
           if(answer[currentRow + temp[0]][currentColumn + temp[1]] == 1) {
             continue;
           }
         }
+        else {  //범위를 벗어나는 경우
+          print("out of range");
+          if(currentColumn >= answer[currentRow].length) {
+            currentColumn--;
+          }
+          continue;
+        }
       } while(
           (nextDirection == 0 && currentRow == 0) ||
-          (nextDirection == 1 && currentRow == height) ||
+          (nextDirection == 1 && currentRow >= answer.length - 1) ||
           (nextDirection == 2 && currentColumn == 0) ||
-          (nextDirection == 3 && currentColumn == width)
+          (nextDirection == 3 && currentColumn >= answer[currentRow].length - 1)
       );  //진행 가능한 방향이 나올 때까지 while
+
+      print("nextDirection : $nextDirection");
 
       //진행 방향을 적용
       switch(nextDirection) {
@@ -188,7 +193,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
         case 2:
           currentColumn -= 1;
           break;
-        default:
+        case 3:
           currentColumn += 1;
       }
 
@@ -197,11 +202,155 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
         break;
       }
 
+      print("before input : $currentRow, $currentColumn");
       answer[currentRow][currentColumn] = 1;
-      print(answer);
-
-      //cycle이 완성 되었는지 판단
-      break;
     }
+
+    print(answer);
+
+    //cycle의 크기가 작으면 재호출
+    if(checkCount(answer) < minimumLineCount) {
+      setPuzzle(width, height, puzzle);
+    }
+
+    return;
+  }
+
+  static void setPuzzle2(List<List<SquareBox>> puzzle) {
+    //기본 변수 세팅
+    var numWidth = puzzle[0].length;
+    var numHeight = puzzle.length;
+
+    var answerWidthMin = puzzle[0].length;   //10 ,11, 10, 11...
+    var answerHeight = puzzle.length * 2 + 1; //3, 5, 7, 9...
+
+    List<List<int>> answer = List.generate(answerHeight,
+            (index) => List<int>.filled((index % 2 == 0 ? answerWidthMin : answerWidthMin + 1), 0));
+
+    //print("set Puzzle2 answer :\n$answer");
+    //print("height : ${answer.length}, linewidth : ${answer[0].length}");
+
+    //퍼즐 알고리즘 세팅
+    final rand = Random();
+    var isVertical = rand.nextBool(); //0:가로선, 1:세로선
+    var direction = "";   //진행 방향
+    int startRow, startColumn;
+    int beforeRow, beforeColumn, currentRow, currentColumn;
+    bool isFirstEdge = true;
+    var tempCnt = 0;
+
+    //answer 배열에서의 시작 위치 설정
+    startRow = rand.nextInt(answerHeight);
+    startColumn = (startRow % 2 == 0) ? rand.nextInt(answerWidthMin) : rand.nextInt(answerWidthMin + 1);
+    print("start row, col : $startRow, $startColumn");
+
+    currentRow = startRow;
+    currentColumn = startColumn;
+
+    //반복할 부분
+    while(true) {
+      //방문한 곳을 제외하고 이동할 방향을 설정
+      direction = setDirection(answer, currentRow, currentColumn, answerWidthMin, answerHeight);
+
+      print("cur row : $currentRow, col : $currentColumn, direction : $direction");
+
+      if(direction == "up") {
+        currentRow--;
+      } else if(direction == "down") {
+        currentRow++;
+      } else if(direction == "left") {
+        currentColumn--;
+      } else {
+        currentColumn++;
+      }
+
+      //cycle이 정상적으로 종료되었는지 확인
+      if(!isFirstEdge &&
+          startRow == currentRow && startColumn == currentColumn) {
+        break;
+      }
+      //임시 종료
+      if(tempCnt >= 5) {
+        break;
+      }
+
+      //배열에 적용
+      applyToAnswer(answer, currentRow, currentColumn);
+
+      isFirstEdge = false;
+      tempCnt++;
+    }
+  }
+
+  static String setDirection(List<List<int>> answer, int currentRow, int currentColumn, int answerWidthMin, int answerHeight) {
+    String direction = "";
+
+    if(currentRow % 2 == 0) { //선만 있는 라인
+      if(currentColumn == 0) {
+        direction = "right";
+
+        if(answer[currentRow][currentColumn + 1] == 1) {
+          return setDirection(answer, currentRow, currentColumn, answerWidthMin, answerHeight);
+        }
+      }
+      else if(currentColumn == answerWidthMin) {
+        direction = "left";
+
+        if(answer[currentRow][currentColumn - 1] == 1) {
+          return setDirection(answer, currentRow, currentColumn, answerWidthMin, answerHeight);
+        }
+      }
+      else {
+        direction = ["left", "right"][Random().nextInt(2)];
+      }
+    } else {  //숫자가 있는 라인
+      if(currentRow == 0) {
+        direction = "down";
+
+        if(answer[currentRow + 1][currentColumn] == 1) {
+          return setDirection(answer, currentRow, currentColumn, answerWidthMin, answerHeight);
+        }
+      }
+      else if(currentRow == answerHeight) {
+        direction = "up";
+
+        if(answer[currentRow - 1][currentColumn] == 1) {
+          return setDirection(answer, currentRow, currentColumn, answerWidthMin, answerHeight);
+        }
+      }
+      else {
+        direction = ["up", "down"][Random().nextInt(2)];
+      }
+    }
+    return direction;
+  }
+
+  static void applyToAnswer(List<List<int>> answer, currentRow, currentColumn) {
+    answer[currentRow][currentColumn] = 1;
+    var str = "";
+
+    for(int i = 0 ; i < answer.length ; i++) {
+      str = "";
+
+      for(int j = 0 ; j < answer[i].length ; j++) {
+        str += "${answer[i][j]} ";
+      }
+      print(str);
+    }
+  }
+
+  static int checkCount(List<List<int>> list) {
+    int count = 0;
+
+    for(int i = 0 ; i < list.length ; i++) {
+      for(int j = 0 ; j < list[i].length ; j++) {
+        if(list[i][j] == 1) {
+          count += 1;
+        }
+      }
+    }
+    print(count);
+
+    return count;
   }
 }
