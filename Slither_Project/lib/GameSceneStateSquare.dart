@@ -216,26 +216,21 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     return;
   }
 
+  //사이클이 아닌 라인을 생성하는 것을 목적으로 변경
   static void setPuzzle2(List<List<SquareBox>> puzzle) {
     //기본 변수 세팅
-    var numWidth = puzzle[0].length;
-    var numHeight = puzzle.length;
-
     var answerWidthMin = puzzle[0].length;   //10 ,11, 10, 11...
     var answerHeight = puzzle.length * 2 + 1; //3, 5, 7, 9...
 
     List<List<int>> answer = List.generate(answerHeight,
             (index) => List<int>.filled((index % 2 == 0 ? answerWidthMin : answerWidthMin + 1), 0));
 
-    //print("set Puzzle2 answer :\n$answer");
-    //print("height : ${answer.length}, linewidth : ${answer[0].length}");
-
     //퍼즐 알고리즘 세팅
     final rand = Random();
-    var isVertical = rand.nextBool(); //0:가로선, 1:세로선
-    var direction = "";   //진행 방향
+    String direction = "";   //진행 방향
+    String postDirection = "";
     int startRow, startColumn;
-    int beforeRow, beforeColumn, currentRow, currentColumn;
+    int currentRow, currentColumn;
     bool isFirstEdge = true;
     var tempCnt = 0;
 
@@ -244,13 +239,17 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     startColumn = (startRow % 2 == 0) ? rand.nextInt(answerWidthMin) : rand.nextInt(answerWidthMin + 1);
     print("start row, col : $startRow, $startColumn");
 
+    //시작점을 배열에 적용
+    applyToAnswer(answer, startRow, startColumn);
+
     currentRow = startRow;
     currentColumn = startColumn;
 
     //반복할 부분
+    /*
     while(true) {
       //방문한 곳을 제외하고 이동할 방향을 설정
-      direction = setDirection(answer, currentRow, currentColumn, answerWidthMin, answerHeight);
+      direction = setDirection(answer, postDirection, currentRow, currentColumn, answerWidthMin, answerHeight);
 
       print("cur row : $currentRow, col : $currentColumn, direction : $direction");
 
@@ -265,10 +264,10 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       }
 
       //cycle이 정상적으로 종료되었는지 확인
-      if(!isFirstEdge &&
-          startRow == currentRow && startColumn == currentColumn) {
-        break;
-      }
+      // if(!isFirstEdge &&
+      //     startRow == currentRow && startColumn == currentColumn) {
+      //   break;
+      // }
       //임시 종료
       if(tempCnt >= 5) {
         break;
@@ -280,49 +279,128 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       isFirstEdge = false;
       tempCnt++;
     }
+
+     */
+
+    applyUIWithAnswer(puzzle, answer);
   }
 
-  static String setDirection(List<List<int>> answer, int currentRow, int currentColumn, int answerWidthMin, int answerHeight) {
+  static String setDirection(List<List<int>> answer, String postDirection, int currentRow, int currentColumn, int answerWidthMin, int answerHeight) {
     String direction = "";
+    //0 : 이동 불가, 1 : 이동 가능
+    var valid = [1, 1, 1, 1]; //up, down, left, right
 
-    if(currentRow % 2 == 0) { //선만 있는 라인
-      if(currentColumn == 0) {
-        direction = "right";
-
-        if(answer[currentRow][currentColumn + 1] == 1) {
-          return setDirection(answer, currentRow, currentColumn, answerWidthMin, answerHeight);
-        }
-      }
-      else if(currentColumn == answerWidthMin) {
-        direction = "left";
-
-        if(answer[currentRow][currentColumn - 1] == 1) {
-          return setDirection(answer, currentRow, currentColumn, answerWidthMin, answerHeight);
-        }
-      }
-      else {
-        direction = ["left", "right"][Random().nextInt(2)];
-      }
-    } else {  //숫자가 있는 라인
+    if(currentRow == 0 || currentRow == answerHeight) {
+      //물리적으로 up또는 down으로 이동하지 못하는 경우
       if(currentRow == 0) {
-        direction = "down";
-
-        if(answer[currentRow + 1][currentColumn] == 1) {
-          return setDirection(answer, currentRow, currentColumn, answerWidthMin, answerHeight);
-        }
+        valid[0] = 0;
+      } else if(currentRow == answerHeight) {
+        valid[1] = 0;
       }
-      else if(currentRow == answerHeight) {
-        direction = "up";
-
-        if(answer[currentRow - 1][currentColumn] == 1) {
-          return setDirection(answer, currentRow, currentColumn, answerWidthMin, answerHeight);
-        }
+    } else if(currentColumn == 0 || currentColumn == (currentRow % 2 == 0 ? answerWidthMin : answerWidthMin + 1)) {
+      //물리적으로 left또는 right로 이동하지 못하는 경우
+      if(currentColumn == 0) {
+        valid[2] = 0;
+      } else if(currentColumn == (currentRow % 2 == 0 ? answerWidthMin : answerWidthMin + 1)) {
+        valid[3] = 0;
       }
-      else {
-        direction = ["up", "down"][Random().nextInt(2)];
+    } else {
+      //물리적으로 이동 불가한 장소가 없는 경우
+    }
+
+    //논리적으로 이동 불가한 방향을 제외
+    //이 부분은 변경 필요 hor -> ver or ver -> hor로 이동 시 오류 발생 가능?
+    if(valid[0] == 1 && answer[currentRow - 1][currentColumn] == 1) {
+      valid[0] = 0;
+    } else if(valid[1] == 1 && answer[currentRow + 1][currentColumn] == 1) {
+      valid[1] = 0;
+    } else if(valid[2] == 1 && answer[currentRow][currentColumn - 1] == 1) {
+      valid[2] = 0;
+    } else if(valid[3] == 1 && answer[currentRow][currentColumn + 1] == 1) {
+      valid[3] = 0;
+    }
+
+    if(postDirection == "") {
+    } else if(postDirection == "up") {
+
+    }
+
+    //이동 가능한 방향 만을 변수에 저장
+    var available = [];
+
+    for(int i = 0 ; i < 4 ; i++) {
+      if(valid[i] == 1) {
+        switch(i) {
+          case 0:
+            available.add("up");
+            break;
+          case 1:
+            available.add("down");
+            break;
+          case 2:
+            available.add("left");
+            break;
+          default:
+            available.add("right");
+        }
       }
     }
+    direction = available[Random().nextInt(available.length)];
+
     return direction;
+  }
+
+  static void applyUIWithAnswer(List<List<SquareBox>> puzzle, List<List<int>> answer) {
+    int i, j;
+
+    for(i = 0 ; i < answer.length ; i++) {
+      for(j = 0 ; j < answer[i].length ; j++) {
+        //UI에 적용이 필요한 경우
+        if(answer[i][j] == 1) {
+
+          if(i <= 2 && j <= 1) {    //up, down, left, right 모두 존재
+            if(i == 0) {
+              puzzle[0][0].up = 1;
+            } else if(i == 1){
+              if(j == 0) {
+                puzzle[0][0].left = 1;
+              } else {
+                puzzle[0][0].right = 1;
+              }
+            } else {
+              puzzle[0][0].down = 1;
+            }
+          } else if(i <= 2) {       //up, down, right 3개 존재
+            if(i == 0) {
+              puzzle[0][(j > 1) ? j - 1 : 0].up = 1;
+              //0,1 -> 0, 2 -> 1, 3 -> 2, 4 -> 3
+            } else if(i == 1) {
+              puzzle[0][(j > 1) ? j - 1 : 0].right = 1;
+            } else {
+              puzzle[0][(j > 1) ? j - 1 : 0].down = 1;
+            }
+          } else if(j <= 1) {       //down, left, right 3개 존재
+            if(i % 2 == 0) {
+              puzzle[(i <= 2) ? 0 : (i - 1) ~/ 2][0].down = 1;
+              //2로 나눈 몫 + 나머지는 버림
+              //0,1,2 -> 0, 3,4 -> 1, 5,6 -> 2, 7,8 -> 3, 9,10 -> 4
+            } else {
+              if(j == 0) {
+                puzzle[(i <= 2) ? 0 : (i - 1) ~/ 2][0].left = 1;
+              } else {
+                puzzle[(i <= 2) ? 0 : (i - 1) ~/ 2][0].right = 1;
+              }
+            }
+          } else {                  //down, right 2개 존재
+            if(i % 2 == 0) {
+              puzzle[(i <= 2) ? 0 : (i - 1) ~/ 2][(j > 1) ? j - 1 : 0].down = 1;
+            } else {
+              puzzle[(i <= 2) ? 0 : (i - 1) ~/ 2][(j > 1) ? j - 1 : 0].right = 1;
+            }
+          }
+        }
+      }
+    }
   }
 
   static void applyToAnswer(List<List<int>> answer, currentRow, currentColumn) {
