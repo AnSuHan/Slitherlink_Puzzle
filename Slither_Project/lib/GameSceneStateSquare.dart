@@ -1,3 +1,5 @@
+
+
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -95,7 +97,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       );
     }
     // puzzle[0][2].down = 1;
-    setPuzzle2(puzzle);
+    setPuzzle3(puzzle);
 
     return columnChildren;
   }
@@ -350,6 +352,150 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     return direction;
   }
 
+  //사이클이 아닌 라인을 생성하는 것을 목적으로 변경
+  static void setPuzzle3(List<List<SquareBox>> puzzle) {
+    final rand = Random();
+
+    //기본 변수 세팅
+    var answerWidthMin = puzzle[0].length;    //10 ,11, 10, 11...
+    var answerHeight = puzzle.length * 2 + 1; //3, 5, 7, 9...
+
+    List<List<int>> answer = List.generate(answerHeight,
+            (index) => List<int>.filled((index % 2 == 0 ? answerWidthMin : answerWidthMin + 1), 0));
+
+    var row_1st = rand.nextInt(answer.length);
+    var column_1st = rand.nextInt(answer[row_1st].length);
+    var row_2nd = rand.nextInt(answer.length);
+    //테스트 용
+    row_2nd = row_1st + [-1, 0, 1][rand.nextInt(3)];
+    if(row_2nd < 0) {
+      row_2nd = 0;
+    } else if(row_2nd >= answer.length) {
+      row_2nd = answer.length - 1;
+    }
+    
+    var column_2nd = rand.nextInt(answer[row_2nd].length);
+
+    innerFindRoute(puzzle, answer, row_1st, column_1st, row_2nd, column_2nd);
+  }
+
+  static void innerFindRoute(List<List<SquareBox>> puzzle, List<List<int>> answer, row_1st, col_1st, row_2nd, col_2nd) {
+    var mvHorizontal = col_2nd - col_1st;
+    var mvVertical = row_2nd - row_1st;
+    print("findRoute $row_1st, $col_1st -> $row_2nd, $col_2nd");
+    var absHorizontal = 0, absVertical = 0; //2nd 방향으로 이동한 값
+
+    var currentRow = row_1st;
+    var currentColumn = col_1st;
+
+    answer[row_1st][col_1st] = 1;
+    answer[row_2nd][col_2nd] = 1;
+
+    applyUIWithAnswer(puzzle, answer);
+
+    //이미 연결 되었는 지 판단
+    if((col_1st == col_2nd) && ((row_1st - row_2nd).abs()) == 1) {
+      return;
+    } else if((row_1st == row_2nd) && ((col_1st - col_2nd).abs()) == 1) {
+      return;
+    }
+
+    //연결되지 않은 경우
+    //최소로 이동이 필요한 조건
+    var moveDirection = [];
+    int i;
+
+    //8,9 -> 10,6 (right * 2, up * 1)
+    //0,6 -> 9,1 (left * 4, down * 4)
+    //4,0 -> 8,4 (right * 2, down * 2)
+    //0,9 -> 7,8 (down * 3)
+    //0,3 -> 1,5 (right * 2)
+
+    //col1 - col2의 절대값이 1이하이면 left/right 없음
+    //row1 - row2의 절대값이 1이하이면 up/down 없음
+    if((row_1st - row_2nd).abs() <= 1) {
+      //left & right만 존재
+      print("left/right only");
+
+      if(row_1st % 2 == 0 && row_2nd % 2 == 0) {
+        //horizontal -> horizontal
+        //print("hor to hor");
+        //0->2(1), 3->8(4), 7->2(-4)
+        if(col_1st < col_2nd) {
+          //ok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() - 1 ; i++) {
+            moveDirection.add("right");
+          }
+        } else {
+          //ok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() - 1 ; i++) {
+            moveDirection.add("left");
+          }
+        }
+      } else if(row_1st % 2 == 0 && row_2nd % 2 != 0) {
+        //horizontal -> vertical
+        //print("hor to ver");
+        //0->4(3), 2->6(3), 6->3(-3), 1->4(2)
+        //4,8(4)
+        if(col_1st < col_2nd) {
+          //ok
+          //2,3->1,5(2)
+          for(i = 0 ; i < (col_1st - col_2nd).abs() ; i++) {
+            moveDirection.add("right");
+          }
+        } else {
+          //ok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() - 1 ; i++) {
+            moveDirection.add("left");
+          }
+        }
+      } else if(row_1st % 2 != 0 && row_2nd % 2 == 0 && !((col_1st - col_2nd).abs() <= 1)) {
+        //vertical -> horizontal
+        //print("ver to hor");
+        //0->3(3), 2->6(4), 3->1(-2)
+        //4->7(2), 2->6(3), 0->3(2)
+        //9->0(-8), 10->6(-4), 8->7(-1)
+        if(col_1st < col_2nd) {
+          //ok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() - 1 ; i++) {
+            moveDirection.add("right");
+          }
+        } else {
+          //ok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() ; i++) {
+            moveDirection.add("left");
+          }
+        }
+      } else {
+        //vertical -> vertical
+        //print("ver to ver");
+        //0->4(4), 1->4(3), 3->8(5)
+        if(col_1st < col_2nd) {
+          //ok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() ; i++) {
+            moveDirection.add("right");
+          }
+        } else {
+          //ok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() ; i++) {
+            moveDirection.add("left");
+          }
+        }
+      }
+    } else if((col_1st - col_2nd).abs() <= 1) {
+      //up & down만 존재
+
+    } else {
+      //모두 존재
+
+    }
+
+    print("dir : $moveDirection");
+
+    applyUIWithAnswer(puzzle, answer);
+  }
+
+  //테스트 용 메소드
   static void applyUIWithAnswer(List<List<SquareBox>> puzzle, List<List<int>> answer) {
     int i, j;
 
