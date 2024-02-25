@@ -27,8 +27,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
         builder: (context) {
           screenSize = MediaQuery.of(context).size;
 
-          print("screenSize : ${screenSize.width}");
-          print("screenSize : ${screenSize.height}");
+          //print("screenSize : ${screenSize.width}");
+          //print("screenSize : ${screenSize.height}");
 
           return Scaffold(
             body: Center(
@@ -365,7 +365,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
     var row_1st = rand.nextInt(answer.length);
     var column_1st = rand.nextInt(answer[row_1st].length);
-    var row_2nd = rand.nextInt(answer.length);
+    //var row_2nd = rand.nextInt(answer.length);
     //테스트 용
     // row_2nd = row_1st + [-1, 0, 1][rand.nextInt(3)];
     // if(row_2nd < 0) {
@@ -374,9 +374,261 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     //   row_2nd = answer.length - 1;
     // }
     
-    var column_2nd = column_1st;//rand.nextInt(answer[row_2nd].length);
+    //var column_2nd = rand.nextInt(answer[row_2nd].length);
 
-    innerFindRoute(puzzle, answer, row_1st, column_1st, row_2nd, column_2nd);
+    innerFindRoute3(puzzle, answer, row_1st, column_1st);
+    //hardApplyUI(puzzle);
+  }
+
+  //수정 필요
+  static void innerFindRoute3(List<List<SquareBox>> puzzle, List<List<int>> answer, startRow, startColumn) {
+    var rand = Random();
+    var nowRow = startRow;
+    var nowColumn = startColumn;
+    var cnt = 0;
+
+    //화면에 표기
+    answer[nowRow][nowColumn] = 1;
+
+    applyUIWithAnswer2(puzzle, answer);
+
+    //앞으로 진행해 갈 방향
+    String lookAt;
+    //움직인 방향 (answer 기준 아님
+    // up, left 당 -1, down, right 당 +1)
+    var absMove = [0, 0];
+    //다음으로 이동할 수 있는 방향
+    var canMove = ["up", "down", "left", "right"];
+
+    while(cnt++ < 1) {
+      //앞으로 진행해 갈 방향
+      if(nowRow % 2 == 0) {
+        if(nowColumn == 0) {
+          lookAt = "right";
+        } else if(nowColumn == answer[nowRow].length) {
+          lookAt = "left";
+        } else {
+          lookAt = ["left", "right"][rand.nextInt(2)];
+        }
+      } else {
+        if(nowRow == 0) {
+          lookAt = "down";
+        } else if(nowRow == answer.length) {
+          lookAt = "up";
+        } else {
+          lookAt = ["up", "down"][rand.nextInt(2)];
+        }
+      }
+      //print("lookAt : $lookAt");
+
+      //다음 라인 설정
+      switch(lookAt) {
+        case "up":
+          canMove.remove("down");
+
+          if(nowColumn == 0) {
+            canMove.remove("left");
+          } else if(nowColumn == answer[nowRow].length - 1) {
+            canMove.remove("right");
+          }
+          if(nowRow == 1) {
+            canMove.remove("up");
+          }
+          break;
+        case "down":
+          canMove.remove("up");
+
+          if(nowColumn == 0) {
+            canMove.remove("left");
+          } else if(nowColumn == answer[nowRow].length - 1) {
+            canMove.remove("right");
+          }
+          if(nowRow == answer.length - 1) {
+            canMove.remove("down");
+          }
+          break;
+        case "left":
+          canMove.remove("right");
+
+          if(nowRow == 0) {
+            canMove.remove("up");
+          } else if(nowRow == answer.length - 1) {
+            canMove.remove("down");
+          }
+
+          if(nowColumn == 0) {
+            canMove.remove("left");
+          }
+          break;
+        case "right":
+          canMove.remove("left");
+
+          if(nowRow == 0) {
+            canMove.remove("up");
+          } else if(nowRow == answer.length - 1) {
+            canMove.remove("down");
+          }
+
+          if(nowColumn == answer[nowRow].length - 1) {
+            canMove.remove("right");
+          }
+          break;
+      }
+
+      //print("canMove : $canMove");
+      print("row : $nowRow, col : $nowColumn");
+
+      //다음 라인을 설정
+      var nextMove = canMove[rand.nextInt(canMove.length)];
+      print("nextMove : $lookAt -> $nextMove");
+
+      switch(lookAt) {
+        case "up":
+          if(nextMove == "up") {
+            nowRow -= 2;
+          } else if(nextMove == "left") {
+            nowRow--;
+            //nowColumn--;
+          } else if(nextMove == "right") {
+            nowRow--;
+          }
+
+          break;
+        case "down":
+          if(nextMove == "down") {
+            nowRow += 2;
+          } else if(nextMove == "left") {
+            nowRow++;
+            nowColumn--;
+          } else if(nextMove == "right") {
+            nowRow++;
+          }
+
+          break;
+      }
+
+      print("row : $nowRow, col : $nowColumn");
+
+      answer[nowRow][nowColumn] = 1;
+
+      //다음 실행을 위해 초기화
+      canMove = ["up", "down", "left", "right"];
+    }
+
+    applyUIWithAnswer2(puzzle, answer);
+  }
+
+  static void innerFindRoute2(List<List<SquareBox>> puzzle, List<List<int>> answer, row_1st, col_1st, row_2nd, col_2nd) {
+    var mvHorizontal = col_2nd - col_1st;
+    var mvVertical = row_2nd - row_1st;
+    print("findRoute $row_1st, $col_1st -> $row_2nd, $col_2nd");
+    var absHorizontal = 0,
+        absVertical = 0; //2nd 방향으로 이동한 값
+
+    var currentRow = row_1st;
+    var currentColumn = col_1st;
+
+    answer[row_1st][col_1st] = 1;
+    answer[row_2nd][col_2nd] = 1;
+
+    applyUIWithAnswer(puzzle, answer);
+
+    //이미 연결 되었는 지 판단
+    if ((col_1st == col_2nd) && ((row_1st - row_2nd).abs()) == 1) {
+      return;
+    } else if ((row_1st == row_2nd) && ((col_1st - col_2nd).abs()) == 1) {
+      return;
+    }
+
+    //연결되지 않은 경우
+    //최소로 이동이 필요한 조건
+    var moveDirection = [];
+    int i;
+
+    //left & right 존재
+    if((row_1st - row_2nd).abs() <= 1) {
+      print("left/right only");
+
+      if(row_1st % 2 == 0 && row_2nd % 2 == 0) {
+        //horizontal -> horizontal
+        print("hor to hor");
+        //0->2(1), 3->8(4), 7->2(-4)
+        if(col_1st < col_2nd) {
+          //okok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() - 1 ; i++) {
+            moveDirection.add("right");
+          }
+        } else {
+          //ok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() - 1 ; i++) {
+            moveDirection.add("left");
+          }
+        }
+      } else if(row_1st % 2 == 0 && row_2nd % 2 != 0) {
+        //horizontal -> vertical
+        print("hor to ver");
+        //0->4(3), 2->6(3), 6->3(-3), 1->4(2)
+        //4,8(4)
+        if(col_1st < col_2nd) {
+          //okok
+          //2,3->1,5(2)
+          for(i = 0 ; i < (col_1st - col_2nd).abs() ; i++) {
+            moveDirection.add("right");
+          }
+        } else {
+          //ok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() - 1 ; i++) {
+            moveDirection.add("left");
+          }
+        }
+      } else if(row_1st % 2 != 0 && row_2nd % 2 == 0 && !((col_1st - col_2nd).abs() <= 1)) {
+        //vertical -> horizontal
+        print("ver to hor");
+        //0->3(3), 2->6(4), 3->1(-2)
+        //4->7(2), 2->6(3), 0->3(2)
+        //9->0(-8), 10->6(-4), 8->7(-1)
+        if(col_1st < col_2nd) {
+          //okok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() - 1 ; i++) {
+            moveDirection.add("right");
+          }
+        } else {
+          //ok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() ; i++) {
+            moveDirection.add("left");
+          }
+        }
+      } else {
+        //vertical -> vertical
+        print("ver to ver");
+        //0->4(4), 1->4(3), 3->8(5)
+        //new : 5,4->7,6(2)
+        if(col_1st < col_2nd) {
+          //ok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() ; i++) {
+            moveDirection.add("right");
+          }
+        } else {
+          //ok
+          for(i = 0 ; i < (col_1st - col_2nd).abs() ; i++) {
+            moveDirection.add("left");
+          }
+        }
+      }
+    }
+
+    //up & down 존재
+    else if((col_1st - col_2nd).abs() <= 1) {
+      print("up/down only");
+
+    }
+    //모두 존재
+    else {
+      print("all exist");
+
+    }
+
+    print("moveDirection : $moveDirection");
   }
 
   static void innerFindRoute(List<List<SquareBox>> puzzle, List<List<int>> answer, row_1st, col_1st, row_2nd, col_2nd) {
@@ -470,6 +722,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
         //vertical -> vertical
         //print("ver to ver");
         //0->4(4), 1->4(3), 3->8(5)
+        //new : 5,4->7,6(2)
         if(col_1st < col_2nd) {
           //ok
           for(i = 0 ; i < (col_1st - col_2nd).abs() ; i++) {
@@ -555,12 +808,167 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       }
     } else {
       //모두 존재
+      int j;
+      print("@@@ all exist @@@");
 
+      if(row_1st % 2 == 0 && row_2nd % 2 == 0) {
+        //horizontal -> horizontal
+        print("hor to hor");
+        //6,6->10,0(2,-4), 6,7->8,5(1,-1)
+
+
+      } else if(row_1st % 2 == 0 && row_2nd % 2 != 0) {
+        //horizontal -> vertical
+        print("hor to ver");
+        //8,0->5,4(-1,3)
+
+
+      } else if(row_1st % 2 != 0 && row_2nd % 2 == 0 && !((row_1st - row_2nd).abs() <= 1)) {
+        //vertical -> horizontal
+        print("ver to hor");
+        //5,10->0,4(-2,-6), 9,5->6,7(-1,1), 5,7->0,3(-2,-4)
+        //5,0->8,8(1,7)
+
+        if(row_1st < row_2nd) {
+          for(i = 0 ; i < ((row_1st - row_2nd).abs() / 2).toInt() ; i++) {
+            moveDirection.add("down");
+          }
+        } else {
+          for(i = 0 ; i < ((row_1st - row_2nd).abs() / 2).toInt() ; i++) {
+            moveDirection.add("up");
+          }
+        }
+
+      } else {
+        //vertical -> vertical
+        print("ver to ver");
+        //3,9->7,7(1,-2), 5,4->7,6(
+
+      }
     }
 
     print("dir : $moveDirection");
 
     applyUIWithAnswer(puzzle, answer);
+  }
+
+  static void hardApplyUI(List<List<SquareBox>> puzzle) {
+    var answerWidthMin = puzzle[0].length;   //10 ,11, 10, 11...
+    var answerHeight = puzzle.length * 2 + 1; //3, 5, 7, 9...
+
+    List<List<int>> answer = List.generate(answerHeight,
+            (index) => List<int>.filled((index % 2 == 0 ? answerWidthMin : answerWidthMin + 1), 0));
+
+    answer[0][2] = 1;
+    answer[0][3] = 2;
+    answer[0][4] = -2;
+    answer[1][0] = 1;
+    answer[2][0] = 2;
+    answer[3][0] = -2;
+
+    int lineType;
+
+    for(int i = 0 ; i < answer.length ; i++) {
+      for (int j = 0; j < answer[i].length; j++) {
+        if(answer[i][j] == 0) {
+          continue;
+        }
+        lineType = answer[i][j];
+
+        if(i <= 2 && j <= 1) {  //up, down, left, right 모두 존재
+          if(i == 0) {
+            puzzle[0][0].up = lineType;
+          } else if(i == 2) {
+            puzzle[0][0].down = lineType;
+          } else {
+            if(j == 0) {
+              puzzle[0][0].left = lineType;
+            } else {
+              puzzle[0][0].right = lineType;
+            }
+          }
+        } else if(i <= 2) { //up, down, right 3개 존재
+          if(i == 0) {
+            puzzle[0][j - 1].up = lineType;
+          } else if(i == 1) {
+            puzzle[0][j - 1].right = lineType;
+          } else {
+            puzzle[0][j - 1].down = lineType;
+          }
+        } else if(j <= 1) { //down, left, right 3개 존재
+          if(i % 2 == 0) {
+            puzzle[(i - 1) ~/ 2][0].down = lineType;
+          } else {
+            if(j == 0) {
+              puzzle[(i - 1) ~/ 2][0].left = lineType;
+            } else {
+              puzzle[(i - 1) ~/ 2][0].right = lineType;
+            }
+          }
+        } else {            //down, right 2개 존재
+          if(i % 2 == 0) {
+            puzzle[(i - 1) ~/ 2][j - 1].down = lineType;
+          } else {
+            puzzle[(i - 1) ~/ 2][j - 1].right = lineType;
+          }
+        }
+
+      }
+    }
+  }
+  static void applyUIWithAnswer2(List<List<SquareBox>> puzzle, List<List<int>> answer) {
+    //var answerWidthMin = puzzle[0].length;   //10 ,11, 10, 11...
+    //var answerHeight = puzzle.length * 2 + 1; //3, 5, 7, 9...
+
+    int lineType;
+
+    for(int i = 0 ; i < answer.length ; i++) {
+      for (int j = 0; j < answer[i].length; j++) {
+        if(answer[i][j] == 0) {
+          continue;
+        }
+        lineType = answer[i][j];
+
+        if(i <= 2 && j <= 1) {  //up, down, left, right 모두 존재
+          if(i == 0) {
+            puzzle[0][0].up = lineType;
+          } else if(i == 2) {
+            puzzle[0][0].down = lineType;
+          } else {
+            if(j == 0) {
+              puzzle[0][0].left = lineType;
+            } else {
+              puzzle[0][0].right = lineType;
+            }
+          }
+        } else if(i <= 2) { //up, down, right 3개 존재
+          if(i == 0) {
+            puzzle[0][j - 1].up = lineType;
+          } else if(i == 1) {
+            puzzle[0][j - 1].right = lineType;
+          } else {
+            puzzle[0][j - 1].down = lineType;
+          }
+        } else if(j <= 1) { //down, left, right 3개 존재
+          if(i % 2 == 0) {
+            puzzle[(i - 1) ~/ 2][0].down = lineType;
+          } else {
+            if(j == 0) {
+              puzzle[(i - 1) ~/ 2][0].left = lineType;
+            } else {
+              puzzle[(i - 1) ~/ 2][0].right = lineType;
+            }
+          }
+        } else {            //down, right 2개 존재
+          if(i % 2 == 0) {
+            puzzle[(i - 1) ~/ 2][j - 1].down = lineType;
+          } else {
+            puzzle[(i - 1) ~/ 2][j - 1].right = lineType;
+          }
+        }
+
+      }
+    }
   }
 
   //테스트 용 메소드
@@ -591,7 +999,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
             } else if(i == 1) {
               puzzle[0][(j > 1) ? j - 1 : 0].right = 1;
             } else {
-              puzzle[0][(j > 1) ? j - 1 : 0].down = 1;
+              puzzle[0][j].down = 1;
             }
           } else if(j <= 1) {       //down, left, right 3개 존재
             if(i % 2 == 0) {
@@ -609,7 +1017,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
             if(i % 2 == 0) {
               puzzle[(i <= 2) ? 0 : (i - 1) ~/ 2][(j > 1) ? j - 1 : 0].down = 1;
             } else {
-              puzzle[(i <= 2) ? 0 : (i - 1) ~/ 2][(j > 1) ? j - 1 : 0].right = 1;
+              puzzle[(i <= 2) ? 0 : (i - 1) ~/ 2][j].right = 1;
             }
           }
         }
