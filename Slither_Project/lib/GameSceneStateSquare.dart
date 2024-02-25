@@ -367,14 +367,14 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     var column_1st = rand.nextInt(answer[row_1st].length);
     var row_2nd = rand.nextInt(answer.length);
     //테스트 용
-    row_2nd = row_1st + [-1, 0, 1][rand.nextInt(3)];
-    if(row_2nd < 0) {
-      row_2nd = 0;
-    } else if(row_2nd >= answer.length) {
-      row_2nd = answer.length - 1;
-    }
+    // row_2nd = row_1st + [-1, 0, 1][rand.nextInt(3)];
+    // if(row_2nd < 0) {
+    //   row_2nd = 0;
+    // } else if(row_2nd >= answer.length) {
+    //   row_2nd = answer.length - 1;
+    // }
     
-    var column_2nd = rand.nextInt(answer[row_2nd].length);
+    var column_2nd = column_1st;//rand.nextInt(answer[row_2nd].length);
 
     innerFindRoute(puzzle, answer, row_1st, column_1st, row_2nd, column_2nd);
   }
@@ -484,7 +484,75 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       }
     } else if((col_1st - col_2nd).abs() <= 1) {
       //up & down만 존재
+      print("up/down only");
 
+      if(row_1st % 2 == 0 && row_2nd % 2 == 0) {
+        //horizontal -> horizontal
+        //print("hor to hor");
+        //2->8(3), 0->4(2), 0->2(1), 0->6(3)
+        if(row_1st < row_2nd) {
+          //ok
+          for(i = 0 ; i < (row_1st - row_2nd).abs() / 2 ; i++) {
+            moveDirection.add("down");
+          }
+        } else {
+          //ok
+          for(i = 0 ; i < (row_1st - row_2nd).abs() / 2 ; i++) {
+            moveDirection.add("up");
+          }
+        }
+      } else if(row_1st % 2 == 0 && row_2nd % 2 != 0) {
+        //horizontal -> vertical
+        //print("hor to ver");
+        //2->7(2), 0->3(1), 6->9(1), 6->3(-1), 4->9(2)
+        //2.5 1.5 1.5 1.5 2.5
+
+        if(row_1st < row_2nd) {
+          //ok
+          for(i = 0 ; i < ((row_1st - row_2nd).abs() / 2).toInt() ; i++) {
+            moveDirection.add("down");
+          }
+        } else {
+          //ok
+          for(i = 0 ; i < ((row_1st - row_2nd).abs() / 2).toInt() ; i++) {
+            moveDirection.add("up");
+          }
+        }
+      } else if(row_1st % 2 != 0 && row_2nd % 2 == 0 && !((row_1st - row_2nd).abs() <= 1)) {
+        //vertical -> horizontal
+        //print("ver to hor");
+        //1->6(2), 7->10(1), 7->0(-3)
+        //2.5 1.5 3.5
+
+        if(row_1st < row_2nd) {
+          //ok
+          for(i = 0 ; i < ((row_1st - row_2nd).abs() / 2).toInt() ; i++) {
+            moveDirection.add("down");
+          }
+        } else {
+          //ok
+          for(i = 0 ; i < ((row_1st - row_2nd).abs() / 2).toInt() ; i++) {
+            moveDirection.add("up");
+          }
+        }
+      } else {
+        //vertical -> vertical
+        //print("ver to ver");
+        //7->3(-1), 3->9(2), 5->9(1), 7->1(-2), 3->7(1)
+        //2 3 2 3 2
+
+        if(row_1st < row_2nd) {
+          //ok
+          for(i = 0 ; i < ((row_1st - row_2nd).abs() / 2).toInt() - 1 ; i++) {
+            moveDirection.add("down");
+          }
+        } else {
+          //ok
+          for(i = 0 ; i < ((row_1st - row_2nd).abs() / 2).toInt() - 1 ; i++) {
+            moveDirection.add("up");
+          }
+        }
+      }
     } else {
       //모두 존재
 
