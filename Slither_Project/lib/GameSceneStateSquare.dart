@@ -488,7 +488,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
             nowRow -= 2;
           } else if(nextMove == "left") {
             nowRow--;
-            //nowColumn--;
+            nowColumn--;
           } else if(nextMove == "right") {
             nowRow--;
           }
@@ -505,6 +505,26 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           }
 
           break;
+        case "left":
+          if(nextMove == "left") {
+            nowColumn--;
+          } else if(nextMove == "up") {
+            nowRow--;
+          } else if(nextMove == "down") {
+            nowRow++;
+          }
+
+          break;
+        case "right":
+          if(nextMove == "right") {
+            nowColumn++;
+          } else if(nextMove == "up") {
+            nowRow--;
+            nowColumn++;
+          } else if(nextMove == "down") {
+            nowRow++;
+            nowColumn++;
+          }
       }
 
       print("row : $nowRow, col : $nowColumn");
@@ -859,12 +879,42 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     List<List<int>> answer = List.generate(answerHeight,
             (index) => List<int>.filled((index % 2 == 0 ? answerWidthMin : answerWidthMin + 1), 0));
 
-    answer[0][2] = 1;
-    answer[0][3] = 2;
-    answer[0][4] = -2;
-    answer[1][0] = 1;
-    answer[2][0] = 2;
-    answer[3][0] = -2;
+    /*
+    var row = 9;
+
+    answer[row][0] = 1;
+    answer[row][1] = 2;
+    answer[row][2] = -2;
+
+    answer[row][3] = 1;
+    answer[row][4] = 2;
+    answer[row][5] = -2;
+
+    answer[row][6] = 1;
+    answer[row][7] = 2;
+    answer[row][8] = -2;
+
+    answer[row][9] = 1;
+    answer[row][10] = 2;
+    */
+    /*
+    var col = 1;
+
+    answer[0][col] = 1;
+    answer[1][col] = 1;
+    answer[2][col] = 1;
+
+    answer[3][col] = 2;
+    answer[4][col] = 2;
+    answer[5][col] = 2;
+
+    answer[6][col] = -2;
+    answer[7][col] = -2;
+    answer[8][col] = -2;
+
+    answer[9][col] = 1;
+    answer[10][col] = 1;
+    */
 
     int lineType;
 
@@ -877,9 +927,9 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
         if(i <= 2 && j <= 1) {  //up, down, left, right 모두 존재
           if(i == 0) {
-            puzzle[0][0].up = lineType;
+            puzzle[0][j].up = lineType;
           } else if(i == 2) {
-            puzzle[0][0].down = lineType;
+            puzzle[0][j].down = lineType;
           } else {
             if(j == 0) {
               puzzle[0][0].left = lineType;
@@ -889,15 +939,15 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           }
         } else if(i <= 2) { //up, down, right 3개 존재
           if(i == 0) {
-            puzzle[0][j - 1].up = lineType;
+            puzzle[0][j].up = lineType;
           } else if(i == 1) {
             puzzle[0][j - 1].right = lineType;
           } else {
-            puzzle[0][j - 1].down = lineType;
+            puzzle[0][j].down = lineType;
           }
         } else if(j <= 1) { //down, left, right 3개 존재
           if(i % 2 == 0) {
-            puzzle[(i - 1) ~/ 2][0].down = lineType;
+            puzzle[(i - 1) ~/ 2][j].down = lineType;
           } else {
             if(j == 0) {
               puzzle[(i - 1) ~/ 2][0].left = lineType;
@@ -907,7 +957,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           }
         } else {            //down, right 2개 존재
           if(i % 2 == 0) {
-            puzzle[(i - 1) ~/ 2][j - 1].down = lineType;
+            puzzle[(i - 1) ~/ 2][j].down = lineType;
           } else {
             puzzle[(i - 1) ~/ 2][j - 1].right = lineType;
           }
@@ -931,9 +981,9 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
         if(i <= 2 && j <= 1) {  //up, down, left, right 모두 존재
           if(i == 0) {
-            puzzle[0][0].up = lineType;
+            puzzle[0][j].up = lineType;
           } else if(i == 2) {
-            puzzle[0][0].down = lineType;
+            puzzle[0][j].down = lineType;
           } else {
             if(j == 0) {
               puzzle[0][0].left = lineType;
@@ -943,15 +993,15 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           }
         } else if(i <= 2) { //up, down, right 3개 존재
           if(i == 0) {
-            puzzle[0][j - 1].up = lineType;
+            puzzle[0][j].up = lineType;
           } else if(i == 1) {
             puzzle[0][j - 1].right = lineType;
           } else {
-            puzzle[0][j - 1].down = lineType;
+            puzzle[0][j].down = lineType;
           }
         } else if(j <= 1) { //down, left, right 3개 존재
           if(i % 2 == 0) {
-            puzzle[(i - 1) ~/ 2][0].down = lineType;
+            puzzle[(i - 1) ~/ 2][j].down = lineType;
           } else {
             if(j == 0) {
               puzzle[(i - 1) ~/ 2][0].left = lineType;
@@ -961,7 +1011,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           }
         } else {            //down, right 2개 존재
           if(i % 2 == 0) {
-            puzzle[(i - 1) ~/ 2][j - 1].down = lineType;
+            puzzle[(i - 1) ~/ 2][j].down = lineType;
           } else {
             puzzle[(i - 1) ~/ 2][j - 1].right = lineType;
           }
