@@ -365,27 +365,20 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
     var row_1st = rand.nextInt(answer.length);
     var column_1st = rand.nextInt(answer[row_1st].length);
-    //var row_2nd = rand.nextInt(answer.length);
-    //테스트 용
-    // row_2nd = row_1st + [-1, 0, 1][rand.nextInt(3)];
-    // if(row_2nd < 0) {
-    //   row_2nd = 0;
-    // } else if(row_2nd >= answer.length) {
-    //   row_2nd = answer.length - 1;
-    // }
-    
-    //var column_2nd = rand.nextInt(answer[row_2nd].length);
+    var row_2nd = rand.nextInt(answer.length);
+    var column_2nd = rand.nextInt(answer[row_2nd].length);
 
-    innerFindRoute3(puzzle, answer, row_1st, column_1st);
+    innerFindRoute3(puzzle, answer, [row_1st, column_1st, row_2nd, column_2nd]);
     //hardApplyUI(puzzle);
   }
 
   //수정 필요
-  static void innerFindRoute3(List<List<SquareBox>> puzzle, List<List<int>> answer, startRow, startColumn) {
+  static void innerFindRoute3(List<List<SquareBox>> puzzle, List<List<int>> answer, List<int> point) {
     var rand = Random();
-    var nowRow = startRow;
-    var nowColumn = startColumn;
+    var nowRow = point[0];
+    var nowColumn = point[1];
     var cnt = 0;
+    const maxCnt = 5;
 
     //화면에 표기
     answer[nowRow][nowColumn] = 1;
@@ -393,32 +386,35 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     applyUIWithAnswer2(puzzle, answer);
 
     //앞으로 진행해 갈 방향
-    String lookAt;
+    String lookAt = "";
     //움직인 방향 (answer 기준 아님
     // up, left 당 -1, down, right 당 +1)
     var absMove = [0, 0];
     //다음으로 이동할 수 있는 방향
     var canMove = ["up", "down", "left", "right"];
 
-    while(cnt++ < 1) {
-      //앞으로 진행해 갈 방향
-      if(nowRow % 2 == 0) {
-        if(nowColumn == 0) {
-          lookAt = "right";
-        } else if(nowColumn == answer[nowRow].length) {
-          lookAt = "left";
+    while(cnt < maxCnt) {
+      //앞으로 진행해 갈 방향은 처음에만 초기화
+      if(cnt++ == 0) {
+        if(nowRow % 2 == 0) {
+          if(nowColumn == 0) {
+            lookAt = "right";
+          } else if(nowColumn == answer[nowRow].length) {
+            lookAt = "left";
+          } else {
+            lookAt = ["left", "right"][rand.nextInt(2)];
+          }
         } else {
-          lookAt = ["left", "right"][rand.nextInt(2)];
-        }
-      } else {
-        if(nowRow == 0) {
-          lookAt = "down";
-        } else if(nowRow == answer.length) {
-          lookAt = "up";
-        } else {
-          lookAt = ["up", "down"][rand.nextInt(2)];
+          if(nowRow == 0) {
+            lookAt = "down";
+          } else if(nowRow == answer.length) {
+            lookAt = "up";
+          } else {
+            lookAt = ["up", "down"][rand.nextInt(2)];
+          }
         }
       }
+
       //print("lookAt : $lookAt");
 
       //다음 라인 설정
@@ -434,6 +430,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           if(nowRow == 1) {
             canMove.remove("up");
           }
+
+          notAccessVisitedLine(lookAt, canMove, answer, nowRow, nowColumn);
           break;
         case "down":
           canMove.remove("up");
@@ -443,9 +441,11 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           } else if(nowColumn == answer[nowRow].length - 1) {
             canMove.remove("right");
           }
-          if(nowRow == answer.length - 1) {
+          if(nowRow == answer.length - 2) {
             canMove.remove("down");
           }
+
+          notAccessVisitedLine(lookAt, canMove, answer, nowRow, nowColumn);
           break;
         case "left":
           canMove.remove("right");
@@ -459,6 +459,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           if(nowColumn == 0) {
             canMove.remove("left");
           }
+
+          notAccessVisitedLine(lookAt, canMove, answer, nowRow, nowColumn);
           break;
         case "right":
           canMove.remove("left");
@@ -472,6 +474,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           if(nowColumn == answer[nowRow].length - 1) {
             canMove.remove("right");
           }
+
+          notAccessVisitedLine(lookAt, canMove, answer, nowRow, nowColumn);
           break;
       }
 
@@ -479,7 +483,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       print("row : $nowRow, col : $nowColumn");
 
       //다음 라인을 설정
-      var nextMove = canMove[rand.nextInt(canMove.length)];
+      var nextMove = canMove.isNotEmpty ? canMove[rand.nextInt(canMove.length)] : "";
       print("nextMove : $lookAt -> $nextMove");
 
       switch(lookAt) {
@@ -527,15 +531,114 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           }
       }
 
-      print("row : $nowRow, col : $nowColumn");
+      //종료를 판단하기 위해 absMove에 저장
+      switch(nextMove) {
+        case "up":
+          absMove[0]--;
+          break;
+        case "down":
+          absMove[0]++;
+          break;
+        case "left":
+          absMove[1]--;
+          break;
+        case "right":
+          absMove[1]++;
+          break;
+      }
+
+      //print("row : $nowRow, col : $nowColumn");
 
       answer[nowRow][nowColumn] = 1;
 
+      //종료 조건
+      if(point[0] - point[2] == absMove[0] &&
+      point[1] - point[2] == absMove[1]) {
+        applyUIWithAnswer2(puzzle, answer);
+
+        return;
+      }
+
       //다음 실행을 위해 초기화
       canMove = ["up", "down", "left", "right"];
+      lookAt = nextMove;
     }
 
     applyUIWithAnswer2(puzzle, answer);
+  }
+
+  /** 이미 방문한 선 제외 */
+  static void notAccessVisitedLine(String lookAt, List<String> canMove, List<List<int>> answer, int nowRow, int nowColumn) {
+    switch(lookAt) {
+      case "up":
+        if(canMove.contains("up")) {
+          if(answer[nowRow - 2][nowColumn] != 0) {
+            canMove.remove("up");
+          }
+        }
+        if(canMove.contains("left")) {
+          if(answer[nowRow - 1][nowColumn - 1] != 0) {
+            canMove.remove("left");
+          }
+        }
+        if(canMove.contains("right")) {
+          if(answer[nowRow - 1][nowColumn] != 0) {
+            canMove.remove("right");
+          }
+        }
+        break;
+      case "down":
+        if(canMove.contains("down")) {
+          if(answer[nowRow + 2][nowColumn] != 0) {
+            canMove.remove("down");
+          }
+        }
+        if(canMove.contains("left")) {
+          if(answer[nowRow + 1][nowColumn - 1] != 0) {
+            canMove.remove("left");
+          }
+        }
+        if(canMove.contains("right")) {
+          if(answer[nowRow + 1][nowColumn] != 0) {
+            canMove.remove("right");
+          }
+        }
+        break;
+      case "left":
+        if(canMove.contains("left")) {
+          if(answer[nowRow][nowColumn - 1] != 0) {
+            canMove.remove("left");
+          }
+        }
+        if(canMove.contains("up")) {
+          if(answer[nowRow - 1][nowColumn] != 0) {
+            canMove.remove("up");
+          }
+        }
+        if(canMove.contains("down")) {
+          if(answer[nowRow + 1][nowColumn] != 0) {
+            canMove.remove("down");
+          }
+        }
+        break;
+      case "right":
+        if(canMove.contains("right")) {
+          if(answer[nowRow][nowColumn + 1] != 0) {
+            canMove.remove("right");
+          }
+        }
+        if(canMove.contains("up")) {
+          if(answer[nowRow - 1][nowColumn] != 0) {
+            canMove.remove("up");
+          }
+        }
+        if(canMove.contains("down")) {
+          if(answer[nowRow + 1][nowColumn] != 0) {
+            canMove.remove("down");
+          }
+        }
+        break;
+    }
   }
 
   static void innerFindRoute2(List<List<SquareBox>> puzzle, List<List<int>> answer, row_1st, col_1st, row_2nd, col_2nd) {
