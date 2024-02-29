@@ -363,25 +363,70 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     List<List<int>> answer = List.generate(answerHeight,
             (index) => List<int>.filled((index % 2 == 0 ? answerWidthMin : answerWidthMin + 1), 0));
 
-    var row_1st = rand.nextInt(answer.length);
-    var column_1st = rand.nextInt(answer[row_1st].length);
-    var row_2nd = rand.nextInt(answer.length);
-    var column_2nd = rand.nextInt(answer[row_2nd].length);
+    const numOfPoints = 4;
+    int boundary = 0;   //제한
+    var points = List.generate(numOfPoints,
+            (index) => List<int>.filled(2, 0));  //row, column을 4개 저장하는 2차원 배열
 
-    innerFindRoute3(puzzle, answer, [row_1st, column_1st, row_2nd, column_2nd]);
+    if(numOfPoints == 4) {
+      //numOfPoints인 경우에만 사용하도록 작성
+      for(int i = 0 ; i < numOfPoints ; i++) {
+        //setting Row
+        boundary = (answer.length * 0.25).ceil();
+        points[i][0] = i < 2 ? rand.nextInt(boundary) : answer.length - rand.nextInt(boundary);
+
+        if(points[i][0] >= answer.length) {
+          points[i][0] = answer.length - 1;
+        } else if(points[i][0] < 0) {
+          points[i][0] = 0;
+        }
+
+        //setting Column
+        boundary = (answer[points[i][0]].length * 0.25).ceil();
+        points[i][1] = (i == 0 || i == 3) ? rand.nextInt(boundary) : answer[points[i][0]].length - rand.nextInt(boundary);
+      }
+    }
+    print("points : ${points[0]} ${points[1]} ${points[2]} ${points[3]}");
+
+    innerFindRoute3(puzzle, answer, [points[0], points[1]]);
+    // innerFindRoute3(puzzle, answer, [points[1], points[2]]);
+    // innerFindRoute3(puzzle, answer, [points[2], points[3]]);
+    // innerFindRoute3(puzzle, answer, [points[3], points[0]]);
+
+    // var row_1st = rand.nextInt(answer.length);
+    // var column_1st = rand.nextInt(answer[row_1st].length);
+    // var row_2nd = rand.nextInt(answer.length);
+    // var column_2nd = rand.nextInt(answer[row_2nd].length);
+    //
+    // innerFindRoute3(puzzle, answer, [row_1st, column_1st, row_2nd, column_2nd]);
     //hardApplyUI(puzzle);
   }
 
-  //수정 필요
-  static void innerFindRoute3(List<List<SquareBox>> puzzle, List<List<int>> answer, List<int> point) {
+  static void innerFindRoute4(List<List<SquareBox>> puzzle, List<List<int>> answer, List<List<int>> points) {
     var rand = Random();
-    var nowRow = point[0];
-    var nowColumn = point[1];
+    var nowRow = points[0][0];
+    var nowColumn = points[0][1];
+    var goalRow = points[1][0];
+    var goalColumn = points[1][1];
+
+    List<String> typeList = [];
+    
+  }
+
+  //수정 필요
+  static void innerFindRoute3(List<List<SquareBox>> puzzle, List<List<int>> answer, List<List<int>> points) {
+    var rand = Random();
+    var nowRow = points[0][0];
+    var nowColumn = points[0][1];
+    var goalRow = points[1][0];
+    var goalColumn = points[1][1];
+
     var cnt = 0;
     const maxCnt = 5;
 
     //화면에 표기
     answer[nowRow][nowColumn] = 1;
+    print("make route [$nowRow, $nowColumn] -> [$goalRow, $goalColumn]");
 
     applyUIWithAnswer2(puzzle, answer);
 
@@ -480,11 +525,11 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       }
 
       //print("canMove : $canMove");
-      print("row : $nowRow, col : $nowColumn");
+      //print("row : $nowRow, col : $nowColumn");
 
       //다음 라인을 설정
       var nextMove = canMove.isNotEmpty ? canMove[rand.nextInt(canMove.length)] : "";
-      print("nextMove : $lookAt -> $nextMove");
+      //print("nextMove : $lookAt -> $nextMove");
 
       switch(lookAt) {
         case "up":
@@ -552,8 +597,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       answer[nowRow][nowColumn] = 1;
 
       //종료 조건
-      if(point[0] - point[2] == absMove[0] &&
-      point[1] - point[2] == absMove[1]) {
+      if(nowRow == goalRow &&
+      nowColumn == goalColumn) {
         applyUIWithAnswer2(puzzle, answer);
 
         return;
