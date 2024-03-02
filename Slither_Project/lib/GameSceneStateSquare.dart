@@ -454,7 +454,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
     //시작, 종료 방향을 고려한 방향 배열 생성
     dirList = List.from(typeList);  //soft copy
-    print("dirList : $dirList");
+    //print("dirList : $dirList");
 
     //최소 거리이기 위한 start point의 방향
     if(nowRow % 2 == 0) {
@@ -543,7 +543,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       dirList.removeAt(i);
     }
 
-    print("linkList : $linkList");
+    //print("linkList : $linkList");
     var beforeDir = nowDirection;
     var changedIndexList = [];
     var changedIndex = -1;
@@ -628,31 +628,109 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       linkList[0] = temp;
     }
 
-    print("modified linkList for start : $linkList");
+    //print("modified linkList for start : $linkList");
 
     if(goalDirection == "left" && linkList[linkList.length - 1] == "right") {
-    //순서 변경으로 해결 가능한지 검사
+      //순서 변경으로 해결 불가한 경우, 새로운 element 추가
+      if(!linkList.contains("left") && !linkList.contains("up") && !linkList.contains("down")) {
+        //linkList가 right만 가지고 있을 때
+        linkList.add("left");
+        // linkList.add("right");
+        linkList.add("up");
+        linkList.add("down");
+      }
 
-    //순서 변경으로 해결 불가한 경우, 새로운 element 추가
+      //순서 변경으로 해결
+      for(i = 0 ; i < linkList.length ; i++) {
+        if(linkList[i] != "right") {
+          changedIndexList.add(i);
+        }
+      }
+      changedIndex = changedIndexList[rand.nextInt(changedIndexList.length)];
+
+      var temp = linkList[changedIndex];
+      linkList[changedIndex] = linkList[linkList.length - 1];
+      linkList[linkList.length - 1] = temp;
     } else if(goalDirection == "right" && linkList[linkList.length - 1] == "left") {
-    //순서 변경으로 해결 가능한지 검사
+      //순서 변경으로 해결 불가한 경우, 새로운 element 추가
+      if(!linkList.contains("right") && !linkList.contains("up") && !linkList.contains("down")) {
+        //linkList가 right만 가지고 있을 때
+        // linkList.add("left");
+        linkList.add("right");
+        linkList.add("up");
+        linkList.add("down");
+      }
 
-    //순서 변경으로 해결 불가한 경우, 새로운 element 추가
+      //순서 변경으로 해결
+      for(i = 0 ; i < linkList.length ; i++) {
+        if(linkList[i] != "left") {
+          changedIndexList.add(i);
+        }
+      }
+      changedIndex = changedIndexList[rand.nextInt(changedIndexList.length)];
+
+      var temp = linkList[changedIndex];
+      linkList[changedIndex] = linkList[linkList.length - 1];
+      linkList[linkList.length - 1] = temp;
     } else if(goalDirection == "up" && linkList[linkList.length - 1] == "down") {
-    //순서 변경으로 해결 가능한지 검사
+      //순서 변경으로 해결 불가한 경우, 새로운 element 추가
+      if(!linkList.contains("left") && !linkList.contains("right") && !linkList.contains("up")) {
+        //linkList가 right만 가지고 있을 때
+        linkList.add("left");
+        linkList.add("right");
+        linkList.add("up");
+        // linkList.add("down");
+      }
 
-    //순서 변경으로 해결 불가한 경우, 새로운 element 추가
+      //순서 변경으로 해결
+      for(i = 0 ; i < linkList.length ; i++) {
+        if(linkList[i] != "down") {
+          changedIndexList.add(i);
+        }
+      }
+      changedIndex = changedIndexList[rand.nextInt(changedIndexList.length)];
+
+      var temp = linkList[changedIndex];
+      linkList[changedIndex] = linkList[linkList.length - 1];
+      linkList[linkList.length - 1] = temp;
     } else if(goalDirection == "down" && linkList[linkList.length - 1] == "up") {
-    //순서 변경으로 해결 가능한지 검사
+      //순서 변경으로 해결 불가한 경우, 새로운 element 추가
+      if(!linkList.contains("left") && !linkList.contains("right") && !linkList.contains("down")) {
+        //linkList가 right만 가지고 있을 때
+        linkList.add("left");
+        linkList.add("right");
+        // linkList.add("up");
+        linkList.add("down");
+      }
 
-    //순서 변경으로 해결 불가한 경우, 새로운 element 추가
+      //순서 변경으로 해결
+      for(i = 0 ; i < linkList.length ; i++) {
+        if(linkList[i] != "up") {
+          changedIndexList.add(i);
+        }
+      }
+      changedIndex = changedIndexList[rand.nextInt(changedIndexList.length)];
+
+      var temp = linkList[changedIndex];
+      linkList[changedIndex] = linkList[linkList.length - 1];
+      linkList[linkList.length - 1] = temp;
+    }
+
+    print("2modified linkList for start : $linkList");
+
+    //index 0과 마지막은 고정해 둔 상태에서
+    //이전 방향과 반대 방향으로 이동하는 경우를 제거
+    for(i = 1 ; i < linkList.length ; i++) {
+      if(linkList[i - 1] == "left" && linkList[i] == "right") {
+
+      }
     }
 
     //answer 배열에 값 설정
-    for(i = 0 ; i < 2 ; i++) {
+    for(i = 0 ; i < linkList.length ; i++) {
       print("$beforeDir -> ${linkList[i]}");
 
-      if(i % 2 == 0) {
+      if(nowRow % 2 == 0) {
         if(beforeDir == "left") {
           switch(linkList[i]) {
             case "up":
@@ -715,9 +793,9 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       print("nowRow : $nowRow, nowColumn : $nowColumn");
       beforeDir = linkList[i];
 
-      if(i == 0) {
-        continue;
-      }
+      // if(i == 0) {
+      //   continue;
+      // }
       answer[nowRow][nowColumn] = 2;
     }
 
