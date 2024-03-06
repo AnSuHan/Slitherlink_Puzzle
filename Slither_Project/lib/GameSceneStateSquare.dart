@@ -720,19 +720,117 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
     //index 0과 마지막은 고정해 둔 상태에서
     //이전 방향과 반대 방향으로 이동하는 경우를 제거
-    for(i = 1 ; i < linkList.length ; i++) {
-      if(linkList[i - 1] == "left" && linkList[i] == "right") {
 
+    var elementCnt = [
+      linkList.where((item) => item == "left").length,
+      linkList.where((item) => item == "right").length,
+      linkList.where((item) => item == "up").length,
+      linkList.where((item) => item == "down").length];
+
+    //처음과 마지막은 방향이 고정이므로 개수에서 제거
+    switch(linkList[0]) {
+      case "left":
+        elementCnt[0]--;
+        break;
+      case "right":
+        elementCnt[1]--;
+        break;
+      case "up":
+        elementCnt[2]--;
+        break;
+      case "down":
+        elementCnt[3]--;
+        break;
+    }
+    switch(linkList[linkList.length - 1]) {
+      case "left":
+        elementCnt[0]--;
+        break;
+      case "right":
+        elementCnt[1]--;
+        break;
+      case "up":
+        elementCnt[2]--;
+        break;
+      case "down":
+        elementCnt[3]--;
+        break;
+    }
+
+    var available = [];
+    var finalLinkList = [linkList[0], linkList[linkList.length - 1]];
+
+    //linkList의 첫 번째와 마지막 element 제외
+    for(i = 1 ; i < linkList.length - 1 ; i++) {
+      available = [];
+
+      if(linkList[i - 1] == "left" && linkList[i] == "right") {
+        if(elementCnt[0] != 0) {
+          available.add("left");
+        } if(elementCnt[2] != 0) {
+          available.add("up");
+        } if(elementCnt[3] != 0) {
+          available.add("down");
+        }
+      } else if(linkList[i - 1] == "right" && linkList[i] == "left") {
+        if(elementCnt[1] != 0) {
+          available.add("right");
+        } if(elementCnt[2] != 0) {
+          available.add("up");
+        } if(elementCnt[3] != 0) {
+          available.add("down");
+        }
+      } else if(linkList[i - 1] == "up" && linkList[i] == "down") {
+        if(elementCnt[0] != 0) {
+          available.add("left");
+        } if(elementCnt[1] != 0) {
+          available.add("right");
+        } if(elementCnt[3] != 0) {
+          available.add("down");
+        }
+      } else if(linkList[i - 1] == "down" && linkList[i] == "up") {
+        if(elementCnt[0] != 0) {
+          available.add("left");
+        }if(elementCnt[1] != 0) {
+          available.add("right");
+        } if(elementCnt[2] != 0) {
+          available.add("up");
+        }
+      }
+
+      if(available.isNotEmpty) {
+        finalLinkList.insert(i, available[rand.nextInt(available.length - 1)]);
+
+        switch(finalLinkList[i]) {
+          case "left":
+            elementCnt[0]--;
+            break;
+          case "right":
+            elementCnt[1]--;
+            break;
+          case "up":
+            elementCnt[2]--;
+            break;
+          case "down":
+            elementCnt[3]--;
+            break;
+        }
+      } else {
+        //그대로 진행
+        finalLinkList.insert(i, linkList[i]);
       }
     }
 
+    print("length : ${linkList.length}, ${finalLinkList.length}");
+    print("finalLinkList : $finalLinkList");
+
     //answer 배열에 값 설정
-    for(i = 0 ; i < linkList.length ; i++) {
-      print("$beforeDir -> ${linkList[i]}");
+    for(i = 0 ; i < finalLinkList.length ; i++) {
+      //print("$beforeDir -> ${finalLinkList[i]}");
 
       if(nowRow % 2 == 0) {
         if(beforeDir == "left") {
-          switch(linkList[i]) {
+          switch(finalLinkList[i]) {
             case "up":
               nowRow--;
               break;
@@ -744,7 +842,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
               break;
           }
         } else {
-        switch(linkList[i]) {
+        switch(finalLinkList[i]) {
           case "up":
             nowRow--;
             nowColumn++;
@@ -761,7 +859,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
       } else {
         if(beforeDir == "up") {
-          switch(linkList[i]) {
+          switch(finalLinkList[i]) {
             case "up":
               nowRow -= 2;
               break;
@@ -774,7 +872,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
               break;
           }
         } else {
-          switch(linkList[i]) {
+          switch(finalLinkList[i]) {
             case "down":
               nowRow += 2;
               break;
@@ -790,8 +888,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       }
 
 
-      print("nowRow : $nowRow, nowColumn : $nowColumn");
-      beforeDir = linkList[i];
+      //print("nowRow : $nowRow, nowColumn : $nowColumn");
+      beforeDir = finalLinkList[i];
 
       // if(i == 0) {
       //   continue;
