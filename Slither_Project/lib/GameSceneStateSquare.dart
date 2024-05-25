@@ -3,6 +3,8 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:slitherlink_project/ReadSquare.dart';
 
 import 'AlgorithmSquare.dart';
 import 'GameSceneSquare.dart';
@@ -10,18 +12,33 @@ import 'widgets/SquareBox.dart';
 
 class GameSceneStateSquare extends State<GameSceneSquare> {
   late Size screenSize;
-  static var puzzleWidth = 20;    //num of Square - horizontal
-  static var puzzleHeight = 10;   //num of Square - vertical
-  late List<Widget> squareField;
+  static const puzzleWidth = 20;    //num of Square - horizontal
+  static const puzzleHeight = 10;   //num of Square - vertical
+  static late List<Widget> squareField;
+  static late List<List<SquareBox>> puzzle;
   var findCycle = false;
 
   @override
   void initState() {
     super.initState();
-
-
-
+    _setupKeyListener();
     squareField = buildSquarePuzzle(puzzleWidth, puzzleHeight);
+  }
+
+  void _setupKeyListener() {
+    RawKeyboard.instance.addListener((RawKeyEvent event) {
+      if (event is RawKeyDownEvent) {
+        if(event.logicalKey.debugName?.compareTo("Key S") == 0) {
+          ReadSquare().savePuzzle();
+        }
+        else if(event.logicalKey.debugName?.compareTo("Key R") == 0) {
+          ReadSquare().loadPuzzle();
+        }
+        else if(event.logicalKey.debugName?.compareTo("Key P") == 0) {
+          ReadSquare().printData();
+        }
+      }
+    });
   }
 
   @override
@@ -30,9 +47,6 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       home: Builder(
         builder: (context) {
           screenSize = MediaQuery.of(context).size;
-
-          //print("screenSize : ${screenSize.width}");
-          //print("screenSize : ${screenSize.height}");
 
           return Scaffold(
             body: Center(
@@ -55,11 +69,12 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           );
         },
       ),
+
     );
   }
 
   static List<List<SquareBox>> initSquarePuzzle(width, height) {
-    List<List<SquareBox>> puzzle = [];
+    puzzle = [];
     List<SquareBox> temp = [];
     int i, j;
 
@@ -1905,5 +1920,9 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     print(count);
 
     return count;
+  }
+
+  static List<List<SquareBox>> getPuzzle() {
+    return puzzle;
   }
 }

@@ -18,6 +18,7 @@ class Draw {
 
     setPoints();
     stepFirst();
+    stepSecond();
   }
 
   void setPoints() {
@@ -35,8 +36,10 @@ class Draw {
 
   void stepSecond() {
     //horizontal
-    for(int i = 0 ; i < grid.length ; i++) {
-
+    for(int i = 0 ; i < points.length ; i++) {
+      for(int j = 0 ; j < grid[i].length ; j++) {
+        grid[points[i][0]][points[i][1]] = 1;
+      }
     }
   }
 
