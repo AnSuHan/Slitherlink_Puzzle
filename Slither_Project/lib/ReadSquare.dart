@@ -1,13 +1,21 @@
 import 'package:flutter/material.dart';
-
 import 'GameSceneStateSquare.dart';
+import 'fileAccess/ReadPuzzleData.dart';
 import 'widgets/SquareBox.dart';
 
 class ReadSquare {
   static late List<List<SquareBox>> puzzle;
   static late List<List<bool>> data;
+  static late ReadPuzzleData read;
+  final filename = "square.json";
 
-  void savePuzzle() {
+  Future<void> savePuzzle() async {
+    try {
+      read;
+    } catch (e) {
+      read = ReadPuzzleData();
+    }
+
     puzzle = GameSceneStateSquare.getPuzzle();
     data = List.generate(puzzle.length * 2 + 1, (index) => List.filled(puzzle[0].length, false));
     //10, 20, 20
@@ -69,9 +77,22 @@ class ReadSquare {
         }
       }
     }
+    try {
+      await read.writeData(data, filename);
+    } catch (e) {
+      print("EXCEPTION $e");
+    }
+
   }
-  void loadPuzzle() {
-    print("Call loadPuzzle");
+  Future<void> loadPuzzle() async {
+    try {
+      read;
+    } catch (e) {
+      read = ReadPuzzleData();
+    }
+
+    puzzle = GameSceneStateSquare.getPuzzle();
+    data = await read.readData(filename);
   }
 
   void printData() {
