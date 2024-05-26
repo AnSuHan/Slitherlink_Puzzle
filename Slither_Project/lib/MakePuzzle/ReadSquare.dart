@@ -23,7 +23,9 @@ class ReadSquare {
     }
 
     puzzle = GameSceneStateSquare.getPuzzle();
-    data = List.generate(puzzle.length * 2 + 1, (index) => List.filled(puzzle[0].length, false));
+    data = List.generate(puzzle.length * 2 + 1, (row) =>
+        List.filled(row % 2 == 0 ? puzzle[0].length : puzzle[0].length + 1, false),
+    );
     //10, 20, 20
     //print("Call savePuzzle ${puzzle.length} ${puzzle[0].length} ${puzzle[1].length}");
 
@@ -86,7 +88,8 @@ class ReadSquare {
     }
     //printData();
     try {
-      await read.writeData(data, filename);
+      //await read.writeData(data, filename);
+      await read.writePuzzleData("square", data, 0);
     } catch (e) {
       print("EXCEPTION $e");
     }
@@ -99,7 +102,8 @@ class ReadSquare {
       read = ReadPuzzleData();
     }
 
-    data = await read.readData(filename);
+    //data = await read.readData(filename);
+    data = await read.readPuzzleData("square", 1);
     //printData();
     return data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
   }

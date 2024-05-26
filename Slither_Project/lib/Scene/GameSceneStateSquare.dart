@@ -14,6 +14,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   static late List<Widget> squareField;
   static late List<List<SquareBox>> puzzle;
   var findCycle = false;
+  bool isDebug = false;
 
   @override
   void initState() {
@@ -24,43 +25,36 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
   void _setupKeyListener() {
     RawKeyboard.instance.addListener((RawKeyEvent event) async {
-      if (event is RawKeyDownEvent) {
-        //save puzzle for answer
-        if(event.logicalKey.debugName?.compareTo("Key S") == 0) {
-          ReadSquare().savePuzzle();
-          print("Save complete");
-        }
-        //load puzzle for answer
-        else if(event.logicalKey.debugName?.compareTo("Key R") == 0) {
-          List<List<int>> data = await ReadSquare().loadPuzzle();
-          List<Widget> newSquareField = await buildSquarePuzzleAnswer(data);
-
-          setState(() {
-            squareField = newSquareField;
-          });
-        }
-        //print answer data
-        else if(event.logicalKey.debugName?.compareTo("Key P") == 0) {
-          ReadSquare().printData();
-        }
-        //apply answer to field
-        else if(event.logicalKey.debugName?.compareTo("Key A") == 0) {
-          List<List<int>> apply = await ReadSquare().loadPuzzle();
-          List<Widget> newSquareField = await buildSquarePuzzleAnswer(apply);
-          //var newSquareField = await buildSquarePuzzleAnswer(apply, progress: 2);
-
-          setState(() {
-            squareField = newSquareField;
-          });
-        }
-        //clear field
-        else if(event.logicalKey.debugName?.compareTo("Key C") == 0) {
-          setState(() {
-            squareField = buildSquarePuzzle(puzzleWidth, puzzleHeight);
-          });
-        }
-      }
+      _handleKeyEvent(event.logicalKey.debugName);
     });
+  }
+
+  //separate method for running in Android(debug)
+  void _handleKeyEvent(String? keyName) async {
+    if (keyName == "Key S") {
+      ReadSquare().savePuzzle();
+      print("Save complete");
+    } else if (keyName == "Key R") {
+      List<List<int>> data = await ReadSquare().loadPuzzle();
+      List<Widget> newSquareField = await buildSquarePuzzleAnswer(data);
+
+      setState(() {
+        squareField = newSquareField;
+      });
+    } else if (keyName == "Key P") {
+      ReadSquare().printData();
+    } else if (keyName == "Key A") {
+      List<List<int>> apply = await ReadSquare().loadPuzzle();
+      List<Widget> newSquareField = await buildSquarePuzzleAnswer(apply);
+
+      setState(() {
+        squareField = newSquareField;
+      });
+    } else if (keyName == "Key C") {
+      setState(() {
+        squareField = buildSquarePuzzle(puzzleWidth, puzzleHeight);
+      });
+    }
   }
 
   @override
@@ -87,6 +81,26 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
                   ),
                 ),
               ),
+            ),
+            floatingActionButton: !isDebug ? null
+                : Stack(
+              alignment: Alignment.bottomRight,
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 70.0),
+                  child: FloatingActionButton(
+                    onPressed: () => _handleKeyEvent("Key S"),
+                    child: Icon(Icons.add),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 140.0),
+                  child: FloatingActionButton(
+                    onPressed: () => _handleKeyEvent("Key R"),
+                    child: Icon(Icons.camera),
+                  ),
+                ),
+              ],
             ),
           );
         },
@@ -152,6 +166,9 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     //check progress
 
     //resize puzzle
+    if(answer.isEmpty) {
+      print("answer is empty");
+    }
     List<List<SquareBox>> puzzle = initSquarePuzzle(answer.length - 1, answer[0].length / 2);
     List<Widget> columnChildren = [];
 
@@ -221,10 +238,10 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
             //i=4,j=1 => 1,1  //10,2 => 4,2
             //20,3 => 9,3     //12,7 => 5,7
             puzzle[i ~/ 2 - 1][j].down = lineType;
-          } else if(i % 2 != 0 && ((i - 1) ~/ 2 + 1 < puzzle.length && j < puzzle[(i - 1) ~/ 2 + 1].length)){
+          } else {
             puzzle[(i - 1) ~/ 2][j - 1].right = lineType;
           }
-        }
+        } //값은 정상적으로 1을 가지고 있음 (i >= 3 && j == 21 || i == 20 && j >= 2에서 표기 문제 발생)
       }
     }
   }

@@ -1,9 +1,35 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:slitherlink_project/User/UserInfo.dart';
+
+import '../Answer/Answer.dart';
 
 class ReadPuzzleData {
   List<List<bool>> prefData = [];
+  UserInfo info = UserInfo();
+  Answer answer = Answer();
+
+  Future<void> writePuzzleData(String puzzleType, List<List<bool>> data, int progress) async {
+    //add to last
+    if(progress == -1) {
+      info.getProgress(puzzleType);
+    }
+
+    List<List<int>> intData = data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
+    printData(intData);
+  }
+
+  Future<List<List<bool>>> readPuzzleData(String puzzleType, int progress) async {
+    List<List<bool>> value = [];
+
+    switch(puzzleType) {
+      case "square":
+        value = answer.getSquare(progress);
+        break;
+    }
+
+    return value;
+  }
 
   Future<void> writeData(List<List<bool>> data, String fileName) async {
     // Convert List<List<bool>> to List<List<int>> for JSON serialization
@@ -19,7 +45,7 @@ class ReadPuzzleData {
     String? jsonData = prefs.getString(fileName);
 
     if (jsonData == null) {
-      print("read data complete, but empty");
+      //print("read data complete, but empty");
       // 저장된 데이터가 없으면 빈 리스트를 반환하거나 원하는 처리를 수행합니다.
       return [];
     } else {
@@ -29,6 +55,13 @@ class ReadPuzzleData {
       //print("read data complete $boolData");
 
       return boolData;
+    }
+  }
+
+  void printData(List<List<int>> intData) {
+    for(int i = 0 ; i < intData.length ; i++) {
+      // ignore: avoid_print
+      print("${intData[i]}, ");
     }
   }
 }
