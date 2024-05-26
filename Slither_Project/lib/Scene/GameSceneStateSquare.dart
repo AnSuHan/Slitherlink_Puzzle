@@ -28,10 +28,16 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
         //save puzzle for answer
         if(event.logicalKey.debugName?.compareTo("Key S") == 0) {
           ReadSquare().savePuzzle();
+          print("Save complete");
         }
         //load puzzle for answer
         else if(event.logicalKey.debugName?.compareTo("Key R") == 0) {
-          ReadSquare().loadPuzzle();
+          List<List<int>> data = await ReadSquare().loadPuzzle();
+          List<Widget> newSquareField = await buildSquarePuzzleAnswer(data);
+
+          setState(() {
+            squareField = newSquareField;
+          });
         }
         //print answer data
         else if(event.logicalKey.debugName?.compareTo("Key P") == 0) {
@@ -39,7 +45,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
         }
         //apply answer to field
         else if(event.logicalKey.debugName?.compareTo("Key A") == 0) {
-          List<List<int>> apply = await ReadSquare().getAnswer();
+          List<List<int>> apply = await ReadSquare().loadPuzzle();
           List<Widget> newSquareField = await buildSquarePuzzleAnswer(apply);
           //var newSquareField = await buildSquarePuzzleAnswer(apply, progress: 2);
 
@@ -199,28 +205,33 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
         } else if(j <= 1) { //down, left, right 3개 존재
           if(i % 2 == 0) {
             puzzle[(i - 1) ~/ 2][j].down = lineType;
+            //cprint(lineType != 0, "call down");
           } else {
-            if ((i ~/ 2 + 1) < puzzle.length && puzzle[(i ~/ 2 + 1)].isNotEmpty) {
-              if(j == 0) {
-                puzzle[i ~/ 2 + 1][0].left = lineType;
-              } else {
-                puzzle[i ~/ 2 + 1][0].right = lineType;
-              }
+            if(j == 0) {
+              puzzle[i ~/ 2][0].left = lineType;
+              //cprint(lineType != 0, "call left");
+            } else {
+              puzzle[i ~/ 2][0].right = lineType;
+              //cprint(lineType != 0, "call right");
             }
           }
         } else {            //down, right 2개 존재
           if(i % 2 == 0) {
-            if ((i - 1) ~/ 2 < puzzle.length && j + 1 < puzzle[(i - 1) ~/ 2].length) {
-              puzzle[(i - 1) ~/ 2 + 1][j + 1].down = lineType;
-            }
-          } else {
-            if ((i - 1) ~/ 2 < puzzle.length && j < puzzle[(i - 1) ~/ 2].length) {
-              puzzle[(i - 1) ~/ 2 + 1][j].right = lineType;
-            }
+            //puzzle[(i - 1) ~/ 2 + 1][j + 1].down = lineType;
+            //i=4,j=1 => 1,1  //10,2 => 4,2
+            //20,3 => 9,3     //12,7 => 5,7
+            puzzle[i ~/ 2 - 1][j].down = lineType;
+          } else if(i % 2 != 0 && ((i - 1) ~/ 2 + 1 < puzzle.length && j < puzzle[(i - 1) ~/ 2 + 1].length)){
+            puzzle[(i - 1) ~/ 2][j - 1].right = lineType;
           }
         }
-
       }
+    }
+  }
+
+  static void cprint(bool condition, String text) {
+    if(condition) {
+      print(text);
     }
   }
 

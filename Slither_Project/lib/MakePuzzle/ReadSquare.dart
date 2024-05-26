@@ -59,11 +59,12 @@ class ReadSquare {
             //1=>4, 2=>6, 3=>8 //x*2+2
             data[i * 2 + 2][j] = true;
           }
+          //2=>5, 3=>7
           if(puzzle[i][j].left == 1) {
-            data[i + 3][j] = true;
+            data[i * 2 + 1][j] = true;
           }
           if(puzzle[i][j].right == 1) {
-            data[i + 3][j + 1] = true;
+            data[i * 2 + 1][j + 1] = true;
           }
         }
         //up, down, left, right
@@ -83,7 +84,7 @@ class ReadSquare {
         }
       }
     }
-    printData();
+    //printData();
     try {
       await read.writeData(data, filename);
     } catch (e) {
@@ -91,23 +92,25 @@ class ReadSquare {
     }
 
   }
-  Future<void> loadPuzzle() async {
+  Future<List<List<int>>> loadPuzzle() async {
     try {
       read;
     } catch (e) {
       read = ReadPuzzleData();
     }
 
-    puzzle = GameSceneStateSquare.getPuzzle();
     data = await read.readData(filename);
-    printData();
+    //printData();
+    return data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
   }
 
+  /*
   Future<List<List<int>>> getAnswer() async {
     await loadPuzzle();
     List<List<int>> intData = data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
     return intData;
   }
+   */
 
   /*
   Future<List<List<SquareBox>>> applyData() async {
