@@ -152,13 +152,6 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       );
     }
 
-    /*
-    //모서리에 1개씩 설정하는 코드
-    var draw = Draw();
-    draw.init(puzzleHeight * 2 + 1, puzzleWidth);
-    setGrid(puzzle, draw.getGrid());
-     */
-
     return columnChildren;
   }
 
@@ -172,7 +165,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     List<List<SquareBox>> puzzle = initSquarePuzzle(answer.length - 1, answer[0].length / 2);
     List<Widget> columnChildren = [];
 
-    //marking answer
+    //marking answer line
     applyUIWithAnswer(puzzle, answer);
 
     for (int i = 0; i < puzzle.length; i++) {
@@ -187,8 +180,69 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
         ),
       );
     }
+    //marking number with answer
+    setNumWithAnswer(puzzle);
+    clearLine(puzzle);
 
     return columnChildren;
+  }
+
+  static void clearLine(List<List<SquareBox>> puzzle) {
+    for(int i = 0 ; i < puzzle.length ; i++) {
+      for(int j = 0 ; j < puzzle[i].length ; j++) {
+        if(i != 0 && j != 0) {
+          puzzle[i][j].down = 0;
+          puzzle[i][j].right = 0;
+        } else if(i != 0 && j == 0) {
+          puzzle[i][j].down = 0;
+          puzzle[i][j].left = 0;
+          puzzle[i][j].right = 0;
+        } else if(i == 0 && j != 0) {
+          puzzle[i][j].up = 0;
+          puzzle[i][j].down = 0;
+          puzzle[i][j].right = 0;
+        } else {
+          puzzle[i][j].up = 0;
+          puzzle[i][j].down = 0;
+          puzzle[i][j].left = 0;
+          puzzle[i][j].right = 0;
+        }
+      }
+    }
+  }
+
+  static void setNumWithAnswer(List<List<SquareBox>> puzzle) {
+    int count = 0;
+
+    for(int i = 0 ; i < puzzle.length ; i++) {
+      for(int j = 0 ; j < puzzle[i].length ; j++) {
+        count = 0;
+
+        if(i != 0 && j != 0) {
+          if(puzzle[i - 1][j].down != 0) { count++; } //puzzle[i][j].up
+          if(puzzle[i][j].down != 0) { count++; }
+          if(puzzle[i][j - 1].right != 0) { count++; } //puzzle[i][j].left
+          if(puzzle[i][j].right != 0) { count++; }
+        } else if(i != 0 && j == 0) {
+          if(puzzle[i - 1][j].down != 0) { count++; } //puzzle[i][j].up
+          if(puzzle[i][j].down != 0) { count++; }
+          if(puzzle[i][j].left != 0) { count++; }
+          if(puzzle[i][j].right != 0) { count++; }
+        } else if(i == 0 && j != 0) {
+          if(puzzle[i][j].up != 0) { count++; }
+          if(puzzle[i][j].down != 0) { count++; }
+          if(puzzle[i][j - 1].right != 0) { count++; } //puzzle[i][j].left
+          if(puzzle[i][j].right != 0) { count++; }
+        } else {
+           if(puzzle[i][j].up != 0) { count++; }
+           if(puzzle[i][j].down != 0) { count++; }
+           if(puzzle[i][j].left != 0) { count++; }
+           if(puzzle[i][j].right != 0) { count++; }
+        }
+
+        puzzle[i][j].num = count;
+      }
+    }
   }
 
   //answer is key-value pair
@@ -241,7 +295,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           } else {
             puzzle[(i - 1) ~/ 2][j - 1].right = lineType;
           }
-        } //값은 정상적으로 1을 가지고 있음 (i >= 3 && j == 21 || i == 20 && j >= 2에서 표기 문제 발생)
+        }
       }
     }
   }
