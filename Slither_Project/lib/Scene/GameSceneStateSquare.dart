@@ -17,6 +17,10 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   var findCycle = false;
   bool isDebug = false;
 
+  //check complete puzzle;
+  static late List<List<int>> answer;
+  static late List<List<int>> submit;
+
   @override
   void initState() {
     super.initState();
@@ -27,9 +31,13 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   }
 
   void loadPuzzle() async {
-    List<List<int>> data = await ReadSquare().loadPuzzle();
-    squareField = buildSquarePuzzle(data[0].length, data.length ~/ 2);
-    List<Widget> newSquareField = await buildSquarePuzzleAnswer(data);
+    answer = await ReadSquare().loadPuzzle();
+    submit = List.generate(answer.length, (row) =>
+        List.filled(answer[row].length, 0),
+    );
+
+    squareField = buildSquarePuzzle(answer[0].length, answer.length ~/ 2);
+    List<Widget> newSquareField = await buildSquarePuzzleAnswer(answer);
 
     setState(() {
       squareField = newSquareField;
@@ -184,7 +192,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       print("answer is empty");
     }
     List<List<SquareBox>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
-    print("puzzle SquareBox => row ${puzzle.length}, col ${puzzle[0].length}");
+    //print("puzzle SquareBox => row ${puzzle.length}, col ${puzzle[0].length}");
     List<Widget> columnChildren = [];
 
     //marking answer line
@@ -688,6 +696,47 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     if(condition) {
       print(text);
     }
+  }
+
+  static void checkCompletePuzzle() {
+    //refresh submit
+    for(int i = 0 ; i < puzzle.length ; i++) {
+      for(int j = 0 ; j < puzzle[i].length ; j++) {
+
+        if(i != 0 && j != 0) {
+          submit[i + 3][j] = puzzle[i][j].down;
+          submit[i + 2][j + 1] = puzzle[i][j].right;
+        }
+        else if(i == 0 && j != 0) {
+          submit[i][j] = puzzle[i][j].up;
+          submit[i + 2][j] = puzzle[i][j].down;
+          submit[i + 1][j + 1] = puzzle[i][j].right;
+        }
+        else if(i != 0 && j == 0) {
+          submit[i + 3][j] = puzzle[i][j].down;
+          submit[i + 2][j] = puzzle[i][j].left;
+          submit[i + 2][j + 1] = puzzle[i][j].right;
+        }
+        else if(i == 0 && j == 0) {
+          submit[i][j] = puzzle[i][j].up;
+          submit[i + 2][j] = puzzle[i][j].down;
+          submit[i + 1][j] = puzzle[i][j].left;
+          submit[i + 1][j + 1] = puzzle[i][j].right;
+        }
+      }
+    }
+
+    //compare submit and answer
+    for(int i = 0 ; i < answer.length ; i++) {
+      for(int j = 0 ; j < answer[i].length ; j++) {
+        if(submit[i][j] != answer[i][j]) {
+          return;
+        }
+      }
+    }
+
+    //complete puzzle
+    print("complete puzzle!");
   }
 
   static List<List<SquareBox>> getPuzzle() {

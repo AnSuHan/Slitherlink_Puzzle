@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../Scene/GameSceneStateSquare.dart';
+
 class SquareBox extends StatefulWidget {
   final bool isFirstRow;
   final bool isFirstColumn;
@@ -67,6 +69,7 @@ class SquareBoxState extends State<SquareBox> {
                       }
                       widget.up = up;
                     });
+                    GameSceneStateSquare.checkCompletePuzzle();
                   },
                 ),
             ),
@@ -102,6 +105,7 @@ class SquareBoxState extends State<SquareBox> {
                     }
                     widget.left = left;
                   });
+                  GameSceneStateSquare.checkCompletePuzzle();
                 },
               ),
             ),
@@ -130,6 +134,7 @@ class SquareBoxState extends State<SquareBox> {
                     }
                     widget.right = right;
                   });
+                  GameSceneStateSquare.checkCompletePuzzle();
                 },
               ),
             ),
@@ -169,6 +174,7 @@ class SquareBoxState extends State<SquareBox> {
                     }
                     widget.down = down;
                   });
+                  GameSceneStateSquare.checkCompletePuzzle();
                 },
               ),
             ),
