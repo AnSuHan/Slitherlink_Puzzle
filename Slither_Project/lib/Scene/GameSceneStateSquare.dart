@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:slitherlink_project/MakePuzzle/ReadSquare.dart';
 
+import '../widgets/GameUI.dart';
 import 'GameSceneSquare.dart';
 import '../widgets/SquareBox.dart';
 
@@ -20,18 +21,23 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   //check complete puzzle;
   static late List<List<int>> answer;
   static late List<List<int>> submit;
+  //save and load progress statue
+  static late List<List<List<int>>> saveStatue;
+  //UI
+  static bool showAppbar = false;
+  static GameUI ui = GameUI();
 
   @override
   void initState() {
     super.initState();
-    _setupKeyListener();
+    //_setupKeyListener();
     //dummy init for avoiding null
     squareField = buildSquarePuzzle(puzzleWidth, puzzleHeight);
     loadPuzzle();
   }
 
   void loadPuzzle() async {
-    answer = await ReadSquare().loadPuzzle();
+    answer = await ReadSquare().loadPuzzle("square");
     submit = List.generate(answer.length, (row) =>
         List.filled(answer[row].length, 0),
     );
@@ -44,13 +50,16 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     });
   }
 
+  /*
   void _setupKeyListener() {
     RawKeyboard.instance.addListener((RawKeyEvent event) async {
       _handleKeyEvent(event.logicalKey.debugName);
     });
   }
+   */
 
   //separate method for running in Android(debug)
+  /*
   void _handleKeyEvent(String? keyName) async {
     if (keyName == "Key S") {
       ReadSquare().savePuzzle();
@@ -77,6 +86,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       });
     }
   }
+   */
 
   @override
   Widget build(BuildContext context) {
@@ -84,9 +94,16 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       home: Builder(
         builder: (context) {
           screenSize = MediaQuery.of(context).size;
+          ui.setScreenSize(screenSize);
 
           return Scaffold(
-            body: Center(
+            appBar: !showAppbar ? null : ui.getGameAppBar(context),
+            body: GestureDetector(
+              onTap: () {
+                setState(() {
+                  showAppbar = !showAppbar;
+                });
+              },
               //interactiveViewer로 변경
               child: InteractiveViewer(
                 boundaryMargin: EdgeInsets.symmetric(
@@ -102,26 +119,6 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
                   ),
                 ),
               ),
-            ),
-            floatingActionButton: !isDebug ? null
-                : Stack(
-              alignment: Alignment.bottomRight,
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 70.0),
-                  child: FloatingActionButton(
-                    onPressed: () => _handleKeyEvent("Key S"),
-                    child: Icon(Icons.add),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 140.0),
-                  child: FloatingActionButton(
-                    onPressed: () => _handleKeyEvent("Key R"),
-                    child: Icon(Icons.camera),
-                  ),
-                ),
-              ],
             ),
           );
         },
@@ -737,6 +734,12 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
     //complete puzzle
     print("complete puzzle!");
+  }
+
+  void resetPuzzle() {
+    setState(() {
+      squareField = buildSquarePuzzle(puzzleWidth, puzzleHeight);
+    });
   }
 
   static List<List<SquareBox>> getPuzzle() {

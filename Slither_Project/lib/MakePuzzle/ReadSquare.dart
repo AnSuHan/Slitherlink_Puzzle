@@ -15,7 +15,7 @@ class ReadSquare {
     return false;
   }
 
-  Future<void> savePuzzle() async {
+  Future<void> savePuzzle(String key) async {
     try {
       read;
     } catch (e) {
@@ -88,22 +88,22 @@ class ReadSquare {
     }
     //printData();
     try {
-      //await read.writeData(data, filename);
-      await read.writePuzzleData("square", data, 0);
+      await read.writeData(data, key);
+      //await read.writePuzzleData("square", data, 0);
     } catch (e) {
       print("EXCEPTION $e");
     }
 
   }
-  Future<List<List<int>>> loadPuzzle() async {
+  Future<List<List<int>>> loadPuzzle(String key) async {
     try {
       read;
     } catch (e) {
       read = ReadPuzzleData();
     }
 
-    //data = await read.readData(filename);
-    data = await read.readPuzzleData("square", 1);
+    data = await read.readData(key);
+    //data = await read.readPuzzleData("square", 1);
     //printData();
     return data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
   }

@@ -41,6 +41,12 @@ class ReadPuzzleData {
   }
 
   Future<List<List<bool>>> readData(String fileName) async {
+    //init
+    if(!fileName.contains("_")) {
+      return answer.getSquare(UserInfo().getProgress("square") + 1);
+    }
+    
+    //load user saved data
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     String? jsonData = prefs.getString(fileName);
 

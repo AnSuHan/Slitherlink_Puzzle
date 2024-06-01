@@ -11,22 +11,6 @@ class Answer {
       List.filled(20, true)
     ],
     [
-      //2*3
-      [true, true, true],
-      [true, false, false, true],
-      [false, false, false],
-      [true, false, false, true],
-      [true, true, true],
-    ],
-    [
-      //2*2
-      [true, true],
-      [true, false, true],
-      [false, false],
-      [true, false, true],
-      [true, true],
-    ],
-    [
       //cycle test
       [false, false, true, false, true, true, true, true, true, false, false, true, false, true, true, true, true, false, false, true],
       [false, false, true, true, true, false, false, false, false, true, false, true, true, true, false, false, false, true, false, true, true],
@@ -49,6 +33,22 @@ class Answer {
       [false, false, false, true, false, true, true, false, true, false, true, false, false, true, false, true, true, false, false, true],
       [false, true, true, false, false, true, false, false, true, true, false, true, false, false, true, false, false, true, true, true, false],
       [false, true, false, false, false, true, true, true, false, true, true, false, false, false, true, true, true, false, true, false]
+    ],
+    [
+      //2*3
+      [true, true, true],
+      [true, false, false, true],
+      [false, false, false],
+      [true, false, false, true],
+      [true, true, true],
+    ],
+    [
+      //2*2
+      [true, true],
+      [true, false, true],
+      [false, false],
+      [true, false, true],
+      [true, true],
     ],
 
   ];
