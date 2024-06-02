@@ -3,6 +3,7 @@ import 'dart:js_util';
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
+import '../Scene/GameSceneSquare.dart';
 import '../Scene/GameSceneStateSquare.dart';
 
 class GameUI {
@@ -57,7 +58,7 @@ class GameUI {
                 duration: const Duration(milliseconds: 500),
               ));
 
-              controlMenu(result);
+              controlMenu(context, result);
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               PopupMenuItem<String>(
@@ -116,7 +117,7 @@ class GameUI {
           child: PopupMenuButton(
             key: _menuKey,
             onSelected: (String result) {
-              controlMenu(result);
+              controlMenu(context, result);
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               const PopupMenuItem<String>(
@@ -138,7 +139,7 @@ class GameUI {
     );
   }
 
-  void controlMenu(String label) {
+  void controlMenu(BuildContext context, String label) {
     List<String> token = label.split(" ");
 
     //bookmark
@@ -192,7 +193,7 @@ class GameUI {
     if(token.length == 2) {
       switch(token[1]) {
         case "restart":
-          GameSceneStateSquare().resetPuzzle();
+          SquareProvider().resetPuzzle();
           break;
         case "rule":
           break;

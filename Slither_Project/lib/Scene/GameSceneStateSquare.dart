@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import 'package:slitherlink_project/MakePuzzle/ReadSquare.dart';
 
 import '../widgets/GameUI.dart';
@@ -18,6 +19,9 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   var findCycle = false;
   bool isDebug = false;
 
+  //provider for using setState in other class
+  final SquareProvider _provider = SquareProvider();
+
   //check complete puzzle;
   static late List<List<int>> answer;
   static late List<List<int>> submit;
@@ -30,9 +34,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   @override
   void initState() {
     super.initState();
-    //_setupKeyListener();
-    //dummy init for avoiding null
-    squareField = buildSquarePuzzle(puzzleWidth, puzzleHeight);
+    _setupKeyListener();
+    _provider.resetPuzzle();
     loadPuzzle();
   }
 
@@ -50,22 +53,19 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     });
   }
 
-  /*
   void _setupKeyListener() {
     RawKeyboard.instance.addListener((RawKeyEvent event) async {
       _handleKeyEvent(event.logicalKey.debugName);
     });
   }
-   */
 
   //separate method for running in Android(debug)
-  /*
   void _handleKeyEvent(String? keyName) async {
     if (keyName == "Key S") {
-      ReadSquare().savePuzzle();
+      ReadSquare().savePuzzle("square");
       print("Save complete");
     } else if (keyName == "Key R") {
-      List<List<int>> data = await ReadSquare().loadPuzzle();
+      List<List<int>> data = await ReadSquare().loadPuzzle("square");
       List<Widget> newSquareField = await buildSquarePuzzleAnswer(data);
 
       setState(() {
@@ -74,7 +74,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     } else if (keyName == "Key P") {
       ReadSquare().printData();
     } else if (keyName == "Key A") {
-      List<List<int>> apply = await ReadSquare().loadPuzzle();
+      List<List<int>> apply = await ReadSquare().loadPuzzle("square");
       List<Widget> newSquareField = await buildSquarePuzzleAnswer(apply);
 
       setState(() {
@@ -86,44 +86,53 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       });
     }
   }
-   */
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Builder(
-        builder: (context) {
-          screenSize = MediaQuery.of(context).size;
-          ui.setScreenSize(screenSize);
+    return ChangeNotifierProvider( // ChangeNotifierProvider 사용
+      create: (context) => SquareProvider(), // 여기서 YourChangeNotifierClass는 사용자가 만든 ChangeNotifier 클래스입니다.
+      child: Consumer<SquareProvider>(
+        builder: (context, provider, child) {
+          // Build your UI based on the provider's state
+          return MaterialApp(  // Replace YourWidget with your actual widget
+            home: Builder(
+              builder: (context) {
+                screenSize = MediaQuery.of(context).size;
+                ui.setScreenSize(screenSize);
 
-          return Scaffold(
-            appBar: !showAppbar ? null : ui.getGameAppBar(context),
-            body: GestureDetector(
-              onTap: () {
-                setState(() {
-                  showAppbar = !showAppbar;
-                });
-              },
-              //interactiveViewer로 변경
-              child: InteractiveViewer(
-                boundaryMargin: EdgeInsets.symmetric(
-                  horizontal: screenSize.width * 0.4,
-                  vertical: screenSize.height * 0.4,
-                ),
-                constrained: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 20),
-                  child: Column(
-                    children: squareField,
+                return Scaffold(
+                  appBar: !showAppbar ? null : ui.getGameAppBar(context),
+                  body: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        showAppbar = !showAppbar;
+                      });
+                    },
+                    //interactiveViewer로 변경
+                    child: InteractiveViewer(
+                      boundaryMargin: EdgeInsets.symmetric(
+                        horizontal: screenSize.width * 0.4,
+                        vertical: screenSize.height * 0.4,
+                      ),
+                      constrained: false,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 20),
+                        child: Column(
+                          //필드는 앱 바를 통해 상태가 변경될 수 있으므로
+                          //provider와 ChangeNotifier를 통해 접근
+                          children: SquareProvider().getSquareField(),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
+
           );
         },
       ),
-
     );
   }
 
@@ -210,7 +219,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     //marking number with answer
     setNumWithAnswer(puzzle);
     //setDefaultLineStep1(puzzle);
-    clearLineForStart(puzzle);
+    clearLineForStart();
 
     return columnChildren;
   }
@@ -662,7 +671,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     }
   }
 
-  static void clearLineForStart(List<List<SquareBox>> puzzle) {
+  static void clearLineForStart() {
     for(int i = 0 ; i < puzzle.length ; i++) {
       for(int j = 0 ; j < puzzle[i].length ; j++) {
         if(i != 0 && j != 0) {
@@ -702,7 +711,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
         if(i != 0 && j != 0) {
           submit[i + 3][j] = puzzle[i][j].down;
-          submit[i + 2][j + 1] = puzzle[i][j].right;
+          //(1,19)->(3,19)  //(2,19)->(5,19)
+          submit[i + 2][j] = puzzle[i][j].right;
         }
         else if(i == 0 && j != 0) {
           submit[i][j] = puzzle[i][j].up;
@@ -736,10 +746,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     print("complete puzzle!");
   }
 
-  void resetPuzzle() {
-    setState(() {
-      squareField = buildSquarePuzzle(puzzleWidth, puzzleHeight);
-    });
+  void resetPuzzle() async {
+    _provider.resetPuzzle();
   }
 
   static List<List<SquareBox>> getPuzzle() {
