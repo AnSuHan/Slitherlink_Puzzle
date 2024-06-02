@@ -20,7 +20,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   bool isDebug = false;
 
   //provider for using setState in other class
-  final SquareProvider _provider = SquareProvider();
+  static final SquareProvider _provider = SquareProvider();
 
   //check complete puzzle;
   static late List<List<int>> answer;
@@ -35,7 +35,6 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   void initState() {
     super.initState();
     _setupKeyListener();
-    _provider.resetPuzzle();
     loadPuzzle();
   }
 
@@ -45,17 +44,27 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
         List.filled(answer[row].length, 0),
     );
 
-    squareField = buildSquarePuzzle(answer[0].length, answer.length ~/ 2);
-    List<Widget> newSquareField = await buildSquarePuzzleAnswer(answer);
-
-    setState(() {
-      squareField = newSquareField;
-    });
+    squareField = await buildSquarePuzzleAnswer(answer);
+    _provider.setSquareField(squareField);
+    setState(() {});
   }
 
   void _setupKeyListener() {
     RawKeyboard.instance.addListener((RawKeyEvent event) async {
       _handleKeyEvent(event.logicalKey.debugName);
+    });
+  }
+
+  void reload() async {
+    List<List<int>> data = await ReadSquare().loadPuzzle("square");
+    List<Widget> newSquareField = await buildSquarePuzzleAnswer(data);
+    submit = List.generate(answer.length, (row) =>
+        List.filled(answer[row].length, 0),
+    );
+
+    setState(() {
+      squareField = newSquareField;
+      _provider.setSquareField(squareField);
     });
   }
 
@@ -65,12 +74,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       ReadSquare().savePuzzle("square");
       print("Save complete");
     } else if (keyName == "Key R") {
-      List<List<int>> data = await ReadSquare().loadPuzzle("square");
-      List<Widget> newSquareField = await buildSquarePuzzleAnswer(data);
-
-      setState(() {
-        squareField = newSquareField;
-      });
+      reload();
     } else if (keyName == "Key P") {
       ReadSquare().printData();
     } else if (keyName == "Key A") {
@@ -79,10 +83,12 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
       setState(() {
         squareField = newSquareField;
+        _provider.setSquareField(squareField);
       });
     } else if (keyName == "Key C") {
       setState(() {
         squareField = buildSquarePuzzle(puzzleWidth, puzzleHeight);
+        _provider.setSquareField(squareField);
       });
     }
   }
@@ -90,7 +96,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider( // ChangeNotifierProvider 사용
-      create: (context) => SquareProvider(), // 여기서 YourChangeNotifierClass는 사용자가 만든 ChangeNotifier 클래스입니다.
+      create: (context) => _provider, // 여기서 YourChangeNotifierClass는 사용자가 만든 ChangeNotifier 클래스입니다.
       child: Consumer<SquareProvider>(
         builder: (context, provider, child) {
           // Build your UI based on the provider's state
@@ -121,7 +127,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
                         child: Column(
                           //필드는 앱 바를 통해 상태가 변경될 수 있으므로
                           //provider와 ChangeNotifier를 통해 접근
-                          children: SquareProvider().getSquareField(),
+                          children: _provider.getSquareField(),
                         ),
                       ),
                     ),
@@ -746,9 +752,11 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     print("complete puzzle!");
   }
 
+  /*
   void resetPuzzle() async {
     _provider.resetPuzzle();
   }
+   */
 
   static List<List<SquareBox>> getPuzzle() {
     return puzzle;

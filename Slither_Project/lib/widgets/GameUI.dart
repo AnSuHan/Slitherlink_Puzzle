@@ -193,7 +193,8 @@ class GameUI {
     if(token.length == 2) {
       switch(token[1]) {
         case "restart":
-          SquareProvider().resetPuzzle();
+          //SquareProvider().resetPuzzle();
+          GameSceneStateSquare().loadPuzzle();
           break;
         case "rule":
           break;
