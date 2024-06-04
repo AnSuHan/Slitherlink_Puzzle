@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import 'GameSceneSquare.dart';
+import '../Front/EnterScene.dart';
 
 void main() {
-  runApp(const GameSceneSquare());
+  runApp(const EnterScene());
 }

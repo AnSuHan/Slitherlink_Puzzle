@@ -18,7 +18,7 @@ class GameUI {
     return AppBar(
       leading: InkWell(
         onTap: () {
-          print("click back");
+          Navigator.pop(context);
         },
         child: const Icon(Icons.keyboard_backspace),
       ),
