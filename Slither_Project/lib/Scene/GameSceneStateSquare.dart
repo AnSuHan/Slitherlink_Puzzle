@@ -46,7 +46,17 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
     squareField = await buildSquarePuzzleAnswer(answer);
     _provider.setSquareField(squareField);
-    setState(() {});
+  }
+
+  void applyLabel(List<List<int>> data) async {
+    answer = await ReadSquare().loadPuzzle("square");
+    submit = data;
+
+    squareField = await buildSquarePuzzleAnswer(answer);
+    //apply submit data to squareField
+    innerApplyLabel();
+
+    _provider.setSquareField(squareField);
   }
 
   void _setupKeyListener() {
@@ -752,11 +762,29 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     print("complete puzzle!");
   }
 
-  /*
-  void resetPuzzle() async {
-    _provider.resetPuzzle();
+  void innerApplyLabel() {
+    for (int i = 0; i < puzzle.length; i++) {
+      for (int j = 0; j < puzzle[i].length; j++) {
+        if (i != 0 && j != 0) {   //problem //1,1 => 3,2 4,1  //2,2 => 5,3 6,2
+          puzzle[i][j].down = submit[i * 2 + 2][j];
+          puzzle[i][j].right = submit[i * 2 + 1][j + 1];
+        } else if (i == 0 && j != 0) {
+          puzzle[i][j].up = submit[i][j];
+          puzzle[i][j].down = submit[i + 2][j];
+          puzzle[i][j].right = submit[i + 1][j + 1];
+        } else if (i != 0 && j == 0) { //1,0 => 3,0 3,1 4,0  //2,0 => 5,0 5,1 6,0
+          puzzle[i][j].down = submit[i * 2 + 2][j];
+          puzzle[i][j].left = submit[i * 2 + 1][j];
+          puzzle[i][j].right = submit[i * 2 + 1][j + 1];
+        } else if (i == 0 && j == 0) {
+          puzzle[i][j].up = submit[i][j];
+          puzzle[i][j].down = submit[i + 2][j];
+          puzzle[i][j].left = submit[i + 1][j];
+          puzzle[i][j].right = submit[i + 1][j + 1];
+        }
+      }
+    }
   }
-   */
 
   static List<List<SquareBox>> getPuzzle() {
     return puzzle;

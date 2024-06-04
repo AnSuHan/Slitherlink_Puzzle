@@ -217,8 +217,9 @@ class GameUI {
         break;
     }
   }
-  void loadData(String label) {
-    readSquare.loadPuzzle("square_$label");
+  void loadData(String label) async {
+    List<List<int>> value = await readSquare.loadPuzzle("square_$label");
+    GameSceneStateSquare().applyLabel(value);
   }
   void clearData(String label) {
 
