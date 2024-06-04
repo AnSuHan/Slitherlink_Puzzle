@@ -17,7 +17,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   bool isDebug = false;
 
   //provider for using setState in other class
-  static final SquareProvider _provider = SquareProvider();
+  static SquareProvider _provider = SquareProvider();
 
   //check complete puzzle;
   static late List<List<int>> answer;
@@ -31,6 +31,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   @override
   void initState() {
     super.initState();
+    _provider = SquareProvider();
     loadPuzzle();
   }
 
@@ -63,43 +64,35 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       create: (context) => _provider, // 여기서 YourChangeNotifierClass는 사용자가 만든 ChangeNotifier 클래스입니다.
       child: Consumer<SquareProvider>(
         builder: (context, provider, child) {
-          // Build your UI based on the provider's state
-          return MaterialApp(  // Replace YourWidget with your actual widget
-            home: Builder(
-              builder: (context) {
-                screenSize = MediaQuery.of(context).size;
-                ui.setScreenSize(screenSize);
+          screenSize = MediaQuery.of(context).size;
+          ui.setScreenSize(screenSize);
 
-                return Scaffold(
-                  appBar: !showAppbar ? null : ui.getGameAppBar(context),
-                  body: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        showAppbar = !showAppbar;
-                      });
-                    },
-                    //interactiveViewer로 변경
-                    child: InteractiveViewer(
-                      boundaryMargin: EdgeInsets.symmetric(
-                        horizontal: screenSize.width * 0.4,
-                        vertical: screenSize.height * 0.4,
-                      ),
-                      constrained: false,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 20),
-                        child: Column(
-                          //필드는 앱 바를 통해 상태가 변경될 수 있으므로
-                          //provider와 ChangeNotifier를 통해 접근
-                          children: _provider.getSquareField(),
-                        ),
-                      ),
-                    ),
-                  ),
-                );
+          return Scaffold(
+            appBar: !showAppbar ? null : ui.getGameAppBar(context),
+            body: GestureDetector(
+              onTap: () {
+                setState(() {
+                  showAppbar = !showAppbar;
+                });
               },
+              //interactiveViewer로 변경
+              child: InteractiveViewer(
+                boundaryMargin: EdgeInsets.symmetric(
+                  horizontal: screenSize.width * 0.4,
+                  vertical: screenSize.height * 0.4,
+                ),
+                constrained: false,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 20),
+                  child: Column(
+                    //필드는 앱 바를 통해 상태가 변경될 수 있으므로
+                    //provider와 ChangeNotifier를 통해 접근
+                    children: _provider.getSquareField(),
+                  ),
+                ),
+              ),
             ),
-
           );
         },
       ),
