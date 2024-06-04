@@ -3,7 +3,6 @@ import 'dart:js_util';
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
-import '../Scene/GameSceneSquare.dart';
 import '../Scene/GameSceneStateSquare.dart';
 
 class GameUI {
