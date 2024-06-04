@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../Scene/GameSceneStateSquare.dart';
+
 class SquareBox extends StatefulWidget {
   final bool isFirstRow;
   final bool isFirstColumn;
@@ -7,6 +9,7 @@ class SquareBox extends StatefulWidget {
   //0 : 기본, 1 : 유저가 선택, 2 : 힌트
   //-1 : 비활성(미선택), -2 : 비활성(선택)
   var up = 0, down = 0, left = 0, right = 0;
+  var num = 0;
 
   SquareBox({
     Key? key,
@@ -28,6 +31,7 @@ class SquareBoxState extends State<SquareBox> {
     var down = widget.down;
     var left = widget.left;
     var right = widget.right;
+    var num = widget.num;
 
     return Column(
       children: [
@@ -65,6 +69,7 @@ class SquareBoxState extends State<SquareBox> {
                       }
                       widget.up = up;
                     });
+                    GameSceneStateSquare.checkCompletePuzzle();
                   },
                 ),
             ),
@@ -100,6 +105,7 @@ class SquareBoxState extends State<SquareBox> {
                     }
                     widget.left = left;
                   });
+                  GameSceneStateSquare.checkCompletePuzzle();
                 },
               ),
             ),
@@ -107,7 +113,7 @@ class SquareBoxState extends State<SquareBox> {
               height: 50,
               width: 50,
               child: Center(
-                child: Text("1"),
+                child: Text(num.toString()),
               ),
             ),
             Container(
@@ -128,6 +134,7 @@ class SquareBoxState extends State<SquareBox> {
                     }
                     widget.right = right;
                   });
+                  GameSceneStateSquare.checkCompletePuzzle();
                 },
               ),
             ),
@@ -167,6 +174,7 @@ class SquareBoxState extends State<SquareBox> {
                     }
                     widget.down = down;
                   });
+                  GameSceneStateSquare.checkCompletePuzzle();
                 },
               ),
             ),
