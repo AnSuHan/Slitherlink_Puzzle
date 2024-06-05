@@ -4,14 +4,18 @@ import 'package:flutter/material.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../User/UserInfo.dart';
 
+//use "onUpdate();" for update UI
 class MainUI {
   late Size screenSize;
   List<String> puzzleType = ["square"];
   List<String> puzzleSize = ["small"];
+  ///shape, size
   List<String> selectedType = ["square", "small"];
-  List<String> progressPuzzle = [""];
+  //continue data
+  List<String> progressPuzzle = UserInfo.getContinuePuzzle().isEmpty ? [""] : UserInfo.getContinuePuzzle().toList();
+  String selectedContinue = "";
+  static String progressKey = "";
 
-  UserInfo user = UserInfo();
   final GlobalKey<PopupMenuButtonState<int>> _mainMenuKey = GlobalKey<PopupMenuButtonState<int>>();
 
   final VoidCallback onUpdate;
@@ -69,7 +73,7 @@ class MainUI {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text("Account"),
-                            Text(user.progress.toString()), //temp
+                            Text(UserInfo.progress.toString()), //temp
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -77,7 +81,7 @@ class MainUI {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text("Progress"),
-                            Text(user.progress.toString()), //temp
+                            Text(UserInfo.progress.toString()), //temp
                           ],
                         ),
                       ],
@@ -129,7 +133,7 @@ class MainUI {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text("Setting"),
-                            Text(user.progress.toString()), //temp
+                            Text(UserInfo.progress.toString()), //temp
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -137,7 +141,7 @@ class MainUI {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text("Setting"),
-                            Text(user.progress.toString()), //temp
+                            Text(UserInfo.progress.toString()), //temp
                           ],
                         ),
                       ],
@@ -215,9 +219,24 @@ class MainUI {
     );
   }
 
-  DropdownButton? getProgressPuzzle(BuildContext context) {
+  Widget? getContinueWidget(BuildContext context) {
     if(UserInfo.getContinuePuzzle().isEmpty) {
       return null;
+    }
+
+    return Column(
+      children: [
+        const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Text("continue", style: TextStyle(fontSize: 24),),),
+        Padding(padding: const EdgeInsets.symmetric(vertical: 20), child: getProgressPuzzle(context),),
+        Padding(padding: const EdgeInsets.symmetric(vertical: 20), child: getContinueButton(context),),
+      ],
+    );
+  }
+
+  DropdownButton getProgressPuzzle(BuildContext context) {
+    progressPuzzle = UserInfo.getContinuePuzzle().isEmpty ? [""] : UserInfo.getContinuePuzzle().toList();
+    if(progressKey.isEmpty) {
+      progressKey = progressPuzzle[0];
     }
 
     return DropdownButton(items: progressPuzzle
@@ -228,8 +247,10 @@ class MainUI {
         .toList(),
         onChanged: (value) {
           progressPuzzle[0] = value;
+          progressKey = value;
+          onUpdate();
         },
-        value: progressPuzzle[0],
+        value: progressKey,
         style: const TextStyle(color: Colors.white, fontSize: 24),
     );
   }
@@ -241,11 +262,33 @@ class MainUI {
         minimumSize: const Size(100, 50),
       ),
       onPressed: () {
-        UserInfo.addContinuePuzzle("${selectedType[0]}_${selectedType[1]}_progress");
+        int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
+        progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
+        UserInfo.addContinuePuzzle(progressKey);
         onUpdate();
         changeScene(context);
       },
-      child: const Text("Start Game", style: TextStyle(fontSize: 24),)
+      child: const Text("Start New Game", style: TextStyle(fontSize: 24),)
+    );
+  }
+
+  //about continue button
+  ElevatedButton getContinueButton(BuildContext context) {
+    return ElevatedButton(
+      style: ElevatedButton.styleFrom(
+        minimumSize: const Size(100, 50),
+      ),
+      onPressed: () {
+        print("getContinueButton : $progressKey");
+        /*
+        int progress = UserInfo().getProgress("${selectedType[0]}_${selectedType[1]}");
+        progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
+        UserInfo.addContinuePuzzle(progressKey);
+        onUpdate();
+        changeScene(context);
+         */
+      },
+      child: const Text("Continue Game", style: TextStyle(fontSize: 24),)
     );
   }
 
@@ -269,5 +312,10 @@ class MainUI {
 
   void setScreenSize(Size size) {
     screenSize = size;
+  }
+
+  //last tried key
+  static String getProgressKey() {
+    return progressKey;
   }
 }

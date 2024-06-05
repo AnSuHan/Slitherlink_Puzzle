@@ -1,11 +1,12 @@
 class UserInfo {
-  Map<String, int> progress = {
+  static Map<String, int> progress = {
     "square_small" : 0,
   };   //finish progress
   //set value when pushing start button & reset when complete puzzle
-  static List<String> continuePuzzle = [];
+  static Set<String> continuePuzzle = {};
 
-  int getProgress(String puzzleType) {
+  ///shape`_`size
+  static int getProgress(String puzzleType) {
     if(progress.containsKey(puzzleType)) {
       return progress[puzzleType]!;
     }
@@ -18,11 +19,12 @@ class UserInfo {
   /// input should be "puzzleShape`_`puzzleSize`_`puzzleLevel
   static void addContinuePuzzle(String input) {
     continuePuzzle.add(input);
-    print("add ContinuePuzzle : $continuePuzzle");
-
+    var token = input.split("_");
+    String mapKey = "${token[0]}_${token[1]}";
+    progress[mapKey] = progress[mapKey]! + 1;
   }
 
-  static List<String> getContinuePuzzle() {
+  static Set<String> getContinuePuzzle() {
     return continuePuzzle;
   }
 }

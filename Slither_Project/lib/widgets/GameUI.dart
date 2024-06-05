@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../Scene/GameSceneStateSquare.dart';
+import 'MainUI.dart';
 
 class GameUI {
   late Size screenSize;
@@ -19,7 +20,7 @@ class GameUI {
       leading: InkWell(
         onTap: () {
           //when back button click, set class {UserInfo}
-          readSquare.savePuzzle("progress");
+          readSquare.savePuzzle(MainUI.getProgressKey());
           Navigator.pop(context);
         },
         child: const Icon(Icons.keyboard_backspace),

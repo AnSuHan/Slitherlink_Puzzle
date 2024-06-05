@@ -65,7 +65,7 @@ class EnterSceneState extends State<EnterScene> {
                       Flexible(
                         flex: 1,
                         child: Center(
-                          child: ui.getProgressPuzzle(context),
+                          child: ui.getContinueWidget(context),
                         ),
                       ),
                     ],

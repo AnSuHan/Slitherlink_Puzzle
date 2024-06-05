@@ -23,7 +23,7 @@ class ReadPuzzleData {
     //init
     if(!fileName.contains("_")) {
       //getSquare(0) is debug mode(all line is 1)
-      return answer.getSquare(UserInfo().getProgress("square_small") + 1);
+      return answer.getSquare(UserInfo.getProgress("square_small") + 1);
     }
     
     //load user saved data
