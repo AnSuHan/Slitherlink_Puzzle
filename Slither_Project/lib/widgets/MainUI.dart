@@ -9,9 +9,14 @@ class MainUI {
   List<String> puzzleType = ["square"];
   List<String> puzzleSize = ["small"];
   List<String> selectedType = ["square", "small"];
+  List<String> progressPuzzle = [""];
 
   UserInfo user = UserInfo();
   final GlobalKey<PopupMenuButtonState<int>> _mainMenuKey = GlobalKey<PopupMenuButtonState<int>>();
+
+  final VoidCallback onUpdate;
+  MainUI({required this.onUpdate});
+
 
   PopupMenuButton getMainMenu(BuildContext context) {
     return PopupMenuButton(
@@ -210,6 +215,25 @@ class MainUI {
     );
   }
 
+  DropdownButton? getProgressPuzzle(BuildContext context) {
+    if(UserInfo.getContinuePuzzle().isEmpty) {
+      return null;
+    }
+
+    return DropdownButton(items: progressPuzzle
+        .map((e) => DropdownMenuItem(
+          value: e, // 선택 시 onChanged 를 통해 반환할 value
+          child: Text(e),
+        ))
+        .toList(),
+        onChanged: (value) {
+          progressPuzzle[0] = value;
+        },
+        value: progressPuzzle[0],
+        style: const TextStyle(color: Colors.white, fontSize: 24),
+    );
+  }
+
   //about start button
   ElevatedButton getStartButton(BuildContext context) {
     return ElevatedButton(
@@ -217,6 +241,8 @@ class MainUI {
         minimumSize: const Size(100, 50),
       ),
       onPressed: () {
+        UserInfo.addContinuePuzzle("${selectedType[0]}_${selectedType[1]}_progress");
+        onUpdate();
         changeScene(context);
       },
       child: const Text("Start Game", style: TextStyle(fontSize: 24),)

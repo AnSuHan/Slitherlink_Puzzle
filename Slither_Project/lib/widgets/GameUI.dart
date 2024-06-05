@@ -18,6 +18,8 @@ class GameUI {
     return AppBar(
       leading: InkWell(
         onTap: () {
+          //when back button click, set class {UserInfo}
+          readSquare.savePuzzle("progress");
           Navigator.pop(context);
         },
         child: const Icon(Icons.keyboard_backspace),

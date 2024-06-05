@@ -5,11 +5,16 @@ import '../widgets/MainUI.dart';
 
 class EnterSceneState extends State<EnterScene> {
   late Size screenSize;
-  MainUI ui = MainUI();
+  late MainUI ui;
 
   @override
   void initState() {
     super.initState();
+    ui = MainUI(onUpdate: _updateUI);
+  }
+
+  void _updateUI() {
+    setState(() {});
   }
 
   @override
@@ -33,7 +38,9 @@ class EnterSceneState extends State<EnterScene> {
                       SizedBox(
                         height: ui.getTopMargin(),
                       ),
+                      //title, start button, puzzle type
                       Flexible(
+                        flex: 1,
                         child: Center(
                           child: Column(
                             children: [
@@ -52,6 +59,13 @@ class EnterSceneState extends State<EnterScene> {
                               ui.getPuzzleType(context),
                             ],
                           ),
+                        ),
+                      ),
+                      //continue puzzle
+                      Flexible(
+                        flex: 1,
+                        child: Center(
+                          child: ui.getProgressPuzzle(context),
                         ),
                       ),
                     ],

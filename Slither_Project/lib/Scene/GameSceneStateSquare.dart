@@ -335,6 +335,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
     //complete puzzle
     print("complete puzzle!");
+    //clear continue puzzle
+    //UserInfo.ContinuePuzzle();
   }
 
   void applyLabel(List<List<int>> data) async {
