@@ -287,20 +287,19 @@ class MainUI {
         minimumSize: const Size(100, 50),
       ),
       onPressed: () {
-        changeScene(context, progressKey);
+        changeScene(context, progressKey, isContinue: true);
       },
       child: const Text("Continue Game", style: TextStyle(fontSize: 24),)
     );
   }
 
-  void changeScene(BuildContext context, String key) {
-    print("change Scene with key : $key");
-    List<String> token = key.split("_");
+  void changeScene(BuildContext context, String key, {bool isContinue = false}) {
+    print("change Scene with key : $key, isContinue : $isContinue");
 
     Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (context) => const GameSceneSquare()
+          builder: (context) => GameSceneSquare(isContinue: isContinue),
         )
     );
   }

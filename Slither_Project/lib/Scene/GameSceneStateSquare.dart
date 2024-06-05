@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:slitherlink_project/MakePuzzle/ReadSquare.dart';
 
 import '../widgets/GameUI.dart';
+import '../widgets/MainUI.dart';
 import 'GameSceneSquare.dart';
 import '../widgets/SquareBox.dart';
 
@@ -20,7 +21,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   static SquareProvider _provider = SquareProvider();
 
   //check complete puzzle;
-  static int puzzleLevel = 0;
+  bool isContinue;
   static late List<List<int>> answer;
   static late List<List<int>> submit;
   //UI
@@ -28,6 +29,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   static GameUI ui = GameUI();
   //save and load
   static ReadSquare readSquare = ReadSquare();
+
+  GameSceneStateSquare({this.isContinue = false});
 
   @override
   void initState() {
@@ -37,7 +40,12 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   }
 
   void loadPuzzle() async {
-    answer = await readSquare.loadPuzzle("square");
+    if(widget.isContinue) {
+      answer = await readSquare.loadPuzzle(MainUI.getProgressKey());
+    }
+    else {
+      answer = await readSquare.loadPuzzle("square");
+    }
     submit = List.generate(answer.length, (row) =>
         List.filled(answer[row].length, 0),
     );

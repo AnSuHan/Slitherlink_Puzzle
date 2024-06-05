@@ -123,7 +123,6 @@ class Answer {
   }
 
   List<List<bool>> getSquare(int index) {
-    print("get answer $index");
     if(index < squareAnswer.length) {
       return squareAnswer[index];
     }
