@@ -1,5 +1,7 @@
 import 'dart:collection';
 
+import '../User/UserInfo.dart';
+
 class Answer {
   List<List<List<bool>>> squareAnswer = [
     [
@@ -106,7 +108,22 @@ class Answer {
     return false;
   }
 
+  bool checkRemainPuzzle(String shape, String size) {
+    bool rtValue = false;
+    String key = "";
+
+    if(shape.compareTo("square") == 0 && size.compareTo("small") == 0) {
+      key = "square_small";
+      if(squareAnswer.length - 1 > UserInfo.getProgress(key)) {
+        rtValue = true;
+      }
+    }
+
+    return rtValue;
+  }
+
   List<List<bool>> getSquare(int index) {
+    print("get answer $index");
     if(index < squareAnswer.length) {
       return squareAnswer[index];
     }

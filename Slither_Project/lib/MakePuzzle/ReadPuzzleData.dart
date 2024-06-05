@@ -19,11 +19,11 @@ class ReadPuzzleData {
     //print("jsonData in writeData : ${jsonEncode(intData)}");
   }
 
-  Future<List<List<bool>>> readData(String fileName) async {
+  Future<List<List<bool>>> readData(String fileName, {bool isContinue = false}) async {
     //init
     if(!fileName.contains("_")) {
       //getSquare(0) is debug mode(all line is 1)
-      return answer.getSquare(UserInfo.getProgress("square_small") + 1);
+      return answer.getSquare(UserInfo.getProgress("square_small"));
     }
     
     //load user saved data

@@ -20,6 +20,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   static SquareProvider _provider = SquareProvider();
 
   //check complete puzzle;
+  static int puzzleLevel = 0;
   static late List<List<int>> answer;
   static late List<List<int>> submit;
   //UI

@@ -20,7 +20,9 @@ class GameUI {
       leading: InkWell(
         onTap: () {
           //when back button click, set class {UserInfo}
-          readSquare.savePuzzle(MainUI.getProgressKey());
+          String key = MainUI.getProgressKey();
+          //print("key : $key");
+          readSquare.savePuzzle(key);
           Navigator.pop(context);
         },
         child: const Icon(Icons.keyboard_backspace),

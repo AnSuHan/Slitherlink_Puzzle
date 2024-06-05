@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../Answer/Answer.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../User/UserInfo.dart';
 
@@ -264,11 +265,18 @@ class MainUI {
       onPressed: () {
         int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
-        UserInfo.addContinuePuzzle(progressKey);
-        onUpdate();
-        changeScene(context);
+
+        //restrict puzzle's EOF
+        if(Answer().checkRemainPuzzle(selectedType[0], selectedType[1])) {
+          UserInfo.addContinuePuzzle(progressKey);
+          onUpdate();
+          changeScene(context, progressKey);
+        }
+        else {
+          print("You solved all available puzzles");
+        }
       },
-      child: const Text("Start New Game", style: TextStyle(fontSize: 24),)
+      child: const Text("Start New Game", style: TextStyle(fontSize: 24),),
     );
   }
 
@@ -279,20 +287,16 @@ class MainUI {
         minimumSize: const Size(100, 50),
       ),
       onPressed: () {
-        print("getContinueButton : $progressKey");
-        /*
-        int progress = UserInfo().getProgress("${selectedType[0]}_${selectedType[1]}");
-        progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
-        UserInfo.addContinuePuzzle(progressKey);
-        onUpdate();
-        changeScene(context);
-         */
+        changeScene(context, progressKey);
       },
       child: const Text("Continue Game", style: TextStyle(fontSize: 24),)
     );
   }
 
-  void changeScene(BuildContext context) {
+  void changeScene(BuildContext context, String key) {
+    print("change Scene with key : $key");
+    List<String> token = key.split("_");
+
     Navigator.push(
         context,
         MaterialPageRoute(
