@@ -20,7 +20,7 @@ class GameUI {
       leading: InkWell(
         onTap: () {
           //when back button click, set class {UserInfo}
-          String key = MainUI.getProgressKey();
+          String key = "${MainUI.getProgressKey()}_continue";
           //print("key : $key");  //square_small_0
           readSquare.savePuzzle(key);
           Navigator.pop(context);

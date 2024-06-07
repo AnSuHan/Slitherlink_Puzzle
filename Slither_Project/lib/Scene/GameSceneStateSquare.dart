@@ -41,14 +41,16 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   }
 
   void loadPuzzle() async {
+    print("loadKey : ${widget.loadKey}");
+
     if(widget.isContinue) {
       //answer = await readSquare.loadPuzzle(MainUI.getProgressKey());
-      answer = await readSquare.loadPuzzle("square");
+      answer = await readSquare.loadPuzzle(widget.loadKey);
 
-      submit = await readSquare.loadPuzzle(widget.loadKey);
+      submit = await readSquare.loadPuzzle("${widget.loadKey}_continue");
     }
     else {
-      answer = await readSquare.loadPuzzle("square");
+      answer = await readSquare.loadPuzzle(widget.loadKey);
 
       submit = List.generate(answer.length, (row) =>
           List.filled(answer[row].length, 0),
@@ -57,19 +59,6 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
     squareField = await buildSquarePuzzleAnswer(answer, isContinue: widget.isContinue);
     _provider.setSquareField(squareField);
-  }
-
-  void reload() async {
-    List<List<int>> data = await readSquare.loadPuzzle("square");
-    List<Widget> newSquareField = await buildSquarePuzzleAnswer(data);
-    submit = List.generate(answer.length, (row) =>
-        List.filled(answer[row].length, 0),
-    );
-
-    setState(() {
-      squareField = newSquareField;
-      _provider.setSquareField(squareField);
-    });
   }
 
   @override

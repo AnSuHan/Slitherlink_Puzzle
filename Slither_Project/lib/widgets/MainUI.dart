@@ -294,7 +294,7 @@ class MainUI {
   }
 
   void changeScene(BuildContext context, String key, {bool isContinue = false}) {
-    print("change Scene with key : $key, isContinue : $isContinue");
+    //print("change Scene with key : $key, isContinue : $isContinue");
 
     Navigator.push(
         context,
