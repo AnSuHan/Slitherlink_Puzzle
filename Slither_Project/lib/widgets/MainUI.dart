@@ -299,7 +299,7 @@ class MainUI {
     Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => GameSceneSquare(isContinue: isContinue),
+          builder: (context) => GameSceneSquare(isContinue: isContinue, loadKey: key),
         )
     );
   }

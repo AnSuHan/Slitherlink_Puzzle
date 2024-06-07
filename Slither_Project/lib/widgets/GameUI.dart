@@ -21,7 +21,7 @@ class GameUI {
         onTap: () {
           //when back button click, set class {UserInfo}
           String key = MainUI.getProgressKey();
-          //print("key : $key");
+          //print("key : $key");  //square_small_0
           readSquare.savePuzzle(key);
           Navigator.pop(context);
         },

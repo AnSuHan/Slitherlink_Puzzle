@@ -22,6 +22,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
   //check complete puzzle;
   bool isContinue;
+  String loadKey;
   static late List<List<int>> answer;
   static late List<List<int>> submit;
   //UI
@@ -30,7 +31,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   //save and load
   static ReadSquare readSquare = ReadSquare();
 
-  GameSceneStateSquare({this.isContinue = false});
+  GameSceneStateSquare({this.isContinue = false, this.loadKey = ""});
 
   @override
   void initState() {
@@ -41,16 +42,20 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
   void loadPuzzle() async {
     if(widget.isContinue) {
-      answer = await readSquare.loadPuzzle(MainUI.getProgressKey());
+      //answer = await readSquare.loadPuzzle(MainUI.getProgressKey());
+      answer = await readSquare.loadPuzzle("square");
+
+      submit = await readSquare.loadPuzzle(widget.loadKey);
     }
     else {
       answer = await readSquare.loadPuzzle("square");
-    }
-    submit = List.generate(answer.length, (row) =>
-        List.filled(answer[row].length, 0),
-    );
 
-    squareField = await buildSquarePuzzleAnswer(answer);
+      submit = List.generate(answer.length, (row) =>
+          List.filled(answer[row].length, 0),
+      );
+    }
+
+    squareField = await buildSquarePuzzleAnswer(answer, isContinue: widget.isContinue);
     _provider.setSquareField(squareField);
   }
 
@@ -155,10 +160,11 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     return columnChildren;
   }
 
-  static Future<List<Widget>> buildSquarePuzzleAnswer(List<List<int>> answer) async {
+  static Future<List<Widget>> buildSquarePuzzleAnswer(List<List<int>> answer, {bool isContinue = false}) async {
     //resize puzzle
     if(answer.isEmpty) {
       print("answer is empty");
+      return Future.value([]);
     }
     List<List<SquareBox>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
     //print("puzzle SquareBox => row ${puzzle.length}, col ${puzzle[0].length}");
@@ -183,6 +189,11 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     setNumWithAnswer(puzzle);
     //setDefaultLineStep1(puzzle);
     clearLineForStart();
+
+    //apply saved submit lines
+    if(isContinue) {
+      applyUIWithAnswer(puzzle, submit);
+    }
 
     return columnChildren;
   }
