@@ -15,8 +15,10 @@ class GameUI {
   final GlobalKey<PopupMenuButtonState<int>> _menuKey = GlobalKey<PopupMenuButtonState<int>>();
   List<String> labelState = ["save", "save", "save"]; //R, G, B
 
-  AppBar getGameAppBar(BuildContext context) {
+  AppBar getGameAppBar(BuildContext context, Color appbarColor, Color iconColor) {
     return AppBar(
+      backgroundColor: appbarColor,
+      foregroundColor: iconColor,
       leading: InkWell(
         onTap: () {
           //when back button click, set class {UserInfo}
@@ -25,7 +27,7 @@ class GameUI {
           readSquare.savePuzzle(key);
           Navigator.pop(context);
         },
-        child: const Icon(Icons.keyboard_backspace),
+        child: Icon(Icons.keyboard_backspace, color: iconColor,),
       ),
       actions: <Widget>[
         //save icon

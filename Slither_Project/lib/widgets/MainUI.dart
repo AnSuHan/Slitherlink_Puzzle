@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../Answer/Answer.dart';
 import '../Scene/GameSceneSquare.dart';
+import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
 
 //use "onUpdate();" for update UI
@@ -18,10 +19,17 @@ class MainUI {
   static String progressKey = "";
 
   final GlobalKey<PopupMenuButtonState<int>> _mainMenuKey = GlobalKey<PopupMenuButtonState<int>>();
+  Map<String, String> setting = {};
 
   final VoidCallback onUpdate;
   MainUI({required this.onUpdate});
 
+  void loadSetting() {
+    //hard copy
+    setting = Map.from(UserInfo.getSettingAll());
+
+    print("setting : ${setting["theme"]}");
+  }
 
   PopupMenuButton getMainMenu(BuildContext context) {
     return PopupMenuButton(
@@ -45,6 +53,8 @@ class MainUI {
   }
 
   void handleMainMenu(BuildContext context, String result) {
+    loadSetting();
+
     switch(result) {
       case "account":
         showDialog(
@@ -133,8 +143,19 @@ class MainUI {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Setting"),
-                            Text(UserInfo.progress.toString()), //temp
+                            const Text("Theme"),
+                            DropdownButton(items: ThemeColor().getList().map((String item) {
+                              return DropdownMenuItem<String>(
+                                value: item,
+                                child: Text(item),
+                              );
+                            }).toList(),
+                              onChanged: (value) {
+                                setting["theme"] = value.toString();
+                                onUpdate();
+                              },
+                              value: setting["theme"],
+                              style: const TextStyle(color: Colors.black, fontSize: 18),),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -154,6 +175,7 @@ class MainUI {
                         TextButton(
                           child: const Text('Apply'),
                           onPressed: () {
+                            UserInfo.setSettingAll(setting);
                             Navigator.of(context).pop(); // 다이얼로그 닫기
                           },
                         ),

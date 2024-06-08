@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../Scene/GameSceneStateSquare.dart';
+import '../ThemeColor.dart';
 
 class SquareBox extends StatefulWidget {
   final bool isFirstRow;
@@ -22,6 +23,9 @@ class SquareBox extends StatefulWidget {
 }
 
 class SquareBoxState extends State<SquareBox> {
+  //setting color
+  Map<String, Color> settingColor = ThemeColor().getColor();
+
   @override
   Widget build(BuildContext context) {
     final bool isFirstRow = widget.isFirstRow;
@@ -112,8 +116,9 @@ class SquareBoxState extends State<SquareBox> {
             Container(
               height: 50,
               width: 50,
+              color: settingColor["box"],
               child: Center(
-                child: Text(num.toString()),
+                child: Text(num.toString(), style: TextStyle(color: settingColor["number"])),
               ),
             ),
             Container(
@@ -197,19 +202,19 @@ class SquareBoxState extends State<SquareBox> {
 
     switch(type) {
       case 0:
-        color = Colors.grey;
+        color = settingColor["lineNormal"]!;
         break;
       case 1:
-        color = Colors.black;
+        color = settingColor["lineSelected"]!;
         break;
       case 2:
-        color = Colors.yellowAccent;
+        color = settingColor["lineHint"]!;
         break;
       case -1:
-        color = Colors.grey.withOpacity(0.8);
+        color = settingColor["lineInactive"]!;
         break;
       case -2:
-        color = Colors.red;
+        color = settingColor["lineWrong"]!;
         break;
       default:
         color = Colors.grey;

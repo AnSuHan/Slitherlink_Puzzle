@@ -11,6 +11,7 @@ class EnterSceneState extends State<EnterScene> {
   void initState() {
     super.initState();
     ui = MainUI(onUpdate: _updateUI);
+    ui.loadSetting();
   }
 
   void _updateUI() {

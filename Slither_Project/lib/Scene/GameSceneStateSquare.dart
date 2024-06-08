@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:slitherlink_project/MakePuzzle/ReadSquare.dart';
 
+import '../ThemeColor.dart';
 import '../widgets/GameUI.dart';
 import '../widgets/MainUI.dart';
 import 'GameSceneSquare.dart';
@@ -28,6 +29,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   //UI
   static bool showAppbar = false;
   static GameUI ui = GameUI();
+  Map<String, Color> settingColor = ThemeColor().getColor();
   //save and load
   static ReadSquare readSquare = ReadSquare();
 
@@ -79,7 +81,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           ui.setScreenSize(screenSize);
 
           return Scaffold(
-            appBar: !showAppbar ? null : ui.getGameAppBar(context),
+            appBar: !showAppbar ? null : ui.getGameAppBar(context, settingColor["appBar"]!, settingColor["appIcon"]!),
             body: GestureDetector(
               onTap: () {
                 setState(() {
@@ -87,19 +89,22 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
                 });
               },
               //interactiveViewer로 변경
-              child: InteractiveViewer(
-                boundaryMargin: EdgeInsets.symmetric(
-                  horizontal: screenSize.width * 0.4,
-                  vertical: screenSize.height * 0.4,
-                ),
-                constrained: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 20, vertical: 20),
-                  child: Column(
-                    //필드는 앱 바를 통해 상태가 변경될 수 있으므로
-                    //provider와 ChangeNotifier를 통해 접근
-                    children: _provider.getSquareField(),
+              child: Container(
+                color: settingColor["background"],
+                child: InteractiveViewer(
+                  boundaryMargin: EdgeInsets.symmetric(
+                    horizontal: screenSize.width * 0.4,
+                    vertical: screenSize.height * 0.4,
+                  ),
+                  constrained: false,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 20),
+                    child: Column(
+                      //필드는 앱 바를 통해 상태가 변경될 수 있으므로
+                      //provider와 ChangeNotifier를 통해 접근
+                      children: _provider.getSquareField(),
+                    ),
                   ),
                 ),
               ),
