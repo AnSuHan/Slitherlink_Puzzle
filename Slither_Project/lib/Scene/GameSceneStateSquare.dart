@@ -61,6 +61,14 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     _provider.setSquareField(squareField);
   }
 
+  void restart() async {
+    submit = List.generate(answer.length, (row) =>
+        List.filled(answer[row].length, 0),
+    );
+    squareField = await buildSquarePuzzleAnswer(answer);
+    _provider.setSquareField(squareField);
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider( // ChangeNotifierProvider 사용
@@ -348,39 +356,66 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     //UserInfo.ContinuePuzzle();
   }
 
+  ///control only submit data
   void applyLabel(List<List<int>> data) async {
-    answer = await readSquare.loadPuzzle("square");
     submit = data;
-
-    squareField = await buildSquarePuzzleAnswer(answer);
-    //apply submit data to squareField
-    innerApplyLabel();
-
+    squareField = await buildSquarePuzzleLabel(answer, submit);
     _provider.setSquareField(squareField);
   }
 
-  void innerApplyLabel() {
+  static Future<List<Widget>> puzzleToSquareField() async {
+    List<Widget> columnChildren = [];
+
     for (int i = 0; i < puzzle.length; i++) {
+      List<Widget> rowChildren = [];
       for (int j = 0; j < puzzle[i].length; j++) {
-        if (i != 0 && j != 0) {   //problem //1,1 => 3,2 4,1  //2,2 => 5,3 6,2
-          puzzle[i][j].down = submit[i * 2 + 2][j];
-          puzzle[i][j].right = submit[i * 2 + 1][j + 1];
-        } else if (i == 0 && j != 0) {
-          puzzle[i][j].up = submit[i][j];
-          puzzle[i][j].down = submit[i + 2][j];
-          puzzle[i][j].right = submit[i + 1][j + 1];
-        } else if (i != 0 && j == 0) { //1,0 => 3,0 3,1 4,0  //2,0 => 5,0 5,1 6,0
-          puzzle[i][j].down = submit[i * 2 + 2][j];
-          puzzle[i][j].left = submit[i * 2 + 1][j];
-          puzzle[i][j].right = submit[i * 2 + 1][j + 1];
-        } else if (i == 0 && j == 0) {
-          puzzle[i][j].up = submit[i][j];
-          puzzle[i][j].down = submit[i + 2][j];
-          puzzle[i][j].left = submit[i + 1][j];
-          puzzle[i][j].right = submit[i + 1][j + 1];
-        }
+        rowChildren.add(puzzle[i][j]);
+        //print("${puzzle[i][j].up}${puzzle[i][j].down}${puzzle[i][j].left}${puzzle[i][j].right}");
       }
+      columnChildren.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: rowChildren,
+        ),
+      );
     }
+
+    return columnChildren;
+  }
+
+  static Future<List<Widget>> buildSquarePuzzleLabel(List<List<int>> answer, List<List<int>> submit) async {
+    //resize puzzle
+    if(answer.isEmpty) {
+      print("answer is empty");
+      return Future.value([]);
+    }
+    List<List<SquareBox>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
+    //print("puzzle SquareBox => row ${puzzle.length}, col ${puzzle[0].length}");
+    List<Widget> columnChildren = [];
+
+    //marking answer line
+    applyUIWithAnswer(puzzle, answer);
+
+    for (int i = 0; i < puzzle.length; i++) {
+      List<Widget> rowChildren = [];
+      for (int j = 0; j < puzzle[i].length; j++) {
+        rowChildren.add(puzzle[i][j]);
+      }
+      columnChildren.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: rowChildren,
+        ),
+      );
+    }
+    //marking number with answer
+    setNumWithAnswer(puzzle);
+    //setDefaultLineStep1(puzzle);
+    clearLineForStart();
+
+    applyUIWithAnswer(puzzle, submit);
+
+    return columnChildren;
   }
 
   static List<List<SquareBox>> getPuzzle() {

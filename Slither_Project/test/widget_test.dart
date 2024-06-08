@@ -9,12 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:slitherlink_project/Scene/GameSceneSquare.dart';
 
-import 'package:slitherlink_project/Scene/main.dart';
-
 void main() {
   testWidgets('Counter increments smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const GameSceneSquare());
+    await tester.pumpWidget(const GameSceneSquare(isContinue: false, loadKey: '',));
 
     // Verify that our counter starts at 0.
     expect(find.text('0'), findsOneWidget);

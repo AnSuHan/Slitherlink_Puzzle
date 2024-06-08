@@ -13,7 +13,7 @@ class GameSceneSquare extends StatefulWidget {
 }
 
 class SquareProvider with ChangeNotifier {
-  static List<Widget> squareField = [];
+  List<Widget> squareField = [];
 
   List<Widget> getSquareField() {
     return squareField;

@@ -198,7 +198,7 @@ class GameUI {
       switch(token[1]) {
         case "restart":
           //SquareProvider().resetPuzzle();
-          GameSceneStateSquare().loadPuzzle();
+          GameSceneStateSquare().restart();
           break;
         case "rule":
           break;
@@ -207,7 +207,8 @@ class GameUI {
   }
 
   void saveData(String label) {
-    readSquare.savePuzzle("square_$label");
+    readSquare.savePuzzle("${MainUI.getProgressKey()}_$label");
+    print("save data with ${MainUI.getProgressKey()}_$label");
 
     switch(label) {
       case "Red":
@@ -222,7 +223,8 @@ class GameUI {
     }
   }
   void loadData(String label) async {
-    List<List<int>> value = await readSquare.loadPuzzle("square_$label");
+    List<List<int>> value = await readSquare.loadPuzzle("${MainUI.getProgressKey()}_$label");
+    print("load data with ${MainUI.getProgressKey()}_$label");
     GameSceneStateSquare().applyLabel(value);
   }
   void clearData(String label) {
