@@ -1,9 +1,13 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:intl/intl.dart';
 
+import '../l10n/app_localizations.dart';
 import '../widgets/MainUI.dart';
 
 class EnterSceneState extends State<EnterScene> {
+  Locale _locale = const Locale('ko');
+
   late Size screenSize;
   late MainUI ui;
 
@@ -18,9 +22,28 @@ class EnterSceneState extends State<EnterScene> {
     setState(() {});
   }
 
+  //AppLocalizations.of(context)!.translate('helloWorld')
+  //language Code is "en", "ko"
+  void _changeLanguage(String languageCode) {
+    setState(() {
+      _locale = Locale(languageCode);
+      Intl.defaultLocale = languageCode;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(  // Replace YourWidget with your actual widget
+        locale: _locale,
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          ...GlobalMaterialLocalizations.delegates, // 전체 로케일 델리게이트 추가
+          GlobalCupertinoLocalizations.delegate, // Cupertino 로케일 델리게이트 추가
+        ],
+        supportedLocales: const [
+          Locale('en'),
+          Locale('ko'),
+        ],
         home: Builder(
             builder: (context) {
               screenSize = MediaQuery.of(context).size;

@@ -32,7 +32,6 @@ class UserInfo {
   }
 
   static Map<String, String> getSettingAll() {
-    print("user ${setting["theme"]}");
     return setting;
   }
 

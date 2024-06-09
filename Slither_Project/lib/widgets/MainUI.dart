@@ -27,8 +27,6 @@ class MainUI {
   void loadSetting() {
     //hard copy
     setting = Map.from(UserInfo.getSettingAll());
-
-    print("setting : ${setting["theme"]}");
   }
 
   PopupMenuButton getMainMenu(BuildContext context) {
