@@ -5,8 +5,10 @@ class UserInfo {
   //set value when pushing start button & reset when complete puzzle
   static Set<String> continuePuzzle = {};
   static Map<String, String> setting = {
-    "theme" : "warm"
+    "theme" : "warm",
+    "language" : "english"
   };
+  static List<String> language = ["english", "korean"];
 
   ///shape`_`size
   static int getProgress(String puzzleType) {
@@ -54,6 +56,20 @@ class UserInfo {
   static void setSetting(String key, String value) {
     if(setting.containsKey(key)) {
       setting[key] = value;
+    }
+  }
+
+  static List<String> getSupportLanguage() {
+    return language;
+  }
+
+  static String getLanguage() {
+    return setting["language"]!;
+  }
+
+  static void setLanguage(String lang) {
+    if(language.contains(lang)) {
+      setting["language"] = lang;
     }
   }
 }

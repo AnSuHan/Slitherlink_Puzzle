@@ -6,7 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../widgets/MainUI.dart';
 
 class EnterSceneState extends State<EnterScene> {
-  Locale _locale = const Locale('ko');
+  Locale _locale = const Locale('en');
 
   late Size screenSize;
   late MainUI ui;
@@ -14,8 +14,6 @@ class EnterSceneState extends State<EnterScene> {
   @override
   void initState() {
     super.initState();
-    ui = MainUI(onUpdate: _updateUI);
-    ui.loadSetting();
   }
 
   void _updateUI() {
@@ -23,12 +21,13 @@ class EnterSceneState extends State<EnterScene> {
   }
 
   //AppLocalizations.of(context)!.translate('helloWorld')
-  //language Code is "en", "ko"
-  void _changeLanguage(String languageCode) {
+  ///language Code is "en", "ko"
+  void changeLanguage(BuildContext context, String languageCode) {
     setState(() {
       _locale = Locale(languageCode);
-      Intl.defaultLocale = languageCode;
     });
+    Intl.defaultLocale = languageCode;
+    _updateUI();
   }
 
   @override
@@ -47,6 +46,8 @@ class EnterSceneState extends State<EnterScene> {
         home: Builder(
             builder: (context) {
               screenSize = MediaQuery.of(context).size;
+              ui = MainUI(onUpdate: _updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this,);
+              ui.loadSetting();
               ui.setScreenSize(screenSize);
 
               return Scaffold(

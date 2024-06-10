@@ -1,10 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../Answer/Answer.dart';
+import '../Front/EnterScene.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
+import '../l10n/app_localizations.dart';
 
 //use "onUpdate();" for update UI
 class MainUI {
@@ -22,7 +25,15 @@ class MainUI {
   Map<String, String> setting = {};
 
   final VoidCallback onUpdate;
-  MainUI({required this.onUpdate});
+  //for supporting multilingual
+  final AppLocalizations appLocalizations;
+  final EnterSceneState enterSceneState;
+
+  MainUI({
+    required this.onUpdate,
+    required this.appLocalizations,
+    required this.enterSceneState
+  });
 
   void loadSetting() {
     //hard copy
@@ -37,13 +48,13 @@ class MainUI {
         handleMainMenu(context, value);
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'account',
-          child: Text('Account'),
+          child: Text(appLocalizations.translate('MainUI_menuAccount')),
         ),
-        const PopupMenuItem<String>(
+        PopupMenuItem<String>(
           value: 'setting',
-          child: Text("Setting"),
+          child: Text(appLocalizations.translate('MainUI_menuSetting')),
         ),
       ],
       icon: const Icon(Icons.menu),
@@ -68,9 +79,9 @@ class MainUI {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Account',
-                      style: TextStyle(
+                    Text(
+                      appLocalizations.translate('MainUI_menuAccount'),
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
@@ -81,15 +92,7 @@ class MainUI {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Account"),
-                            Text(UserInfo.progress.toString()), //temp
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text("Progress"),
+                            Text(appLocalizations.translate('MainUI_menuAccount')),
                             Text(UserInfo.progress.toString()), //temp
                           ],
                         ),
@@ -100,7 +103,7 @@ class MainUI {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
-                          child: const Text('Close'),
+                          child: Text(appLocalizations.translate('MainUI_btnClose')),
                           onPressed: () {
                             Navigator.of(context).pop(); // 다이얼로그 닫기
                           },
@@ -128,9 +131,9 @@ class MainUI {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text(
-                      'Setting',
-                      style: TextStyle(
+                    Text(
+                      appLocalizations.translate('MainUI_menuSetting'),
+                      style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
                       ),
@@ -141,7 +144,7 @@ class MainUI {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Theme"),
+                            Text(appLocalizations.translate('MainUI_menuSetting_theme')),
                             DropdownButton(items: ThemeColor().getList().map((String item) {
                               return DropdownMenuItem<String>(
                                 value: item,
@@ -160,8 +163,19 @@ class MainUI {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text("Setting"),
-                            Text(UserInfo.progress.toString()), //temp
+                            Text(appLocalizations.translate('MainUI_menuSetting_language')),
+                            DropdownButton(items: UserInfo.getSupportLanguage().map((String item) {
+                              return DropdownMenuItem<String>(
+                                value: item,
+                                child: Text(item),
+                              );
+                            }).toList(),
+                              onChanged: (value) {
+                                setting["language"] = value.toString();
+                                onUpdate();
+                              },
+                              value: setting["language"],
+                              style: const TextStyle(color: Colors.black, fontSize: 18),),
                           ],
                         ),
                       ],
@@ -171,14 +185,18 @@ class MainUI {
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
                         TextButton(
-                          child: const Text('Apply'),
+                          child: Text(appLocalizations.translate('MainUI_btnApply')),
                           onPressed: () {
+                            enterSceneState.changeLanguage(context, languageToCode(setting["language"]!));
+                            //특정 문자만 불러와지지 않는 경우
+                            //https://stackoverflow.com/questions/66932705/how-do-i-resolve-id-does-not-exist-error
                             UserInfo.setSettingAll(setting);
+                            onUpdate();
                             Navigator.of(context).pop(); // 다이얼로그 닫기
                           },
                         ),
                         TextButton(
-                          child: const Text('Close'),
+                          child: Text(appLocalizations.translate('MainUI_btnClose')),
                           onPressed: () {
                             Navigator.of(context).pop(); // 다이얼로그 닫기
                           },
@@ -194,6 +212,20 @@ class MainUI {
 
         break;
     }
+  }
+
+  String languageToCode(String language) {
+    String rtValue = "";
+    switch(language) {
+      case "english":
+        rtValue = "en";
+        break;
+      case "korean":
+        rtValue = "ko";
+        break;
+    }
+
+    return rtValue;
   }
 
   //about puzzle difficulty
@@ -247,7 +279,7 @@ class MainUI {
 
     return Column(
       children: [
-        const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Text("continue", style: TextStyle(fontSize: 24),),),
+        Padding(padding: const EdgeInsets.symmetric(vertical: 20), child: Text(appLocalizations.translate('MainUI_btnContinue_title'), style: const TextStyle(fontSize: 24),),),
         Padding(padding: const EdgeInsets.symmetric(vertical: 20), child: getProgressPuzzle(context),),
         Padding(padding: const EdgeInsets.symmetric(vertical: 20), child: getContinueButton(context),),
       ],
@@ -296,7 +328,7 @@ class MainUI {
           print("You solved all available puzzles");
         }
       },
-      child: const Text("Start New Game", style: TextStyle(fontSize: 24),),
+      child: Text(appLocalizations.translate('MainUI_btnStart'), style: const TextStyle(fontSize: 24),),
     );
   }
 
@@ -309,7 +341,7 @@ class MainUI {
       onPressed: () {
         changeScene(context, progressKey, isContinue: true);
       },
-      child: const Text("Continue Game", style: TextStyle(fontSize: 24),)
+      child: Text(appLocalizations.translate('MainUI_btnContinue'), style: TextStyle(fontSize: 24),)
     );
   }
 
