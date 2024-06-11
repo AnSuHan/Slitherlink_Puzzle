@@ -2,14 +2,18 @@ import 'package:flutter/cupertino.dart';
 import 'package:slitherlink_project/Scene/GameSceneStateSquare.dart';
 
 class GameSceneSquare extends StatefulWidget {
-  const GameSceneSquare({Key? key}) : super(key: key);
+  //to access to parameter with Navigator push, variable should be final
+  final bool isContinue;
+  final String loadKey;
+
+  const GameSceneSquare({Key? key, required this.isContinue, required this.loadKey}) : super(key: key);
 
   @override
   GameSceneStateSquare createState() => GameSceneStateSquare();
 }
 
 class SquareProvider with ChangeNotifier {
-  static List<Widget> squareField = [];
+  List<Widget> squareField = [];
 
   List<Widget> getSquareField() {
     return squareField;

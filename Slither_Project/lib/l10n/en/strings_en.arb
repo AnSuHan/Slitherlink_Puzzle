@@ -1,0 +1,15 @@
+{
+  "MainUI_btnStart": "Start New game",
+  "MainUI_puzzleShape_square": "square",
+  "MainUI_puzzleSize_small": "small",
+  "MainUI_btnContinue_title": "Game in progress",
+  "MainUI_btnContinue": "Continue",
+  "MainUI_menuAccount": "Account",
+  "MainUI_menuSetting": "Setting",
+  "MainUI_btnApply": "Apply",
+  "MainUI_btnClose": "Close",
+  "MainUI_menuSetting_theme": "Theme",
+  "MainUI_menuSetting_language": "Language",
+  "language_english_en" : "english",
+  "language_english_kr" : "korean"
+}

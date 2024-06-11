@@ -1,0 +1,15 @@
+{
+  "MainUI_btnStart": "시작",
+  "MainUI_puzzleShape_square": "사각형",
+  "MainUI_puzzleSize_small": "소형",
+  "MainUI_btnContinue_title": "진행 중인 게임",
+  "MainUI_btnContinue": "계속하기",
+  "MainUI_menuAccount": "계정",
+  "MainUI_menuSetting": "설정",
+  "MainUI_btnApply": "적용",
+  "MainUI_btnClose": "닫기",
+  "MainUI_menuSetting_theme": "테마",
+  "MainUI_menuSetting_language": "언어",
+  "language_english_en" : "영어",
+  "language_english_kr" : "한국어"
+}

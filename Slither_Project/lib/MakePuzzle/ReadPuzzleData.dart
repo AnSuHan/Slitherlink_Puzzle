@@ -1,3 +1,4 @@
+// ignore_for_file: file_names
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:slitherlink_project/User/UserInfo.dart';
@@ -19,27 +20,17 @@ class ReadPuzzleData {
     //print("jsonData in writeData : ${jsonEncode(intData)}");
   }
 
-  Future<List<List<bool>>> readData(String fileName) async {
+  Future<List<List<bool>>> readData(String keyName, {bool isContinue = false}) async {
+    List<String> tokens = keyName.split("_");
+    if(tokens[0].compareTo("square") == 0) {
+      if(tokens[1].compareTo("small") == 0) {
+        int index = int.parse(tokens[2]);
+        return answer.getSquare(index + 1);
+      }
+    }
+
     //init
-    if(!fileName.contains("_")) {
-      //getSquare(0) is debug mode(all line is 1)
-      return answer.getSquare(UserInfo().getProgress("square") + 1);
-    }
-    
-    //load user saved data
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? jsonData = prefs.getString(fileName);
-
-    if (jsonData == null) {
-      // 저장된 데이터가 없으면 빈 리스트를 반환하거나 원하는 처리를 수행합니다.
-      return [];
-    } else {
-      // JSON 문자열을 List<List<int>>로 변환한 다음 List<List<bool>>로 변환합니다.
-      List<List<int>> intData = (jsonDecode(jsonData) as List<dynamic>).map((row) => (row as List<dynamic>).map((val) => val as int).toList()).toList();
-      List<List<bool>> boolData = intData.map((row) => row.map((intVal) => intVal == 1 ? true : false).toList()).toList();
-
-      return boolData;
-    }
+    return answer.getSquare(UserInfo.getProgress("square_small"));
   }
 
   void printData(List<List<int>> intData) {

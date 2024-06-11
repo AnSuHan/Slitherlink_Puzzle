@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../Scene/GameSceneStateSquare.dart';
 import 'ReadPuzzleData.dart';
 import '../widgets/SquareBox.dart';
@@ -94,6 +98,7 @@ class ReadSquare {
     }
   }
 
+  ///param should be "shape`_`size`_`progress`_`{continue}"
   Future<List<List<int>>> loadPuzzle(String key) async {
     try {
       read;
@@ -101,9 +106,31 @@ class ReadSquare {
       read = ReadPuzzleData();
     }
 
-    data = await read.readData(key);
-    //printData();
-    return data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
+    //get answer data
+    if(key.split("_").length == 3) {
+      data = await read.readData(key);
+      //printData();
+      return data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
+    }
+    //get submit data
+    else {
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? temp = prefs.getString(key);
+
+      if (temp != null) {
+        // JSON to List<List<int>>
+        List<dynamic> decodedJson = jsonDecode(temp);
+        List<List<int>> data = [];
+        for (var row in decodedJson) {
+          List<int> intRow = List<int>.from(row); // List<int>로 변환
+          data.add(intRow);
+        }
+        return data;
+      }
+      else {
+        return [];
+      }
+    }
   }
 
   void printData() {

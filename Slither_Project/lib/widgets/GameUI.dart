@@ -1,26 +1,31 @@
-import 'dart:js_util';
-
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../Scene/GameSceneStateSquare.dart';
+import 'MainUI.dart';
 
 class GameUI {
   late Size screenSize;
   ReadSquare readSquare = ReadSquare();
 
-  //ui's status
+  //ui status
   final GlobalKey<PopupMenuButtonState<int>> _bookmarkKey = GlobalKey<PopupMenuButtonState<int>>();
   final GlobalKey<PopupMenuButtonState<int>> _menuKey = GlobalKey<PopupMenuButtonState<int>>();
   List<String> labelState = ["save", "save", "save"]; //R, G, B
 
-  AppBar getGameAppBar(BuildContext context) {
+  AppBar getGameAppBar(BuildContext context, Color appbarColor, Color iconColor) {
     return AppBar(
+      backgroundColor: appbarColor,
+      foregroundColor: iconColor,
       leading: InkWell(
         onTap: () {
-          print("click back");
+          //when back button click, set class {UserInfo}
+          String key = "${MainUI.getProgressKey()}_continue";
+          //print("key : $key");  //square_small_0
+          readSquare.savePuzzle(key);
+          Navigator.pop(context);
         },
-        child: const Icon(Icons.keyboard_backspace),
+        child: Icon(Icons.keyboard_backspace, color: iconColor,),
       ),
       actions: <Widget>[
         //save icon
@@ -43,7 +48,7 @@ class GameUI {
                   index = 2;
                   break;
               }
-              Text snack = newObject();
+              Text snack = const Text("");
               switch(result.split(" ")[0]) {
                 case "click":
                   snack = Text('${labelState[index]} data with $color');
@@ -193,7 +198,7 @@ class GameUI {
       switch(token[1]) {
         case "restart":
           //SquareProvider().resetPuzzle();
-          GameSceneStateSquare().loadPuzzle();
+          GameSceneStateSquare().restart();
           break;
         case "rule":
           break;
@@ -202,7 +207,7 @@ class GameUI {
   }
 
   void saveData(String label) {
-    readSquare.savePuzzle("square_$label");
+    readSquare.savePuzzle("${MainUI.getProgressKey()}_$label");
 
     switch(label) {
       case "Red":
@@ -217,7 +222,7 @@ class GameUI {
     }
   }
   void loadData(String label) async {
-    List<List<int>> value = await readSquare.loadPuzzle("square_$label");
+    List<List<int>> value = await readSquare.loadPuzzle("${MainUI.getProgressKey()}_$label");
     GameSceneStateSquare().applyLabel(value);
   }
   void clearData(String label) {

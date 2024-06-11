@@ -1,6 +1,14 @@
 import 'dart:collection';
 
+import 'package:flutter/cupertino.dart';
+
+import '../User/UserInfo.dart';
+
 class Answer {
+  Answer({
+    BuildContext? context
+  });
+
   List<List<List<bool>>> squareAnswer = [
     [
       //show edge test
@@ -104,6 +112,21 @@ class Answer {
     }
 
     return false;
+  }
+
+  ///parameter is always EN
+  bool checkRemainPuzzle(BuildContext context, String shape, String size) {
+    bool rtValue = false;
+    String key = "";
+
+    if(shape.compareTo("square") == 0 && size.compareTo("small") == 0) {
+      key = "square_small";
+      if(squareAnswer.length - 1 > UserInfo.getProgress(key)) {
+        rtValue = true;
+      }
+    }
+
+    return rtValue;
   }
 
   List<List<bool>> getSquare(int index) {
