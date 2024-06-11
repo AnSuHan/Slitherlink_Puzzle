@@ -1,6 +1,7 @@
+import 'dart:js';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
@@ -10,12 +11,16 @@ import '../User/UserInfo.dart';
 import '../l10n/app_localizations.dart';
 
 //use "onUpdate();" for update UI
+//`underline with list` means words of localization (only use for showing)
 class MainUI {
   late Size screenSize;
   List<String> puzzleType = ["square"];
+  List<String> _puzzleType = ["square"];
   List<String> puzzleSize = ["small"];
+  List<String> _puzzleSize = ["small"];
   ///shape, size
   List<String> selectedType = ["square", "small"];
+  List<String> _selectedType = ["square", "small"];
   //continue data
   List<String> progressPuzzle = UserInfo.getContinuePuzzle().isEmpty ? [""] : UserInfo.getContinuePuzzle().toList();
   String selectedContinue = "";
@@ -23,6 +28,7 @@ class MainUI {
 
   final GlobalKey<PopupMenuButtonState<int>> _mainMenuKey = GlobalKey<PopupMenuButtonState<int>>();
   Map<String, String> setting = {};
+  Map<String, String> _setting = {};
 
   final VoidCallback onUpdate;
   //for supporting multilingual
@@ -38,6 +44,7 @@ class MainUI {
   void loadSetting() {
     //hard copy
     setting = Map.from(UserInfo.getSettingAll());
+    applyLanguageCode();
   }
 
   PopupMenuButton getMainMenu(BuildContext context) {
@@ -164,7 +171,7 @@ class MainUI {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(appLocalizations.translate('MainUI_menuSetting_language')),
-                            DropdownButton(items: UserInfo.getSupportLanguage().map((String item) {
+                            DropdownButton(items: UserInfo.getSupportLanguage(context).map((String item) {
                               return DropdownMenuItem<String>(
                                 value: item,
                                 child: Text(item),
@@ -228,6 +235,22 @@ class MainUI {
     return rtValue;
   }
 
+  ///apply language about dropdown button's list
+  void applyLanguageCode() {
+    //main local
+    _puzzleType = [appLocalizations.translate('MainUI_puzzleShape_square')];
+    _selectedType[0] = _puzzleType[0];
+    _puzzleSize = [appLocalizations.translate('MainUI_puzzleSize_small')];
+    _selectedType[1] = _puzzleSize[0];
+
+
+    //main en
+    puzzleType = ["square"];
+    selectedType[0] = puzzleType[0];
+    puzzleSize = ["small"];
+    selectedType[1] = puzzleSize[0];
+  }
+
   //about puzzle difficulty
   Widget getPuzzleType(BuildContext context) {
     return Row(
@@ -243,31 +266,31 @@ class MainUI {
   }
 
   DropdownButton getPuzzleShape(BuildContext context) {
-    return DropdownButton(items: puzzleType
+    return DropdownButton(items: _puzzleType
         .map((e) => DropdownMenuItem(
           value: e, // 선택 시 onChanged 를 통해 반환할 value
           child: Text(e),
         ))
         .toList(),
         onChanged: (value) {
-          selectedType[0] = value;
+          _selectedType[0] = value;
         },
-        value: selectedType[0],
+        value: _selectedType[0],
         style: const TextStyle(color: Colors.white, fontSize: 24),
     );
   }
 
   DropdownButton getPuzzleSize(BuildContext context) {
-    return DropdownButton(items: puzzleSize
+    return DropdownButton(items: _puzzleSize
         .map((e) => DropdownMenuItem(
           value: e, // 선택 시 onChanged 를 통해 반환할 value
           child: Text(e),
         ))
         .toList(),
         onChanged: (value) {
-          selectedType[1] = value;
+          _selectedType[1] = value;
         },
-        value: selectedType[1],
+        value: _selectedType[1],
         style: const TextStyle(color: Colors.white, fontSize: 24),
     );
   }
@@ -319,7 +342,7 @@ class MainUI {
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
 
         //restrict puzzle's EOF
-        if(Answer().checkRemainPuzzle(selectedType[0], selectedType[1])) {
+        if(Answer(context: context).checkRemainPuzzle(context, selectedType[0], selectedType[1])) {
           UserInfo.addContinuePuzzle(progressKey);
           onUpdate();
           changeScene(context, progressKey);

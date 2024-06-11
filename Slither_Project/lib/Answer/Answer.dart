@@ -1,8 +1,15 @@
 import 'dart:collection';
+import 'dart:js';
+
+import 'package:flutter/cupertino.dart';
 
 import '../User/UserInfo.dart';
 
 class Answer {
+  Answer({
+    BuildContext? context
+  });
+
   List<List<List<bool>>> squareAnswer = [
     [
       //show edge test
@@ -108,10 +115,12 @@ class Answer {
     return false;
   }
 
-  bool checkRemainPuzzle(String shape, String size) {
+  ///parameter is always EN
+  bool checkRemainPuzzle(BuildContext context, String shape, String size) {
     bool rtValue = false;
     String key = "";
 
+    // 번역된 키 값을 사용하여 비교합니다.
     if(shape.compareTo("square") == 0 && size.compareTo("small") == 0) {
       key = "square_small";
       if(squareAnswer.length - 1 > UserInfo.getProgress(key)) {

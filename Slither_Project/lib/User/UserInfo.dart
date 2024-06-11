@@ -1,3 +1,6 @@
+import 'package:flutter/widgets.dart';
+import 'package:slitherlink_project/l10n/app_localizations.dart';
+
 class UserInfo {
   static Map<String, int> progress = {
     "square_small" : 0,
@@ -9,6 +12,7 @@ class UserInfo {
     "language" : "english"
   };
   static List<String> language = ["english", "korean"];
+  static List<String> _language = ["english", "korean"];
 
   ///shape`_`size
   static int getProgress(String puzzleType) {
@@ -59,8 +63,17 @@ class UserInfo {
     }
   }
 
-  static List<String> getSupportLanguage() {
+  static List<String> getSupportLanguage(BuildContext context) {
+    _language = [
+      AppLocalizations.of(context)!.translate("language_english_en"),
+      AppLocalizations.of(context)!.translate("language_english_kr")
+    ];
+
     return language;
+    return [
+      AppLocalizations.of(context)!.translate("language_english_en"),
+      AppLocalizations.of(context)!.translate("language_english_kr")
+    ];
   }
 
   static String getLanguage() {
