@@ -118,7 +118,7 @@ class ReadSquare {
       String? temp = prefs.getString(key);
 
       if (temp != null) {
-        // JSON 문자열을 List<List<int>> 타입으로 변환
+        // JSON to List<List<int>>
         List<dynamic> decodedJson = jsonDecode(temp);
         List<List<int>> data = [];
         for (var row in decodedJson) {

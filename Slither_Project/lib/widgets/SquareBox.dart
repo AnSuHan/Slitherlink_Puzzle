@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../Scene/GameSceneStateSquare.dart';
 import '../ThemeColor.dart';
 
+// ignore: must_be_immutable
 class SquareBox extends StatefulWidget {
   final bool isFirstRow;
   final bool isFirstColumn;

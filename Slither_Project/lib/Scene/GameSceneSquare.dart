@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:slitherlink_project/Scene/GameSceneStateSquare.dart';
 
 class GameSceneSquare extends StatefulWidget {
-  //final로 선언해야 Navigator push로 넘긴 파라미터에 접근할 수 있음
+  //to access to parameter with Navigator push, variable should be final
   final bool isContinue;
   final String loadKey;
 

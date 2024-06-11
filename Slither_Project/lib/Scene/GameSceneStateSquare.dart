@@ -1,10 +1,10 @@
+// ignore_for_file: file_names
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:slitherlink_project/MakePuzzle/ReadSquare.dart';
 
 import '../ThemeColor.dart';
 import '../widgets/GameUI.dart';
-import '../widgets/MainUI.dart';
 import 'GameSceneSquare.dart';
 import '../widgets/SquareBox.dart';
 
@@ -43,7 +43,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   }
 
   void loadPuzzle() async {
-    print("loadKey : ${widget.loadKey}");
+    //print("loadKey : ${widget.loadKey}");
 
     if(widget.isContinue) {
       //answer = await readSquare.loadPuzzle(MainUI.getProgressKey());
@@ -74,7 +74,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider( // ChangeNotifierProvider 사용
-      create: (context) => _provider, // 여기서 YourChangeNotifierClass는 사용자가 만든 ChangeNotifier 클래스입니다.
+      create: (context) => _provider, //ChangeNotifier class
       child: Consumer<SquareProvider>(
         builder: (context, provider, child) {
           screenSize = MediaQuery.of(context).size;
@@ -88,7 +88,6 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
                   showAppbar = !showAppbar;
                 });
               },
-              //interactiveViewer로 변경
               child: Container(
                 color: settingColor["background"],
                 child: InteractiveViewer(
@@ -101,7 +100,6 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 20),
                     child: Column(
-                      //필드는 앱 바를 통해 상태가 변경될 수 있으므로
                       //provider와 ChangeNotifier를 통해 접근
                       children: _provider.getSquareField(),
                     ),
@@ -140,7 +138,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     return puzzle;
   }
 
-  //배열에 담긴 위젯을 column에 담아서 widget으로 반환
+  //List<List<SquareBox>> to List<Widget>
   static List<Widget> buildSquarePuzzle(width, height) {
     List<List<SquareBox>> puzzle = initSquarePuzzle(width, height);
     //print("puzzle row ${puzzle.length}, col ${puzzle[0].length}");
@@ -165,7 +163,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   static Future<List<Widget>> buildSquarePuzzleAnswer(List<List<int>> answer, {bool isContinue = false}) async {
     //resize puzzle
     if(answer.isEmpty) {
-      print("answer is empty");
+      //print("answer is empty");
       return Future.value([]);
     }
     List<List<SquareBox>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
@@ -266,14 +264,11 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
         } else if(j <= 1) { //down, left, right 3개 존재
           if(i % 2 == 0) {
             puzzle[(i - 1) ~/ 2][j].down = lineType;
-            //cprint(lineType != 0, "call down");
           } else {
             if(j == 0) {
               puzzle[i ~/ 2][0].left = lineType;
-              //cprint(lineType != 0, "call left");
             } else {
               puzzle[i ~/ 2][0].right = lineType;
-              //cprint(lineType != 0, "call right");
             }
           }
         } else {            //down, right 2개 존재
@@ -391,7 +386,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   static Future<List<Widget>> buildSquarePuzzleLabel(List<List<int>> answer, List<List<int>> submit) async {
     //resize puzzle
     if(answer.isEmpty) {
-      print("answer is empty");
+      //print("answer is empty");
       return Future.value([]);
     }
     List<List<SquareBox>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);

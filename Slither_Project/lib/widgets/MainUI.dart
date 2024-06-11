@@ -1,6 +1,4 @@
-import 'dart:js';
-
-import 'package:flutter/cupertino.dart';
+// ignore_for_file: file_names
 import 'package:flutter/material.dart';
 
 import '../Answer/Answer.dart';
@@ -20,7 +18,7 @@ class MainUI {
   List<String> _puzzleSize = ["small"];
   ///shape, size
   List<String> selectedType = ["square", "small"];
-  List<String> _selectedType = ["square", "small"];
+  final List<String> _selectedType = ["square", "small"];
   //continue data
   List<String> progressPuzzle = UserInfo.getContinuePuzzle().isEmpty ? [""] : UserInfo.getContinuePuzzle().toList();
   String selectedContinue = "";
@@ -100,7 +98,7 @@ class MainUI {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(appLocalizations.translate('MainUI_menuAccount')),
-                            Text(UserInfo.progress.toString()), //temp
+                            Text(UserInfo.progress.toString()),
                           ],
                         ),
                       ],
@@ -112,7 +110,7 @@ class MainUI {
                         TextButton(
                           child: Text(appLocalizations.translate('MainUI_btnClose')),
                           onPressed: () {
-                            Navigator.of(context).pop(); // 다이얼로그 닫기
+                            Navigator.of(context).pop();
                           },
                         ),
                       ],
@@ -195,17 +193,16 @@ class MainUI {
                           child: Text(appLocalizations.translate('MainUI_btnApply')),
                           onPressed: () {
                             enterSceneState.changeLanguage(context, languageToCode(setting["language"]!));
-                            //특정 문자만 불러와지지 않는 경우
                             //https://stackoverflow.com/questions/66932705/how-do-i-resolve-id-does-not-exist-error
                             UserInfo.setSettingAll(setting);
                             onUpdate();
-                            Navigator.of(context).pop(); // 다이얼로그 닫기
+                            Navigator.of(context).pop();
                           },
                         ),
                         TextButton(
                           child: Text(appLocalizations.translate('MainUI_btnClose')),
                           onPressed: () {
-                            Navigator.of(context).pop(); // 다이얼로그 닫기
+                            Navigator.of(context).pop();
                           },
                         ),
                       ],
@@ -364,7 +361,7 @@ class MainUI {
       onPressed: () {
         changeScene(context, progressKey, isContinue: true);
       },
-      child: Text(appLocalizations.translate('MainUI_btnContinue'), style: TextStyle(fontSize: 24),)
+      child: Text(appLocalizations.translate('MainUI_btnContinue'), style: const TextStyle(fontSize: 24),)
     );
   }
 

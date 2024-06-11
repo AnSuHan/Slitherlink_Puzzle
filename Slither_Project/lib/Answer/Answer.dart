@@ -1,5 +1,4 @@
 import 'dart:collection';
-import 'dart:js';
 
 import 'package:flutter/cupertino.dart';
 
@@ -120,7 +119,6 @@ class Answer {
     bool rtValue = false;
     String key = "";
 
-    // 번역된 키 값을 사용하여 비교합니다.
     if(shape.compareTo("square") == 0 && size.compareTo("small") == 0) {
       key = "square_small";
       if(squareAnswer.length - 1 > UserInfo.getProgress(key)) {

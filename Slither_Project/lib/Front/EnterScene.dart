@@ -36,8 +36,8 @@ class EnterSceneState extends State<EnterScene> {
         locale: _locale,
         localizationsDelegates: const [
           AppLocalizations.delegate,
-          ...GlobalMaterialLocalizations.delegates, // 전체 로케일 델리게이트 추가
-          GlobalCupertinoLocalizations.delegate, // Cupertino 로케일 델리게이트 추가
+          ...GlobalMaterialLocalizations.delegates, // 전체 로케일 추가
+          GlobalCupertinoLocalizations.delegate, // Cupertino 로케일 추가
         ],
         supportedLocales: const [
           Locale('en'),

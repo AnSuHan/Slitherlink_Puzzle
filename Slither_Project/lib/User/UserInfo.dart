@@ -1,3 +1,4 @@
+// ignore_for_file: file_names
 import 'package:flutter/widgets.dart';
 import 'package:slitherlink_project/l10n/app_localizations.dart';
 
@@ -70,10 +71,6 @@ class UserInfo {
     ];
 
     return language;
-    return [
-      AppLocalizations.of(context)!.translate("language_english_en"),
-      AppLocalizations.of(context)!.translate("language_english_kr")
-    ];
   }
 
   static String getLanguage() {
