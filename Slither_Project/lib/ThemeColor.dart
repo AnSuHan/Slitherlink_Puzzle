@@ -3,17 +3,30 @@ import 'dart:ui';
 import 'User/UserInfo.dart';
 
 class ThemeColor {
-  Map<String, Color> warm = {
-    'appBar': const Color(0xFFFF6F61),        //GameUI
-    'appIcon': const Color(0xFFE94E3F),       //GameUI
+  Map<String, Color> defaultColor = {
+    'appBar': const Color(0xFF00C8FF),        //GameUI
+    'appIcon': const Color(0xFF000000),       //GameUI
     'background': const Color(0xFFFFF0E3),    //GameSceneStateSquare
-    'box': const Color(0xFFFFD700),           //SquareBoxState
-    'number': const Color(0xFFD2691E),        //SquareBoxState
-    'lineInactive': const Color(0xFFE5E5E5),  //SquareBox
-    'lineNormal': const Color(0xFF8B4513),    //SquareBox
-    'lineSelected': const Color(0xFFCD5C5C),  //SquareBox
-    'lineWrong': const Color(0xFFB22222),     //SquareBox
-    'lineHint': const Color(0xFFFF4500),      //SquareBox
+    'box': const Color(0xFFFFFFFF),           //SquareBoxState
+    'number': const Color(0xFF000000),        //SquareBoxState
+    'lineInactive': const Color(0xCCFFFFFF),  //SquareBox
+    'lineNormal': const Color(0x1A000000),    //SquareBox
+    'lineSelected': const Color(0xFF000000),  //SquareBox
+    'lineWrong': const Color(0xFFFF0000),     //SquareBox
+    'lineHint': const Color(0xFFFFFF00),      //SquareBox
+  };
+
+  Map<String, Color> warm = {
+    'appBar': const Color(0xFFFF6F61),
+    'appIcon': const Color(0xFFE94E3F),
+    'background': const Color(0xFFFFF0E3),
+    'box': const Color(0xFFFFD700),
+    'number': const Color(0xFFD2691E),
+    'lineInactive': const Color(0xFFE5E5E5),
+    'lineNormal': const Color(0xFF8B4513),
+    'lineSelected': const Color(0xFFCD5C5C),
+    'lineWrong': const Color(0xFFB22222),
+    'lineHint': const Color(0xFFFF4500),
   };
 
   Map<String, Color> cool = {
@@ -71,12 +84,14 @@ class ThemeColor {
   ThemeColor();
 
   List<String> getList() {
-    return ["warm", "cool", "earth", "pastel", "vibrant"];
+    return ["default", "warm", "cool", "earth", "pastel", "vibrant"];
   }
 
   Map<String, Color> getColor() {
     String type = UserInfo.getSetting("theme")!;
     switch (type) {
+      case "default":
+        return defaultColor;
       case "warm":
         return warm;
       case "cool":

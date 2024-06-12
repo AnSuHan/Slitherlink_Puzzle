@@ -10,16 +10,16 @@ class Answer {
   });
 
   List<List<List<bool>>> squareAnswer = [
+    //show edge test
     [
-      //show edge test
       List.filled(20, true), List.filled(21, true), List.filled(20, true), List.filled(21, true), List.filled(20, true),
       List.filled(21, true), List.filled(20, true), List.filled(21, true), List.filled(20, true), List.filled(21, true),
       List.filled(20, true), List.filled(21, true), List.filled(20, true), List.filled(21, true), List.filled(20, true),
       List.filled(21, true), List.filled(20, true), List.filled(21, true), List.filled(20, true), List.filled(21, true),
       List.filled(20, true)
     ],
+    //square_small_0
     [
-      //cycle test
       [false, false, true, false, true, true, true, true, true, false, false, true, false, true, true, true, true, false, false, true],
       [false, false, true, true, true, false, false, false, false, true, false, true, true, true, false, false, false, true, false, true, true],
       [false, true, false, false, true, true, false, true, false, true, true, false, false, true, false, true, true, false, true, false],
@@ -42,23 +42,102 @@ class Answer {
       [false, true, true, false, false, true, false, false, true, true, false, true, false, false, true, false, false, true, true, true, false],
       [false, true, false, false, false, true, true, true, false, true, true, false, false, false, true, true, true, false, true, false]
     ],
+    //square_small_1
     [
-      //2*3
-      [true, true, true],
-      [true, false, false, true],
-      [false, false, false],
-      [true, false, false, true],
-      [true, true, true],
+      [false, true, true, true, true, false, false, true, true, false, false, true, true, true, false, false, true, true, true, false],
+      [false, true, false, false, false, true, false, true, false, true, false, true, false, false, true, false, true, false, false, true, false],
+      [true, false, true, true, false, true, false, false, true, false, false, false, true, true, false, false, false, true, true, false],
+      [true, false, true, false, true, false, true, true, true, false, false, true, true, false, false, false, true, true, false, false, false],
+      [true, false, false, false, true, false, true, false, true, false, true, false, true, true, true, true, false, true, false, true],
+      [false, true, true, false, false, true, false, false, false, true, true, false, false, false, false, false, false, false, true, true, true],
+      [true, false, true, true, false, false, true, false, false, false, false, true, true, true, false, true, true, false, true, false],
+      [true, false, false, false, true, true, true, true, false, true, true, true, false, false, true, true, false, true, false, false, true],
+      [true, false, false, false, false, true, false, true, false, true, false, true, true, false, true, false, true, false, false, true],
+      [false, true, false, false, true, false, false, false, true, false, false, false, false, true, false, false, true, false, false, true, false],
+      [false, true, true, false, true, true, true, false, true, true, true, false, true, false, true, false, false, true, false, false],
+      [false, false, false, true, false, false, false, true, false, false, false, true, true, false, true, true, true, true, true, true, false],
+      [true, true, true, false, true, false, true, false, false, true, false, false, false, true, false, false, true, false, false, true],
+      [true, false, false, false, true, true, true, false, false, true, true, true, true, true, false, true, false, false, true, false, true],
+      [false, true, false, true, false, true, false, false, true, false, true, false, false, false, true, false, false, true, false, false],
+      [true, true, true, true, false, false, false, false, true, false, false, false, true, true, true, false, false, true, false, false, true],
+      [false, false, false, true, true, false, true, true, false, true, true, false, true, false, true, true, false, false, false, true],
+      [true, true, true, false, false, true, true, false, false, true, false, true, false, false, false, false, true, true, false, true, false],
+      [false, false, false, false, true, false, true, true, false, true, false, true, true, true, false, false, false, true, false, true],
+      [true, true, true, false, true, false, false, false, true, false, true, false, false, false, true, false, true, false, true, false, true],
+      [true, false, true, true, false, false, false, false, true, true, false, false, false, false, true, true, false, false, true, true]
     ],
+    //square_small_2
     [
-      //2*2
-      [true, true],
-      [true, false, true],
-      [false, false],
-      [true, false, true],
-      [true, true],
+      [true, false, false, true, false, true, true, true, false, false, false, true, true, true, false, false, false, true, true, true],
+      [true, true, false, true, true, true, false, false, true, false, false, true, false, false, true, false, false, true, false, false, true],
+      [false, true, true, false, false, true, true, false, true, true, false, true, true, false, false, true, false, true, true, false],
+      [true, false, false, false, true, false, false, true, false, false, true, false, false, true, true, true, true, false, false, true, true],
+      [true, false, true, true, false, true, false, false, true, true, false, true, true, false, true, false, true, false, false, false],
+      [false, true, true, false, false, true, true, true, true, false, false, true, false, false, false, false, false, true, false, true, true],
+      [false, false, true, true, true, false, true, false, false, true, true, false, true, false, true, true, true, false, true, false],
+      [false, true, false, false, false, false, false, false, true, true, false, false, true, true, true, false, false, false, true, false, true],
+      [true, false, true, false, false, true, true, false, false, true, false, true, false, true, false, true, true, false, false, true],
+      [true, false, true, true, false, true, false, true, true, false, true, true, false, false, false, true, false, true, true, true, false],
+      [true, false, false, true, false, true, false, false, true, true, false, true, true, true, true, false, false, true, false, true],
+      [false, true, true, false, true, false, true, true, false, false, false, false, false, false, false, false, false, false, false, false, true],
+      [false, false, true, false, true, true, false, true, false, false, true, false, false, true, true, true, true, false, true, true],
+      [false, true, false, true, false, false, false, false, true, false, true, true, false, true, false, false, false, true, true, false, false],
+      [true, false, true, false, false, true, true, false, true, false, false, true, true, false, true, true, false, false, true, true],
+      [true, false, true, false, false, true, false, true, false, true, true, false, false, false, true, false, true, true, false, false, true],
+      [true, false, true, true, true, false, true, false, false, false, true, false, true, true, false, false, false, true, true, false],
+      [false, true, false, false, false, false, true, false, false, true, false, true, true, false, false, false, true, false, false, true, true],
+      [true, false, true, false, true, false, true, true, false, true, false, false, true, false, true, false, true, true, true, false],
+      [true, false, true, true, true, true, false, false, true, false, true, true, false, true, true, true, false, false, false, false, true],
+      [true, true, false, true, false, true, true, true, false, false, true, false, false, true, false, true, true, true, true, true]
     ],
-
+    //square_small_3
+    [
+      [true, true, true, true, true, false, true, false, false, true, false, true, true, true, false, true, true, true, true, false],
+      [true, false, false, false, false, true, true, true, false, true, true, true, false, false, true, true, false, false, false, true, false],
+      [false, true, true, true, false, false, false, true, true, false, false, true, true, false, false, true, true, false, false, true],
+      [true, true, false, false, true, true, true, false, false, false, true, false, false, true, true, false, false, true, false, false, true],
+      [false, false, true, true, false, false, true, false, true, false, false, true, true, false, true, false, true, false, true, false],
+      [true, true, true, false, false, true, false, true, true, true, true, true, false, false, false, true, true, false, true, true],
+      [true, false, true, true, false, true, false, true, false, false, true, false, true, false, true, false, false, true, false],
+      [false, false, false, false, true, false, true, false, false, true, false, false, true, true, true, false, true, true, false, true, true],
+      [true, true, true, false, true, false, true, true, true, false, true, true, false, false, false, true, false, false, true, false],
+      [true, false, false, true, false, true, false, false, false, false, true, false, false, true, true, true, false, true, true, false, true],
+      [true, true, false, true, true, false, true, false, true, true, false, true, false, true, false, false, true, false, true, true],
+      [false, false, true, false, false, false, true, true, true, false, false, true, true, false, false, true, true, false, false, false],
+      [true, true, false, true, true, false, false, false, false, true, true, false, false, false, true, false, true, true, true, true],
+      [true, false, false, true, false, true, true, true, true, true, false, false, true, false, true, false, false, false, false, true],
+      [true, false, true, false, false, true, false, false, false, false, true, false, true, true, false, true, true, true, true, false],
+      [false, true, true, false, false, false, false, true, true, true, true, true, false, false, false, true, false, false, false, true, true],
+      [false, false, false, true, true, false, true, false, true, false, false, true, true, false, true, false, true, true, true, false],
+      [false, true, true, true, false, true, true, false, false, false, true, false, false, true, true, false, true, false, false, false, true],
+      [false, false, false, true, false, true, false, true, true, false, true, true, false, false, false, false, false, true, false, false],
+      [false, true, true, false, true, false, false, true, false, true, false, false, true, true, true, false, true, true, true, false, true],
+      [false, true, false, false, true, true, true, false, false, true, true, true, false, true, false, false, true, false, true, true]
+    ],
+    //square_small_4
+    [
+      [true, true, true, false, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true, false],
+      [true, false, false, true, true, false, true, true, false, false, false, false, false, false, false, false, false, false, false, true, false],
+      [true, true, false, true, false, false, true, false, true, true, true, true, true, false, true, true, true, true, false, true],
+      [false, false, true, false, false, false, false, false, true, false, false, false, false, true, true, false, false, false, true, false, true],
+      [false, false, false, true, true, true, false, false, true, true, true, true, false, false, true, true, false, false, true, false],
+      [false, false, true, true, false, false, true, false, false, false, false, false, true, true, false, false, true, false, false, true, true],
+      [true, true, false, true, true, false, true, false, true, true, true, false, false, true, true, false, true, false, true, false],
+      [true, false, false, false, false, true, false, true, true, false, false, true, true, false, false, true, false, true, true, false, true],
+      [false, true, false, true, true, false, true, false, false, false, false, false, true, true, false, false, false, false, false, true],
+      [true, true, true, true, false, false, true, false, true, false, false, true, false, false, true, true, false, true, true, true, false],
+      [false, false, true, false, true, false, true, false, true, false, true, false, true, true, false, false, true, false, false, true],
+      [true, true, false, false, true, true, false, true, false, true, true, false, true, false, false, true, true, false, true, false, true],
+      [false, true, true, false, false, true, false, false, true, false, true, false, true, false, true, false, false, true, false, true],
+      [true, false, false, true, true, false, true, true, true, false, false, true, false, true, true, false, true, true, false, true, false],
+      [false, false, true, false, true, false, true, false, false, true, false, true, true, false, true, true, false, false, true, false],
+      [true, false, true, false, false, true, false, false, true, true, true, false, false, false, false, false, false, true, true, false, false],
+      [true, false, false, true, true, false, false, true, false, false, true, false, true, true, true, true, true, false, true, true],
+      [false, true, true, true, false, false, false, true, false, true, false, true, true, false, false, false, false, false, false, false, true],
+      [true, false, false, false, true, true, false, false, true, false, false, true, false, true, false, false, true, false, true, false],
+      [true, false, true, true, true, false, true, true, true, false, false, false, false, true, true, false, true, true, true, true, true],
+      [true, true, false, true, false, false, true, false, true, true, true, true, true, false, true, true, false, true, false, true]
+    ],
   ];
 
   final List<List<int>> directions = [

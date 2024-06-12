@@ -50,7 +50,6 @@ class EnterSceneState extends State<EnterScene> {
               ui.loadSetting();
               ui.setScreenSize(screenSize);
 
-              print("width ${screenSize.width}, height ${screenSize.height}");
               if(screenSize.width < screenSize.height) {
                 return portrait(context);
               } else {
