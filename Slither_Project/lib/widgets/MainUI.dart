@@ -378,7 +378,7 @@ class MainUI {
 
   //about screen size
   double getTopMargin() {
-    return screenSize.height / 5;
+    return screenSize.height / 10;
   }
 
   double getMargin(double ratio) {
@@ -387,6 +387,10 @@ class MainUI {
 
   void setScreenSize(Size size) {
     screenSize = size;
+  }
+
+  Size getScreenSize(Size size) {
+    return screenSize;
   }
 
   //last tried key

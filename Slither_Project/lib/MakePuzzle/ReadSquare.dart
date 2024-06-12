@@ -89,7 +89,7 @@ class ReadSquare {
         }
       }
     }
-    //printData();
+    printData();
     try {
       await read.writeData(data, key);
       //await read.writePuzzleData("square", data, 0);
