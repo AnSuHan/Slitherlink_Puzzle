@@ -264,31 +264,33 @@ class MainUI {
 
   DropdownButton getPuzzleShape(BuildContext context) {
     return DropdownButton(items: _puzzleType
-        .map((e) => DropdownMenuItem(
-          value: e, // 선택 시 onChanged 를 통해 반환할 value
-          child: Text(e),
-        ))
-        .toList(),
-        onChanged: (value) {
-          _selectedType[0] = value;
-        },
-        value: _selectedType[0],
-        style: const TextStyle(color: Colors.white, fontSize: 24),
+      .map((e) => DropdownMenuItem(
+        value: e, // 선택 시 onChanged 를 통해 반환할 value
+        child: Text(e),
+      ))
+      .toList(),
+      onChanged: (value) {
+        _selectedType[0] = value;
+      },
+      value: _selectedType[0],
+      style: const TextStyle(color: Colors.white, fontSize: 24),
+      dropdownColor: Colors.grey,
     );
   }
 
   DropdownButton getPuzzleSize(BuildContext context) {
     return DropdownButton(items: _puzzleSize
-        .map((e) => DropdownMenuItem(
-          value: e, // 선택 시 onChanged 를 통해 반환할 value
-          child: Text(e),
-        ))
-        .toList(),
-        onChanged: (value) {
-          _selectedType[1] = value;
-        },
-        value: _selectedType[1],
-        style: const TextStyle(color: Colors.white, fontSize: 24),
+      .map((e) => DropdownMenuItem(
+        value: e, // 선택 시 onChanged 를 통해 반환할 value
+        child: Text(e),
+      ))
+      .toList(),
+      onChanged: (value) {
+        _selectedType[1] = value;
+      },
+      value: _selectedType[1],
+      style: const TextStyle(color: Colors.white, fontSize: 24),
+      dropdownColor: Colors.grey,
     );
   }
 
@@ -313,18 +315,19 @@ class MainUI {
     }
 
     return DropdownButton(items: progressPuzzle
-        .map((e) => DropdownMenuItem(
-          value: e, // 선택 시 onChanged 를 통해 반환할 value
-          child: Text(e),
-        ))
-        .toList(),
-        onChanged: (value) {
-          progressPuzzle[0] = value;
-          progressKey = value;
-          onUpdate();
-        },
-        value: progressKey,
-        style: const TextStyle(color: Colors.white, fontSize: 24),
+      .map((e) => DropdownMenuItem(
+        value: e, // 선택 시 onChanged 를 통해 반환할 value
+        child: Text(e),
+      ))
+      .toList(),
+      onChanged: (value) {
+        progressPuzzle[0] = value;
+        progressKey = value;
+        onUpdate();
+      },
+      value: progressKey,
+      style: const TextStyle(color: Colors.white, fontSize: 24),
+      dropdownColor: Colors.grey,
     );
   }
 
