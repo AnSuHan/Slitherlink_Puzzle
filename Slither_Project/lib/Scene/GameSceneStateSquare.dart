@@ -22,6 +22,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   static SquareProvider _provider = SquareProvider();
 
   //check complete puzzle;
+  static bool isComplete = false;
   bool isContinue;
   String loadKey;
   static late List<List<int>> answer;
@@ -44,6 +45,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
   void loadPuzzle() async {
     //print("loadKey : ${widget.loadKey}");
+    isComplete = false;
 
     if(widget.isContinue) {
       //answer = await readSquare.loadPuzzle(MainUI.getProgressKey());
@@ -88,20 +90,23 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
                   showAppbar = !showAppbar;
                 });
               },
-              child: Container(
-                color: settingColor["background"],
-                child: InteractiveViewer(
-                  boundaryMargin: EdgeInsets.symmetric(
-                    horizontal: screenSize.width * 0.4,
-                    vertical: screenSize.height * 0.4,
-                  ),
-                  constrained: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 20),
-                    child: Column(
-                      //provider와 ChangeNotifier를 통해 접근
-                      children: _provider.getSquareField(),
+              child: AbsorbPointer(
+                absorbing: isComplete,
+                child: Container(
+                  color: settingColor["background"],
+                  child: InteractiveViewer(
+                    boundaryMargin: EdgeInsets.symmetric(
+                      horizontal: screenSize.width * 0.4,
+                      vertical: screenSize.height * 0.4,
+                    ),
+                    constrained: false,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 20),
+                      child: Column(
+                        //provider와 ChangeNotifier를 통해 접근
+                        children: _provider.getSquareField(),
+                      ),
                     ),
                   ),
                 ),
@@ -123,13 +128,13 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
       for(j = 0 ; j < width ; j++) {
         if(i == 0 && j == 0) {
-          temp.add(SquareBox(isFirstRow: true, isFirstColumn: true));
+          temp.add(SquareBox(isFirstRow: true, isFirstColumn: true, row: i, column: j,));
         } else if(i == 0) {
-          temp.add(SquareBox(isFirstRow: true));
+          temp.add(SquareBox(isFirstRow: true, row: i, column: j,));
         } else if(j == 0) {
-          temp.add(SquareBox(isFirstColumn: true));
+          temp.add(SquareBox(isFirstColumn: true, row: i, column: j,));
         } else {
-          temp.add(SquareBox());
+          temp.add(SquareBox(row: i, column: j,));
         }
       }
       puzzle.add(temp);
@@ -312,7 +317,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     }
   }
 
-  static void checkCompletePuzzle() {
+  static void checkCompletePuzzle(BuildContext context) {
     //refresh submit
     for(int i = 0 ; i < puzzle.length ; i++) {
       for(int j = 0 ; j < puzzle[i].length ; j++) {
@@ -353,7 +358,34 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     //complete puzzle
     print("complete puzzle!");
     //clear continue puzzle
+    isComplete = true;
+    showComplete(context);
     //UserInfo.ContinuePuzzle();
+  }
+
+  static void showComplete(BuildContext context) {
+    print("call showComplete");
+    // Show AlertDialog if isComplete is true
+    WidgetsBinding.instance!.addPostFrameCallback((_) {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Game Completed'),
+            content: const Text('Congratulations! You have completed the game.'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();  //close popup
+                  Navigator.of(context).pop();  //close GameScene
+                },
+                child: const Text('OK'),
+              ),
+            ],
+          );
+        },
+      );
+    });
   }
 
   ///control only submit data
@@ -416,6 +448,148 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     applyUIWithAnswer(puzzle, submit);
 
     return columnChildren;
+  }
+
+  ///SquareBox List's index
+  static Set<Color> getNearColor(int row, int col, String pos) {
+    Set<Color> use = {};
+
+    if(row != 0 && col != 0) {
+      switch(pos) {
+        case "down":
+          use.add(puzzle[row][col - 1].colorDown);
+          use.add(puzzle[row][col - 1].colorRight);
+          use.add(puzzle[row][col].colorRight);
+
+          if(puzzle.length > row + 1) {
+            use.add(puzzle[row + 1][col - 1].colorRight);
+            use.add(puzzle[row + 1][col].colorRight);
+          }
+          if(puzzle[row].length > col + 1) {
+            use.add(puzzle[row][col + 1].colorDown);
+          }
+          break;
+        case "right":
+          use.add(puzzle[row - 1][col].colorRight);
+          use.add(puzzle[row - 1][col].colorDown);
+          use.add(puzzle[row][col].colorDown);
+
+          if(puzzle[row].length > col + 1) {
+            use.add(puzzle[row - 1][col + 1].colorUp);
+            use.add(puzzle[row][col + 1].colorUp);
+          }
+          if(puzzle.length > row + 1) {
+            use.add(puzzle[row + 1][col].colorRight);
+          }
+          break;
+      }
+    }
+    else if(col != 0) {
+      switch(pos) {
+        case "up":
+          use.add(puzzle[row][col - 1].colorUp);
+          use.add(puzzle[row][col - 1].colorRight);
+          use.add(puzzle[row][col].colorRight);
+
+          if(puzzle[row].length > col + 1) {
+            use.add(puzzle[row][col + 1].colorUp);
+          }
+
+          break;
+        case "down":
+          use.add(puzzle[row][col - 1].colorDown);
+          use.add(puzzle[row][col - 1].colorRight);
+          use.add(puzzle[row][col].colorRight);
+
+          if(puzzle[row].length > col + 1) {
+            use.add(puzzle[row][col + 1].colorDown);
+          }
+          if(puzzle.length > row + 1) {
+            use.add(puzzle[row + 1][col - 1].colorRight);
+            use.add(puzzle[row + 1][col].colorRight);
+          }
+          break;
+        case "right":
+          use.add(puzzle[row][col].colorUp);
+          use.add(puzzle[row][col].colorDown);
+
+          if(puzzle[row].length > col + 1) {
+            use.add(puzzle[row][col + 1].colorUp);
+            use.add(puzzle[row][col + 1].colorDown);
+          }
+          if(puzzle.length > row + 1) {
+            use.add(puzzle[row + 1][col].colorRight);
+          }
+          break;
+      }
+    }
+    else if(row != 0) {
+      switch(pos) {
+        case "down":
+          use.add(puzzle[row][col].colorLeft);
+          use.add(puzzle[row][col].colorRight);
+          use.add(puzzle[row + 1][col].colorLeft);
+          use.add(puzzle[row + 1][col].colorRight);
+          use.add(puzzle[row][col + 1].colorDown);
+          break;
+        case "left":
+          use.add(puzzle[row - 1][col].colorLeft);
+          use.add(puzzle[row - 1][col].colorDown);
+          use.add(puzzle[row][col].colorDown);
+
+          if(puzzle.length > row + 1) {
+            use.add(puzzle[row + 1][col].colorLeft);
+          }
+          break;
+        case "right":
+          use.add(puzzle[row - 1][col].colorRight);
+          use.add(puzzle[row - 1][col].colorDown);
+          use.add(puzzle[row - 1][col + 1].colorDown);
+          use.add(puzzle[row][col].colorDown);
+
+          if(puzzle.length > row + 1) {
+            use.add(puzzle[row + 1][col].colorRight);
+            use.add(puzzle[row + 1][col + 1].colorDown);
+          }
+          break;
+      }
+    }
+    else {
+      switch(pos) {
+        case "up":
+          use.add(puzzle[row][col].colorLeft);
+          use.add(puzzle[row + 1][col].colorUp);
+
+          print("use up $use");
+          break;
+        case "down":
+          use.add(puzzle[row][col].colorLeft);
+          use.add(puzzle[row][col].colorRight);
+          use.add(puzzle[row + 1][col].colorLeft);
+          use.add(puzzle[row + 1][col].colorRight);
+          use.add(puzzle[row][col + 1].colorDown);
+          print("use down $use");
+          break;
+        case "left":
+          use.add(puzzle[row][col].colorUp);
+          use.add(puzzle[row][col].colorDown);
+          use.add(puzzle[row + 1][col].colorLeft);
+          print("use left $use");
+          break;
+        case "right":
+          use.add(puzzle[row][col].colorUp);
+          use.add(puzzle[row][col].colorDown);
+          use.add(puzzle[row][col + 1].colorUp);
+          use.add(puzzle[row][col + 1].colorDown);
+          use.add(puzzle[row + 1][col].colorRight);
+
+          print("use right $use");
+          break;
+      }
+    }
+
+    print("use : $use");
+    return use;
   }
 
   static List<List<SquareBox>> getPuzzle() {

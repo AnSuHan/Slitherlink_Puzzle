@@ -7,16 +7,24 @@ import '../ThemeColor.dart';
 class SquareBox extends StatefulWidget {
   final bool isFirstRow;
   final bool isFirstColumn;
+  //SquareBox's position in `puzzle`
+  final int row;
+  final int column;
 
   //0 : 기본, 1 : 유저가 선택, 2 : 힌트
   //-1 : 비활성(미선택), -2 : 비활성(선택)
   var up = 0, down = 0, left = 0, right = 0;
   var num = 0;
 
+  Color colorUp = const Color(0xFF000000), colorDown = const Color(0xFF000000),
+    colorLeft = const Color(0xFF000000), colorRight = const Color(0xFF000000);
+
   SquareBox({
     Key? key,
     this.isFirstRow = false,
-    this.isFirstColumn = false
+    this.isFirstColumn = false,
+    required this.row,
+    required this.column,
   }) : super(key: key);
 
   @override
@@ -26,6 +34,9 @@ class SquareBox extends StatefulWidget {
 class SquareBoxState extends State<SquareBox> {
   //setting color
   Map<String, Color> settingColor = ThemeColor().getColor();
+  ThemeColor lineColor = ThemeColor();
+
+  String lastClick = "";
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +48,16 @@ class SquareBoxState extends State<SquareBox> {
     var left = widget.left;
     var right = widget.right;
     var num = widget.num;
+
+    Color colorUp = widget.colorUp;
+    Color colorDown = widget.colorDown;
+    Color colorLeft = widget.colorLeft;
+    Color colorRight = widget.colorRight;
+
+    colorUp = getLineColor(up, thisColor: colorUp);
+    colorDown = getLineColor(down, thisColor: colorDown);
+    colorLeft = getLineColor(left, thisColor: colorLeft);
+    colorRight = getLineColor(right, thisColor: colorRight);
 
     return Column(
       children: [
@@ -59,9 +80,10 @@ class SquareBoxState extends State<SquareBox> {
             Container(
               height: 10,
               width: 50,
-                color: getLineColor(up),
+                color: colorUp,
                 child: GestureDetector(
                   onTap: () {
+                    lastClick = "up";
                     setState(() {
                       if(up == 0 || up == 2) {
                         up = 1;
@@ -73,8 +95,9 @@ class SquareBoxState extends State<SquareBox> {
                         up = -1;
                       }
                       widget.up = up;
+                      widget.colorUp = getLineColor(up, thisColor: colorUp);
                     });
-                    GameSceneStateSquare.checkCompletePuzzle();
+                    GameSceneStateSquare.checkCompletePuzzle(context);
                   },
                 ),
             ),
@@ -95,9 +118,10 @@ class SquareBoxState extends State<SquareBox> {
             !isFirstColumn ? Container() : Container(
               height: 50,
               width: 10,
-              color: getLineColor(left),
+              color: colorLeft,
               child: GestureDetector(
                 onTap: () {
+                  lastClick = "left";
                   setState(() {
                     if(left == 0 || left == 2) {
                       left = 1;
@@ -109,8 +133,9 @@ class SquareBoxState extends State<SquareBox> {
                       left = -1;
                     }
                     widget.left = left;
+                    widget.colorLeft = getLineColor(left, thisColor: colorLeft);
                   });
-                  GameSceneStateSquare.checkCompletePuzzle();
+                  GameSceneStateSquare.checkCompletePuzzle(context);
                 },
               ),
             ),
@@ -125,9 +150,10 @@ class SquareBoxState extends State<SquareBox> {
             Container(
               height: 50,
               width: 10,
-              color: getLineColor(right),
+              color: colorRight,
               child: GestureDetector(
                 onTap: () {
+                  lastClick = "right";
                   setState(() {
                     if(right == 0 || right == 2) {
                       right = 1;
@@ -139,8 +165,9 @@ class SquareBoxState extends State<SquareBox> {
                       right = -1;
                     }
                     widget.right = right;
+                    widget.colorRight = getLineColor(right, thisColor: colorRight);
                   });
-                  GameSceneStateSquare.checkCompletePuzzle();
+                  GameSceneStateSquare.checkCompletePuzzle(context);
                 },
               ),
             ),
@@ -165,9 +192,10 @@ class SquareBoxState extends State<SquareBox> {
             Container(
               height: 10,
               width: 50,
-              color: getLineColor(down),
+              color: colorDown,
               child: GestureDetector(
                 onTap: () {
+                  lastClick = "down";
                   setState(() {
                     if(down == 0 || down == 2) {
                       down = 1;
@@ -179,8 +207,9 @@ class SquareBoxState extends State<SquareBox> {
                       down = -1;
                     }
                     widget.down = down;
+                    widget.colorDown = getLineColor(down, thisColor: colorDown);
                   });
-                  GameSceneStateSquare.checkCompletePuzzle();
+                  GameSceneStateSquare.checkCompletePuzzle(context);
                 },
               ),
             ),
@@ -198,29 +227,56 @@ class SquareBoxState extends State<SquareBox> {
     );
   }
 
-  Color getLineColor(int type) {
-    Color color;
+  Color getLineColor(int type, {Color? thisColor}) {
+    Color? color = thisColor;
+    //0 : 기본, 1 : 유저가 선택, 2 : 힌트
+    //-1 : 비활성(미선택), -2 : 비활성(선택)
+    //print("type : $type, thisColor : $thisColor");
 
     switch(type) {
       case 0:
-        color = settingColor["lineNormal"]!;
+        color = lineColor.getLineColor(type: 1);
         break;
       case 1:
-        color = settingColor["lineSelected"]!;
+        color = color = lineColor.getLineColor();
+        /*
+        Set<Color> colors = isExistNearColor();
+        print("colors : $colors");
+        if(colors.isEmpty) {
+          color = color = lineColor.getLineColor();
+        }
+        else {
+          color = colors.first;
+        }
+
+        print("set color : $color");
+
+         */
         break;
       case 2:
-        color = settingColor["lineHint"]!;
+        color = lineColor.getLineColor(type: 2);
         break;
       case -1:
-        color = settingColor["lineInactive"]!;
+        color = lineColor.getLineColor(type: -1);
         break;
       case -2:
-        color = settingColor["lineWrong"]!;
+        color = lineColor.getLineColor(type: -2);
         break;
       default:
         color = Colors.grey;
     }
 
     return color;
+  }
+
+  Set<Color> isExistNearColor() {
+    List<Color> noUse = [lineColor.getLineColor(type: 1), lineColor.getLineColor(type: 2), lineColor.getLineColor(type: -1), lineColor.getLineColor(type: -2)];
+
+    Set<Color> colors = GameSceneStateSquare.getNearColor(widget.row, widget.column, lastClick);
+    for(int i = 0 ; i < noUse.length ; i++) {
+      colors.remove(noUse[i]);
+    }
+
+    return colors;
   }
 }
