@@ -475,8 +475,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           use.add(puzzle[row][col].colorDown);
 
           if(puzzle[row].length > col + 1) {
-            use.add(puzzle[row - 1][col + 1].colorUp);
-            use.add(puzzle[row][col + 1].colorUp);
+            use.add(puzzle[row - 1][col + 1].colorDown);
+            use.add(puzzle[row][col + 1].colorDown);
           }
           if(puzzle.length > row + 1) {
             use.add(puzzle[row + 1][col].colorRight);
@@ -494,7 +494,6 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           if(puzzle[row].length > col + 1) {
             use.add(puzzle[row][col + 1].colorUp);
           }
-
           break;
         case "down":
           use.add(puzzle[row][col - 1].colorDown);
@@ -558,9 +557,8 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       switch(pos) {
         case "up":
           use.add(puzzle[row][col].colorLeft);
+          use.add(puzzle[row][col].colorRight);
           use.add(puzzle[row + 1][col].colorUp);
-
-          print("use up $use");
           break;
         case "down":
           use.add(puzzle[row][col].colorLeft);
@@ -568,13 +566,11 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           use.add(puzzle[row + 1][col].colorLeft);
           use.add(puzzle[row + 1][col].colorRight);
           use.add(puzzle[row][col + 1].colorDown);
-          print("use down $use");
           break;
         case "left":
           use.add(puzzle[row][col].colorUp);
           use.add(puzzle[row][col].colorDown);
           use.add(puzzle[row + 1][col].colorLeft);
-          print("use left $use");
           break;
         case "right":
           use.add(puzzle[row][col].colorUp);
@@ -582,14 +578,31 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
           use.add(puzzle[row][col + 1].colorUp);
           use.add(puzzle[row][col + 1].colorDown);
           use.add(puzzle[row + 1][col].colorRight);
-
-          print("use right $use");
           break;
       }
     }
 
-    print("use : $use");
+    ///TODO 라인의 기본값이 Color(0xffc0c0c0)인데 값을 읽으면 Color(0xff000000)로 나옴
+    ///Color(0xffc0c0c0)로 실행하는 부분도 정상 동작
+    //print("useList : $useList");
+    use.remove(const Color(0xff000000));
+    //print("use : $use");
+    printUsingColor();
     return use;
+  }
+
+  static void printUsingColor() {
+    Set<Color> using = {};
+    for(int i = 0 ; i < puzzle.length ; i++) {
+      for(int j = 0 ; j < puzzle[i].length ; j++){
+        using.add(puzzle[i][j].colorUp);
+        using.add(puzzle[i][j].colorDown);
+        using.add(puzzle[i][j].colorLeft);
+        using.add(puzzle[i][j].colorRight);
+      }
+    }
+
+    print("getUsingColor : $using");
   }
 
   static List<List<SquareBox>> getPuzzle() {

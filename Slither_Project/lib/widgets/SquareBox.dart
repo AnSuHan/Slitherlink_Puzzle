@@ -34,7 +34,7 @@ class SquareBox extends StatefulWidget {
 class SquareBoxState extends State<SquareBox> {
   //setting color
   Map<String, Color> settingColor = ThemeColor().getColor();
-  ThemeColor lineColor = ThemeColor();
+  ThemeColor themeColor = ThemeColor();
 
   String lastClick = "";
 
@@ -49,15 +49,18 @@ class SquareBoxState extends State<SquareBox> {
     var right = widget.right;
     var num = widget.num;
 
+    int row = widget.row;
+    int column = widget.column;
+
     Color colorUp = widget.colorUp;
     Color colorDown = widget.colorDown;
     Color colorLeft = widget.colorLeft;
     Color colorRight = widget.colorRight;
 
-    colorUp = getLineColor(up, thisColor: colorUp);
-    colorDown = getLineColor(down, thisColor: colorDown);
-    colorLeft = getLineColor(left, thisColor: colorLeft);
-    colorRight = getLineColor(right, thisColor: colorRight);
+    colorUp = getLineColor(up, thisColor: colorUp, row: row, column: column);
+    colorDown = getLineColor(down, thisColor: colorDown, row: row, column: column);
+    colorLeft = getLineColor(left, thisColor: colorLeft, row: row, column: column);
+    colorRight = getLineColor(right, thisColor: colorRight, row: row, column: column);
 
     return Column(
       children: [
@@ -95,7 +98,8 @@ class SquareBoxState extends State<SquareBox> {
                         up = -1;
                       }
                       widget.up = up;
-                      widget.colorUp = getLineColor(up, thisColor: colorUp);
+                      colorUp = getLineColor(up, thisColor: colorUp, row: row, column: column);
+                      widget.colorUp = colorUp;
                     });
                     GameSceneStateSquare.checkCompletePuzzle(context);
                   },
@@ -133,7 +137,8 @@ class SquareBoxState extends State<SquareBox> {
                       left = -1;
                     }
                     widget.left = left;
-                    widget.colorLeft = getLineColor(left, thisColor: colorLeft);
+                    colorLeft = getLineColor(left, thisColor: colorLeft, row: row, column: column);
+                    widget.colorLeft = colorLeft;
                   });
                   GameSceneStateSquare.checkCompletePuzzle(context);
                 },
@@ -165,7 +170,8 @@ class SquareBoxState extends State<SquareBox> {
                       right = -1;
                     }
                     widget.right = right;
-                    widget.colorRight = getLineColor(right, thisColor: colorRight);
+                    colorRight = getLineColor(right, thisColor: colorRight, row: row, column: column);
+                    widget.colorRight = colorRight;
                   });
                   GameSceneStateSquare.checkCompletePuzzle(context);
                 },
@@ -207,7 +213,8 @@ class SquareBoxState extends State<SquareBox> {
                       down = -1;
                     }
                     widget.down = down;
-                    widget.colorDown = getLineColor(down, thisColor: colorDown);
+                    colorDown = getLineColor(down, thisColor: colorDown, row: row, column: column);
+                    widget.colorDown = colorDown;
                   });
                   GameSceneStateSquare.checkCompletePuzzle(context);
                 },
@@ -227,40 +234,46 @@ class SquareBoxState extends State<SquareBox> {
     );
   }
 
-  Color getLineColor(int type, {Color? thisColor}) {
+  Color getLineColor(int type, {Color? thisColor, int? row, int? column}) {
     Color? color = thisColor;
     //0 : 기본, 1 : 유저가 선택, 2 : 힌트
     //-1 : 비활성(미선택), -2 : 비활성(선택)
     //print("type : $type, thisColor : $thisColor");
-
     switch(type) {
       case 0:
-        color = lineColor.getLineColor(type: 1);
+        color = themeColor.getLineColor(type: 1);
         break;
       case 1:
-        color = color = lineColor.getLineColor();
-        /*
+        //print("row $row, col $column");
+        GameSceneStateSquare.printUsingColor();
         Set<Color> colors = isExistNearColor();
-        print("colors : $colors");
+
+        //use new color
         if(colors.isEmpty) {
-          color = color = lineColor.getLineColor();
+          color = themeColor.getLineColor();
         }
         else {
-          color = colors.first;
+          //set only this color
+          if(colors.length == 1) {
+            color = colors.first;
+          }
+          //change all near colors
+          else {
+            ///TODO : 두 개 이상의 색이 있는 경우 모두 colors.first로 변경 필요
+            color = colors.first;
+          }
         }
 
-        print("set color : $color");
-
-         */
+        GameSceneStateSquare.printUsingColor();
         break;
       case 2:
-        color = lineColor.getLineColor(type: 2);
+        color = themeColor.getLineColor(type: 2);
         break;
       case -1:
-        color = lineColor.getLineColor(type: -1);
+        color = themeColor.getLineColor(type: -1);
         break;
       case -2:
-        color = lineColor.getLineColor(type: -2);
+        color = themeColor.getLineColor(type: -2);
         break;
       default:
         color = Colors.grey;
@@ -270,8 +283,10 @@ class SquareBoxState extends State<SquareBox> {
   }
 
   Set<Color> isExistNearColor() {
-    List<Color> noUse = [lineColor.getLineColor(type: 1), lineColor.getLineColor(type: 2), lineColor.getLineColor(type: -1), lineColor.getLineColor(type: -2)];
+    List<Color> noUse = [themeColor.getLineColor(type: 1), themeColor.getLineColor(type: 2), themeColor.getLineColor(type: -1), themeColor.getLineColor(type: -2)];
 
+    //정상
+    //print("int isExistNearColor : ${widget.row} ${widget.column} $lastClick");
     Set<Color> colors = GameSceneStateSquare.getNearColor(widget.row, widget.column, lastClick);
     for(int i = 0 ; i < noUse.length ; i++) {
       colors.remove(noUse[i]);

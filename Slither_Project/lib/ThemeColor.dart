@@ -18,15 +18,13 @@ class ThemeColor {
     'line_06': const Color(0xFFFFFF00),  // Yellow
     'line_07': const Color(0xFFFFA500),  // Orange
     'line_08': const Color(0xFF800080),  // Purple
-    'line_09': const Color(0xFF00FF00),  // Lime
-    'line_10': const Color(0xFFFFC0CB),  // Pink
-    'line_11': const Color(0xFF008080),  // Teal
-    'line_12': const Color(0xFFABABFF),  // Lavender
-    'line_13': const Color(0xFFA52A2A),  // Brown
-    'line_14': const Color(0xFF800000),  // Maroon
-    'line_15': const Color(0xFF000080),  // Navy
-    'line_16': const Color(0xFF808000),  // Olive
-    'line_17': const Color(0xFFFF7F50),  // Coral
+    'line_09': const Color(0xFF008080),  // Teal
+    'line_10': const Color(0xFFABABFF),  // Lavender
+    'line_11': const Color(0xFFA52A2A),  // Brown
+    'line_12': const Color(0xFF800000),  // Maroon
+    'line_13': const Color(0xFF000080),  // Navy
+    'line_14': const Color(0xFF808000),  // Olive
+    'line_15': const Color(0xFFFF7F50),  // Coral
   };
 
   Map<String, Color> defaultColor = {
@@ -106,7 +104,7 @@ class ThemeColor {
   Color getLineColor({int type = 0}) {
     //user selection
     if(type == 0) {
-      //line_01 ~ line_17
+      //line_01 ~ line_15
       int num = Random().nextInt(lineColor.keys.length - 4) + 1;
       if(num < 10) {
         //print("lineColor : ${lineColor["line_0$num"]!}");
@@ -122,6 +120,7 @@ class ThemeColor {
     switch(type) {
       //normal(no select)
       case 1:
+        //print("lineColor[line_normal] : ${lineColor["line_normal"]}");
         rtColor = lineColor["line_normal"]!;
         break;
       //disable
@@ -138,7 +137,7 @@ class ThemeColor {
         break;
     }
 
-    //print("rtColor : $rtColor");
+    //print("rtColor in getLineColor : $rtColor");
     return rtColor;
   }
 }
