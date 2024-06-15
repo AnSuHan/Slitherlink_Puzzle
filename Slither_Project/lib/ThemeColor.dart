@@ -100,10 +100,10 @@ class ThemeColor {
     return {};
   }
 
-  ///1 : normal, 2 : hint, -1 : disable, -2 : wrong, 0 : select
-  Color getLineColor({int type = 0}) {
+  ///0 : normal, 1 : select, 2 : hint, -1 : disable, -2 : wrong
+  Color getLineColor({int type = 1}) {
     //user selection
-    if(type == 0) {
+    if(type == 1) {
       //line_01 ~ line_15
       int num = Random().nextInt(lineColor.keys.length - 4) + 1;
       if(num < 10) {
@@ -119,7 +119,7 @@ class ThemeColor {
     Color rtColor = const Color(0xFF000000);
     switch(type) {
       //normal(no select)
-      case 1:
+      case 0:
         //print("lineColor[line_normal] : ${lineColor["line_normal"]}");
         rtColor = lineColor["line_normal"]!;
         break;

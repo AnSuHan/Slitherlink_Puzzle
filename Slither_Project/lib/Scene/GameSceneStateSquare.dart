@@ -582,12 +582,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       }
     }
 
-    ///TODO 라인의 기본값이 Color(0xffc0c0c0)인데 값을 읽으면 Color(0xff000000)로 나옴
-    ///Color(0xffc0c0c0)로 실행하는 부분도 정상 동작
-    //print("useList : $useList");
     use.remove(const Color(0xff000000));
-    //print("use : $use");
-    printUsingColor();
     return use;
   }
 

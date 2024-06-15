@@ -36,7 +36,42 @@ class SquareBoxState extends State<SquareBox> {
   Map<String, Color> settingColor = ThemeColor().getColor();
   ThemeColor themeColor = ThemeColor();
 
+  late Color colorUp;
+  late Color colorDown;
+  late Color colorLeft;
+  late Color colorRight;
+
   String lastClick = "";
+
+  @override
+  void initState() {
+    super.initState();
+    _computeColors();
+  }
+
+  @override
+  void didUpdateWidget(covariant SquareBox oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.up != oldWidget.up ||
+        widget.down != oldWidget.down ||
+        widget.left != oldWidget.left ||
+        widget.right != oldWidget.right ||
+        widget.row != oldWidget.row ||
+        widget.column != oldWidget.column ||
+        widget.colorUp != oldWidget.colorUp ||
+        widget.colorDown != oldWidget.colorDown ||
+        widget.colorLeft != oldWidget.colorLeft ||
+        widget.colorRight != oldWidget.colorRight) {
+      _computeColors();
+    }
+  }
+
+  void _computeColors() {
+    colorUp = getLineColor(widget.up, thisColor: widget.colorUp, row: widget.row, column: widget.column);
+    colorDown = getLineColor(widget.down, thisColor: widget.colorDown, row: widget.row, column: widget.column);
+    colorLeft = getLineColor(widget.left, thisColor: widget.colorLeft, row: widget.row, column: widget.column);
+    colorRight = getLineColor(widget.right, thisColor: widget.colorRight, row: widget.row, column: widget.column);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -51,16 +86,6 @@ class SquareBoxState extends State<SquareBox> {
 
     int row = widget.row;
     int column = widget.column;
-
-    Color colorUp = widget.colorUp;
-    Color colorDown = widget.colorDown;
-    Color colorLeft = widget.colorLeft;
-    Color colorRight = widget.colorRight;
-
-    colorUp = getLineColor(up, thisColor: colorUp, row: row, column: column);
-    colorDown = getLineColor(down, thisColor: colorDown, row: row, column: column);
-    colorLeft = getLineColor(left, thisColor: colorLeft, row: row, column: column);
-    colorRight = getLineColor(right, thisColor: colorRight, row: row, column: column);
 
     return Column(
       children: [
@@ -241,11 +266,9 @@ class SquareBoxState extends State<SquareBox> {
     //print("type : $type, thisColor : $thisColor");
     switch(type) {
       case 0:
-        color = themeColor.getLineColor(type: 1);
+        color = themeColor.getLineColor(type: 0);
         break;
       case 1:
-        //print("row $row, col $column");
-        GameSceneStateSquare.printUsingColor();
         Set<Color> colors = isExistNearColor();
 
         //use new color
@@ -263,8 +286,6 @@ class SquareBoxState extends State<SquareBox> {
             color = colors.first;
           }
         }
-
-        GameSceneStateSquare.printUsingColor();
         break;
       case 2:
         color = themeColor.getLineColor(type: 2);
@@ -283,10 +304,8 @@ class SquareBoxState extends State<SquareBox> {
   }
 
   Set<Color> isExistNearColor() {
-    List<Color> noUse = [themeColor.getLineColor(type: 1), themeColor.getLineColor(type: 2), themeColor.getLineColor(type: -1), themeColor.getLineColor(type: -2)];
+    List<Color> noUse = [themeColor.getLineColor(type: 0), themeColor.getLineColor(type: 2), themeColor.getLineColor(type: -1), themeColor.getLineColor(type: -2)];
 
-    //정상
-    //print("int isExistNearColor : ${widget.row} ${widget.column} $lastClick");
     Set<Color> colors = GameSceneStateSquare.getNearColor(widget.row, widget.column, lastClick);
     for(int i = 0 ; i < noUse.length ; i++) {
       colors.remove(noUse[i]);
