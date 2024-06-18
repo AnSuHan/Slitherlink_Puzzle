@@ -16,8 +16,7 @@ class SquareBox extends StatefulWidget {
   var up = 0, down = 0, left = 0, right = 0;
   var num = 0;
 
-  Color colorUp = const Color(0xFF000000), colorDown = const Color(0xFF000000),
-    colorLeft = const Color(0xFF000000), colorRight = const Color(0xFF000000);
+  Color colorUp, colorDown, colorLeft, colorRight;
 
   SquareBox({
     Key? key,
@@ -25,7 +24,12 @@ class SquareBox extends StatefulWidget {
     this.isFirstColumn = false,
     required this.row,
     required this.column,
-  }) : super(key: key);
+  }) :
+      colorUp = const Color(0xFFC0C0C0),
+      colorDown = const Color(0xFFC0C0C0),
+      colorLeft = const Color(0xFFC0C0C0),
+      colorRight = const Color(0xFFC0C0C0),
+      super(key: key);
 
   @override
   SquareBoxState createState() => SquareBoxState();
@@ -67,10 +71,10 @@ class SquareBoxState extends State<SquareBox> {
   }
 
   void _computeColors() {
-    colorUp = getLineColor(widget.up, thisColor: widget.colorUp, row: widget.row, column: widget.column);
-    colorDown = getLineColor(widget.down, thisColor: widget.colorDown, row: widget.row, column: widget.column);
-    colorLeft = getLineColor(widget.left, thisColor: widget.colorLeft, row: widget.row, column: widget.column);
-    colorRight = getLineColor(widget.right, thisColor: widget.colorRight, row: widget.row, column: widget.column);
+    colorUp = getLineColor(context, widget.up, thisColor: widget.colorUp, row: widget.row, column: widget.column);
+    colorDown = getLineColor(context, widget.down, thisColor: widget.colorDown, row: widget.row, column: widget.column);
+    colorLeft = getLineColor(context, widget.left, thisColor: widget.colorLeft, row: widget.row, column: widget.column);
+    colorRight = getLineColor(context, widget.right, thisColor: widget.colorRight, row: widget.row, column: widget.column);
   }
 
   @override
@@ -123,7 +127,7 @@ class SquareBoxState extends State<SquareBox> {
                         up = -1;
                       }
                       widget.up = up;
-                      colorUp = getLineColor(up, thisColor: colorUp, row: row, column: column);
+                      colorUp = getLineColor(context, up, thisColor: colorUp, row: row, column: column, dir: "up");
                       widget.colorUp = colorUp;
                     });
                     GameSceneStateSquare.checkCompletePuzzle(context);
@@ -162,7 +166,7 @@ class SquareBoxState extends State<SquareBox> {
                       left = -1;
                     }
                     widget.left = left;
-                    colorLeft = getLineColor(left, thisColor: colorLeft, row: row, column: column);
+                    colorLeft = getLineColor(context, left, thisColor: colorLeft, row: row, column: column, dir: "left");
                     widget.colorLeft = colorLeft;
                   });
                   GameSceneStateSquare.checkCompletePuzzle(context);
@@ -195,7 +199,7 @@ class SquareBoxState extends State<SquareBox> {
                       right = -1;
                     }
                     widget.right = right;
-                    colorRight = getLineColor(right, thisColor: colorRight, row: row, column: column);
+                    colorRight = getLineColor(context, right, thisColor: colorRight, row: row, column: column, dir: "right");
                     widget.colorRight = colorRight;
                   });
                   GameSceneStateSquare.checkCompletePuzzle(context);
@@ -238,7 +242,7 @@ class SquareBoxState extends State<SquareBox> {
                       down = -1;
                     }
                     widget.down = down;
-                    colorDown = getLineColor(down, thisColor: colorDown, row: row, column: column);
+                    colorDown = getLineColor(context, down, thisColor: colorDown, row: row, column: column, dir: "down");
                     widget.colorDown = colorDown;
                   });
                   GameSceneStateSquare.checkCompletePuzzle(context);
@@ -259,7 +263,7 @@ class SquareBoxState extends State<SquareBox> {
     );
   }
 
-  Color getLineColor(int type, {Color? thisColor, int? row, int? column}) {
+  Color getLineColor(BuildContext context, int type, {Color? thisColor, int? row, int? column, String? dir}) {
     Color? color = thisColor;
     //0 : 기본, 1 : 유저가 선택, 2 : 힌트
     //-1 : 비활성(미선택), -2 : 비활성(선택)
@@ -281,9 +285,18 @@ class SquareBoxState extends State<SquareBox> {
             color = colors.first;
           }
           //change all near colors
-          else {
-            ///TODO : 두 개 이상의 색이 있는 경우 모두 colors.first로 변경 필요
+          else if(colors.length == 2){
             color = colors.first;
+            //두 개의 색이 만난 경우 변경해야 하는 라인들의 목록
+            List<dynamic> changes = GameSceneStateSquare.getOldColorList(row!, column!, dir!, color);
+            print("_____ getOldColorList _____");
+            for(int i = 0 ; i < changes.length ; i++) {
+              print("changes : ${changes[i]}");
+              GameSceneStateSquare.changeColor(context, changes[i][0], changes[i][1], changes[i][2], color);
+            }
+          }
+          else {
+            throw Exception("UnExpected Exception occurred");
           }
         }
         break;
@@ -312,5 +325,26 @@ class SquareBoxState extends State<SquareBox> {
     }
 
     return colors;
+  }
+
+  void changeColor(String pos, Color color) {
+    setState(() {
+      switch (pos) {
+        case "up":
+          widget.colorUp = color;
+          break;
+        case "down":
+          widget.colorDown = color;
+          break;
+        case "left":
+          widget.colorLeft = color;
+          break;
+        case "right":
+          widget.colorRight = color;
+          break;
+        default:
+          throw Exception("Invalid position: $pos");
+      }
+    });
   }
 }

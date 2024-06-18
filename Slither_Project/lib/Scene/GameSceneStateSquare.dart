@@ -143,28 +143,6 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     return puzzle;
   }
 
-  //List<List<SquareBox>> to List<Widget>
-  static List<Widget> buildSquarePuzzle(width, height) {
-    List<List<SquareBox>> puzzle = initSquarePuzzle(width, height);
-    //print("puzzle row ${puzzle.length}, col ${puzzle[0].length}");
-    List<Widget> columnChildren = [];
-
-    for (int i = 0; i < height; i++) {
-      List<Widget> rowChildren = [];
-      for (int j = 0; j < width; j++) {
-        rowChildren.add(puzzle[i][j]);
-      }
-      columnChildren.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: rowChildren,
-        ),
-      );
-    }
-
-    return columnChildren;
-  }
-
   static Future<List<Widget>> buildSquarePuzzleAnswer(List<List<int>> answer, {bool isContinue = false}) async {
     //resize puzzle
     if(answer.isEmpty) {
@@ -201,6 +179,28 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
     }
 
     return columnChildren;
+  }
+
+  //i, j의 범위를 변경하였을 때는 정상적으로 맵의 크기가 변경되는 것으로 보아
+  //다른 부분이 문제
+  static void buildSquarePuzzleColor({BuildContext? context}) {
+    List<Widget> columnChildren = [];
+
+    for (int i = 0; i < puzzle.length; i++) {
+      List<Widget> rowChildren = [];
+      for (int j = 0; j < puzzle[i].length; j++) {
+        rowChildren.add(puzzle[i][j]);
+      }
+      columnChildren.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: rowChildren,
+        ),
+      );
+    }
+
+    squareField = columnChildren;
+    _provider.setSquareField(squareField);
   }
 
   static void setNumWithAnswer(List<List<SquareBox>> puzzle) {
@@ -584,6 +584,301 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
 
     use.remove(const Color(0xff000000));
     return use;
+  }
+
+  static List<dynamic> getOldColorList(int row, int col, String pos, Color now) {
+    //[row, col, pos]
+    List<dynamic> rtValue = [];
+    Color normal = ThemeColor().getLineColor(type: 0);
+
+    //same as getNearColor except for comparing color
+    if(row != 0 && col != 0) {
+      switch(pos) {
+        case "down":
+          //use.add(puzzle[row][col - 1].colorDown);
+          if(puzzle[row][col - 1].colorDown != normal && puzzle[row][col - 1].colorDown != now) {
+            rtValue.add([row, col - 1, "down"]);
+          }
+          if (puzzle[row][col - 1].colorRight != normal && puzzle[row][col - 1].colorRight != now) {
+            rtValue.add([row, col - 1, "right"]);
+          }
+          if (puzzle[row][col].colorRight != normal && puzzle[row][col].colorRight != now) {
+            rtValue.add([row, col, "right"]);
+          }
+          if (puzzle.length > row + 1) {
+            if (puzzle[row + 1][col - 1].colorRight != normal && puzzle[row + 1][col - 1].colorRight != now) {
+              rtValue.add([row + 1, col - 1, "right"]);
+            }
+            if (puzzle[row + 1][col].colorRight != normal && puzzle[row + 1][col].colorRight != now) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+          }
+          if (puzzle[row].length > col + 1) {
+            if (puzzle[row][col + 1].colorDown != normal && puzzle[row][col + 1].colorDown != now) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          break;
+        case "right":
+          if (puzzle[row - 1][col].colorRight != normal && puzzle[row - 1][col].colorRight != now) {
+            rtValue.add([row - 1, col, "right"]);
+          }
+          if (puzzle[row - 1][col].colorDown != normal && puzzle[row - 1][col].colorDown != now) {
+            rtValue.add([row - 1, col, "down"]);
+          }
+          if (puzzle[row][col].colorDown != normal && puzzle[row][col].colorDown != now) {
+            rtValue.add([row, col, "down"]);
+          }
+          if (puzzle[row].length > col + 1) {
+            if (puzzle[row - 1][col + 1].colorDown != normal && puzzle[row - 1][col + 1].colorDown != now) {
+              rtValue.add([row - 1, col + 1, "down"]);
+            }
+            if (puzzle[row][col + 1].colorDown != normal && puzzle[row][col + 1].colorDown != now) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          if (puzzle.length > row + 1) {
+            if (puzzle[row + 1][col].colorRight != normal && puzzle[row + 1][col].colorRight != now) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+          }
+          break;
+      }
+    }
+    else if (col != 0) {
+      switch (pos) {
+        case "up":
+          if (puzzle[row][col - 1].colorUp != normal && puzzle[row][col - 1].colorUp != now) {
+            rtValue.add([row, col - 1, "up"]);
+          }
+          if (puzzle[row][col - 1].colorRight != normal && puzzle[row][col - 1].colorRight != now) {
+            rtValue.add([row, col - 1, "right"]);
+          }
+          if (puzzle[row][col].colorRight != normal && puzzle[row][col].colorRight != now) {
+            rtValue.add([row, col, "right"]);
+          }
+          if (puzzle[row].length > col + 1) {
+            if (puzzle[row][col + 1].colorUp != normal && puzzle[row][col + 1].colorUp != now) {
+              rtValue.add([row, col + 1, "up"]);
+            }
+          }
+          break;
+        case "down":
+          if (puzzle[row][col - 1].colorDown != normal && puzzle[row][col - 1].colorDown != now) {
+            rtValue.add([row, col - 1, "down"]);
+          }
+          if (puzzle[row][col - 1].colorRight != normal && puzzle[row][col - 1].colorRight != now) {
+            rtValue.add([row, col - 1, "right"]);
+          }
+          if (puzzle[row][col].colorRight != normal && puzzle[row][col].colorRight != now) {
+            rtValue.add([row, col, "right"]);
+          }
+          if (puzzle[row].length > col + 1) {
+            if (puzzle[row][col + 1].colorDown != normal && puzzle[row][col + 1].colorDown != now) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          if (puzzle.length > row + 1) {
+            if (puzzle[row + 1][col - 1].colorRight != normal && puzzle[row + 1][col - 1].colorRight != now) {
+              rtValue.add([row + 1, col - 1, "right"]);
+            }
+            if (puzzle[row + 1][col].colorRight != normal && puzzle[row + 1][col].colorRight != now) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+          }
+          break;
+        case "right":
+          if (puzzle[row][col].colorUp != normal && puzzle[row][col].colorUp != now) {
+            rtValue.add([row, col, "up"]);
+          }
+          if (puzzle[row][col].colorDown != normal && puzzle[row][col].colorDown != now) {
+            rtValue.add([row, col, "down"]);
+          }
+          if (puzzle[row].length > col + 1) {
+            if (puzzle[row][col + 1].colorUp != normal && puzzle[row][col + 1].colorUp != now) {
+              rtValue.add([row, col + 1, "up"]);
+            }
+            if (puzzle[row][col + 1].colorDown != normal && puzzle[row][col + 1].colorDown != now) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          if (puzzle.length > row + 1) {
+            if (puzzle[row + 1][col].colorRight != normal && puzzle[row + 1][col].colorRight != now) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+          }
+          break;
+      }
+    }
+    else if (row != 0) {
+      switch (pos) {
+        case "down":
+          if (puzzle[row][col].colorLeft != normal && puzzle[row][col].colorLeft != now) {
+            rtValue.add([row, col, "left"]);
+          }
+          if (puzzle[row][col].colorRight != normal && puzzle[row][col].colorRight != now) {
+            rtValue.add([row, col, "right"]);
+          }
+          if (puzzle[row + 1][col].colorLeft != normal && puzzle[row + 1][col].colorLeft != now) {
+            rtValue.add([row + 1, col, "left"]);
+          }
+          if (puzzle[row + 1][col].colorRight != normal && puzzle[row + 1][col].colorRight != now) {
+            rtValue.add([row + 1, col, "right"]);
+          }
+          if (puzzle[row][col + 1].colorDown != normal && puzzle[row][col + 1].colorDown != now) {
+            rtValue.add([row, col + 1, "down"]);
+          }
+          break;
+        case "left":
+          if (puzzle[row - 1][col].colorLeft != normal && puzzle[row - 1][col].colorLeft != now) {
+            rtValue.add([row - 1, col, "left"]);
+          }
+          if (puzzle[row - 1][col].colorDown != normal && puzzle[row - 1][col].colorDown != now) {
+            rtValue.add([row - 1, col, "down"]);
+          }
+          if (puzzle[row][col].colorDown != normal && puzzle[row][col].colorDown != now) {
+            rtValue.add([row, col, "down"]);
+          }
+          if (puzzle.length > row + 1) {
+            if (puzzle[row + 1][col].colorLeft != normal && puzzle[row + 1][col].colorLeft != now) {
+              rtValue.add([row + 1, col, "left"]);
+            }
+          }
+          break;
+        case "right":
+          if (puzzle[row - 1][col].colorRight != normal && puzzle[row - 1][col].colorRight != now) {
+            rtValue.add([row - 1, col, "right"]);
+          }
+          if (puzzle[row - 1][col].colorDown != normal && puzzle[row - 1][col].colorDown != now) {
+            rtValue.add([row - 1, col, "down"]);
+          }
+          if (puzzle[row - 1][col + 1].colorDown != normal && puzzle[row - 1][col + 1].colorDown != now) {
+            rtValue.add([row - 1, col + 1, "down"]);
+          }
+          if (puzzle[row][col].colorDown != normal && puzzle[row][col].colorDown != now) {
+            rtValue.add([row, col, "down"]);
+          }
+          if (puzzle.length > row + 1) {
+            if (puzzle[row + 1][col].colorRight != normal && puzzle[row + 1][col].colorRight != now) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+            if (puzzle[row + 1][col + 1].colorDown != normal && puzzle[row + 1][col + 1].colorDown != now) {
+              rtValue.add([row + 1, col + 1, "down"]);
+            }
+          }
+          break;
+      }
+    }
+    else {
+      switch(pos) {
+        case "up":
+          if (puzzle[row][col].colorLeft != normal && puzzle[row][col].colorLeft != now) {
+            rtValue.add([row, col, "left"]);
+          }
+          if (puzzle[row][col].colorRight != normal && puzzle[row][col].colorRight != now) {
+            rtValue.add([row, col, "right"]);
+          }
+          if (puzzle[row + 1][col].colorUp != normal && puzzle[row + 1][col].colorUp != now) {
+            rtValue.add([row + 1, col, "up"]);
+          }
+          break;
+        case "down":
+          if (puzzle[row][col].colorLeft != normal && puzzle[row][col].colorLeft != now) {
+            rtValue.add([row, col, "left"]);
+          }
+          if (puzzle[row][col].colorRight != normal && puzzle[row][col].colorRight != now) {
+            rtValue.add([row, col, "right"]);
+          }
+          if (puzzle[row + 1][col].colorLeft != normal && puzzle[row + 1][col].colorLeft != now) {
+            rtValue.add([row + 1, col, "left"]);
+          }
+          if (puzzle[row + 1][col].colorRight != normal && puzzle[row + 1][col].colorRight != now) {
+            rtValue.add([row + 1, col, "right"]);
+          }
+          if (puzzle[row][col + 1].colorDown != normal && puzzle[row][col + 1].colorDown != now) {
+            rtValue.add([row, col + 1, "down"]);
+          }
+          break;
+        case "left":
+          if (puzzle[row][col].colorUp != normal && puzzle[row][col].colorUp != now) {
+            rtValue.add([row, col, "up"]);
+          }
+          if (puzzle[row][col].colorDown != normal && puzzle[row][col].colorDown != now) {
+            rtValue.add([row, col, "down"]);
+          }
+          if (puzzle[row + 1][col].colorLeft != normal && puzzle[row + 1][col].colorLeft != now) {
+            rtValue.add([row + 1, col, "left"]);
+          }
+          break;
+        case "right":
+          if (puzzle[row][col].colorUp != normal && puzzle[row][col].colorUp != now) {
+            rtValue.add([row, col, "up"]);
+          }
+          if (puzzle[row][col].colorDown != normal && puzzle[row][col].colorDown != now) {
+            rtValue.add([row, col, "down"]);
+          }
+          if (puzzle[row][col + 1].colorUp != normal && puzzle[row][col + 1].colorUp != now) {
+            rtValue.add([row, col + 1, "up"]);
+          }
+          if (puzzle[row][col + 1].colorDown != normal && puzzle[row][col + 1].colorDown != now) {
+            rtValue.add([row, col + 1, "down"]);
+          }
+          if (puzzle[row + 1][col].colorRight != normal && puzzle[row + 1][col].colorRight != now) {
+            rtValue.add([row + 1, col, "right"]);
+          }
+          break;
+      }
+    }
+
+    return getContinueOld(rtValue);
+  }
+
+  static List<dynamic> getContinueOld(List<dynamic> start) {
+    List<dynamic> rtValue = [start];
+    List<dynamic> temp = [];
+
+    int count = 0;
+    while(true) {
+      temp = rtValue[count];
+
+      if(temp[0] != 0 && temp[1] != 0) {
+
+      }
+      else if(temp[0] == 0 && temp[1] != 0) {
+
+      }
+      else if(temp[0] != 0 && temp[1] == 0) {
+
+      }
+      else if(temp[0] == 0 && temp[1] == 0) {
+
+      }
+
+    }
+
+
+    return rtValue;
+  }
+
+  static void changeColor(BuildContext context, int row, int col, String pos, Color color) {
+    switch(pos) {
+      case "up":
+        puzzle[row][col].colorUp = color;
+        break;
+      case "down":
+        puzzle[row][col].colorDown = color;
+        break;
+      case "left":
+        puzzle[row][col].colorLeft = color;
+        break;
+      case "right":
+        puzzle[row][col].colorRight = color;
+        break;
+    }
+    print("changeColor in GameScene $row, $col, $pos, $color");
+    print("${puzzle[row][col-1].colorDown} ${puzzle[row][col].colorDown} ${puzzle[row][col+1].colorDown}");
+
+    buildSquarePuzzleColor();
   }
 
   static void printUsingColor() {
