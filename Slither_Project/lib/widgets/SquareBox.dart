@@ -11,7 +11,7 @@ class SquareBox extends StatefulWidget {
   final int row;
   final int column;
 
-  //0 : 기본, 1 : 유저가 선택, 2 : 힌트
+  //0 : 기본, 1~ : 유저가 선택, 2 : 힌트
   //-1 : 비활성(미선택), -2 : 비활성(선택)
   var up = 0, down = 0, left = 0, right = 0;
   var num = 0;
@@ -119,7 +119,7 @@ class SquareBoxState extends State<SquareBox> {
                     setState(() {
                       if(up == 0 || up == 2) {
                         up = 1;
-                      } else if(up == 1) {
+                      } else if(up >= 1) {
                         up = 0;
                       } else if(up == -1) {
                         up = -2;
@@ -129,6 +129,10 @@ class SquareBoxState extends State<SquareBox> {
                       widget.up = up;
                       colorUp = getLineColor(context, up, thisColor: colorUp, row: row, column: column, dir: "up");
                       widget.colorUp = colorUp;
+                      if(up >= 1) {
+                        up = setUpData(colorUp);
+                        colorUp = setUpColor(up);
+                      }
                     });
                     GameSceneStateSquare.checkCompletePuzzle(context);
                   },
@@ -158,7 +162,7 @@ class SquareBoxState extends State<SquareBox> {
                   setState(() {
                     if(left == 0 || left == 2) {
                       left = 1;
-                    } else if(left == 1) {
+                    } else if(left >= 1) {
                       left = 0;
                     } else if(left == -1) {
                       left = -2;
@@ -168,6 +172,10 @@ class SquareBoxState extends State<SquareBox> {
                     widget.left = left;
                     colorLeft = getLineColor(context, left, thisColor: colorLeft, row: row, column: column, dir: "left");
                     widget.colorLeft = colorLeft;
+                    if(left >= 1) {
+                      left = setUpData(colorLeft);
+                      colorLeft = setUpColor(left);
+                    }
                   });
                   GameSceneStateSquare.checkCompletePuzzle(context);
                 },
@@ -191,7 +199,7 @@ class SquareBoxState extends State<SquareBox> {
                   setState(() {
                     if(right == 0 || right == 2) {
                       right = 1;
-                    } else if(right == 1) {
+                    } else if(right >= 1) {
                       right = 0;
                     } else if(right == -1) {
                       right = -2;
@@ -201,6 +209,10 @@ class SquareBoxState extends State<SquareBox> {
                     widget.right = right;
                     colorRight = getLineColor(context, right, thisColor: colorRight, row: row, column: column, dir: "right");
                     widget.colorRight = colorRight;
+                    if(right >= 1) {
+                      right = setUpData(colorRight);
+                      colorRight = setUpColor(right);
+                    }
                   });
                   GameSceneStateSquare.checkCompletePuzzle(context);
                 },
@@ -234,7 +246,7 @@ class SquareBoxState extends State<SquareBox> {
                   setState(() {
                     if(down == 0 || down == 2) {
                       down = 1;
-                    } else if(down == 1) {
+                    } else if(down >= 1) {
                       down = 0;
                     } else if(down == -1) {
                       down = -2;
@@ -244,6 +256,10 @@ class SquareBoxState extends State<SquareBox> {
                     widget.down = down;
                     colorDown = getLineColor(context, down, thisColor: colorDown, row: row, column: column, dir: "down");
                     widget.colorDown = colorDown;
+                    if(down >= 1) {
+                      down = setUpData(colorDown);
+                      colorDown = setUpColor(down);
+                    }
                   });
                   GameSceneStateSquare.checkCompletePuzzle(context);
                 },
@@ -276,7 +292,9 @@ class SquareBoxState extends State<SquareBox> {
         Set<Color> colors = isExistNearColor();
 
         //use new color
-        if(colors.isEmpty) {
+        ///TODO : 현재 색을 변경해야 하는 라인 1개는 찾을 수 있지만, 색을 변경해도 UI에 반영이 되지 않음
+        ///TODO : 따라서 Triangle의 작성을 시작하고 해당 클래스는 instance로만 작성 
+        if(true || colors.isEmpty) {
           color = themeColor.getLineColor();
         }
         else {
@@ -346,5 +364,30 @@ class SquareBoxState extends State<SquareBox> {
           throw Exception("Invalid position: $pos");
       }
     });
+  }
+
+  //return over 1
+  int setUpData(Color color) {
+    Map<Color, String> items = {};
+
+    ThemeColor().lineColor.forEach((key, value) {
+      items[value] = key;
+    });
+    String value = items[color]!.split("_")[1];
+    int intValue = int.parse(value);
+
+    print("setUpData $intValue");
+    return intValue;
+  }
+
+  Color setUpColor(int value) {
+    String key = "line_";
+    if(value < 10) {
+      key += "0$value";
+    }
+    else {
+      key += value.toString();
+    }
+    return ThemeColor().lineColor[key]!;
   }
 }

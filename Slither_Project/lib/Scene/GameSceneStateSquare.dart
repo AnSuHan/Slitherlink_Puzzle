@@ -830,6 +830,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       }
     }
 
+    return rtValue;
     return getContinueOld(rtValue);
   }
 
@@ -876,7 +877,7 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
         break;
     }
     print("changeColor in GameScene $row, $col, $pos, $color");
-    print("${puzzle[row][col-1].colorDown} ${puzzle[row][col].colorDown} ${puzzle[row][col+1].colorDown}");
+    //print("${puzzle[row][col-1].colorDown} ${puzzle[row][col].colorDown} ${puzzle[row][col+1].colorDown}");
 
     buildSquarePuzzleColor();
   }
