@@ -50,53 +50,192 @@ class EnterSceneState extends State<EnterScene> {
               ui.loadSetting();
               ui.setScreenSize(screenSize);
 
-              return Scaffold(
-                  backgroundColor: Colors.blueGrey,
-                  body: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          ui.getMainMenu(context)
-                        ],
+              if(screenSize.width < screenSize.height) {
+                return portrait(context);
+              } else {
+                if (screenSize.height > 600) {
+                  return landscape(context);
+                } else {
+                  return landscapeSmall(context);
+                }
+              }
+            }
+        )
+    );
+  }
+
+  Scaffold portrait(BuildContext context) {
+    return Scaffold(
+        backgroundColor: Colors.blueGrey,
+        body: Column(
+          children: [
+            Flexible(
+              flex: 1,
+              child: Center(
+                child: Column(
+                  children: [
+                    const SizedBox(
+                      height: 25,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ui.getMainMenu(context)
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            //title, start button, puzzle type
+            Flexible(
+              flex: 3,
+              child: Center(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.005)),
+                      child: const Text("Slitherlink",
+                        style: TextStyle(
+                          fontSize: 45, fontWeight: FontWeight.w400,
+                        ),
                       ),
-                      SizedBox(
-                        height: ui.getTopMargin(),
+                    ),
+                    Padding(
+                      padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.1)),
+                      child: ui.getStartButton(context),
+                    ),
+                    ui.getPuzzleType(context),
+                  ],
+                ),
+              ),
+            ),
+            //continue puzzle
+            Flexible(
+              flex: 2,
+              child: Center(
+                child: ui.getContinueWidget(context),
+              ),
+            ),
+          ],
+        ),
+    );
+  }
+
+  Scaffold landscape(BuildContext context) {
+    return Scaffold(
+        backgroundColor: Colors.blueGrey,
+        body: Column(
+          children: [
+            Flexible(
+              flex: 1,
+              child: Center(
+                child: Column(
+                  children: [
+                    const SizedBox(
+                      height: 15,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ui.getMainMenu(context)
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            //title, start button, puzzle type
+            Flexible(
+              flex: 2,
+              child: Center(
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.0005)),
+                      child: const Text("Slitherlink",
+                        style: TextStyle(
+                          fontSize: 45, fontWeight: FontWeight.w400,
+                        ),
                       ),
-                      //title, start button, puzzle type
-                      Flexible(
-                        flex: 1,
-                        child: Center(
-                          child: Column(
-                            children: [
-                              Padding(
-                                padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.005)),
-                                child: const Text("Slitherlink",
-                                  style: TextStyle(
-                                    fontSize: 45, fontWeight: FontWeight.w400,
-                                  ),
-                                ),
-                              ),
-                              Padding(
-                                padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.1)),
-                                child: ui.getStartButton(context),
-                              ),
-                              ui.getPuzzleType(context),
-                            ],
+                    ),
+                    Padding(
+                      padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.05)),
+                      child: ui.getStartButton(context),
+                    ),
+                    ui.getPuzzleType(context),
+                  ],
+                ),
+              ),
+            ),
+            //continue puzzle
+            Flexible(
+              flex: 2,
+              child: Center(
+                child: ui.getContinueWidget(context),
+              ),
+            ),
+          ],
+        )
+    );
+  }
+
+  Scaffold landscapeSmall(BuildContext context) {
+    return Scaffold(
+        backgroundColor: Colors.blueGrey,
+        body: Column(
+          children: [
+            Flexible(
+              flex: 1,
+              child: Center(
+                child: Column(
+                  children: [
+                    const SizedBox(
+                      height: 15,
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        ui.getMainMenu(context)
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Flexible(
+              flex: 3,
+              child: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    //title, start button, puzzle type
+                    Column(
+                      children: [
+                        Padding(
+                          padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.0005)),
+                          child: const Text("Slitherlink",
+                            style: TextStyle(
+                              fontSize: 45, fontWeight: FontWeight.w400,
+                            ),
                           ),
                         ),
-                      ),
-                      //continue puzzle
-                      Flexible(
-                        flex: 1,
-                        child: Center(
-                          child: ui.getContinueWidget(context),
+                        Padding(
+                          padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.05)),
+                          child: ui.getStartButton(context),
                         ),
-                      ),
-                    ],
-                  )
-              );
-            }
+                        ui.getPuzzleType(context),
+                      ],
+                    ),
+                    //continue puzzle
+                    Center(
+                      child: ui.getContinueWidget(context),
+                    ),
+                  ],
+                )
+              ),
+            ),
+          ],
         )
     );
   }

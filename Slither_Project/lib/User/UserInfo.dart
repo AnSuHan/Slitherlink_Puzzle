@@ -9,7 +9,7 @@ class UserInfo {
   //set value when pushing start button & reset when complete puzzle
   static Set<String> continuePuzzle = {};
   static Map<String, String> setting = {
-    "theme" : "warm",
+    "theme" : "default",
     "language" : "english"
   };
   static List<String> language = ["english", "korean"];

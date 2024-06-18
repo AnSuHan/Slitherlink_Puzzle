@@ -135,7 +135,7 @@ class ReadSquare {
 
   void printData() {
     for(int i = 0 ; i < data.length ; i++) {
-      print("row $i ${data[i]}");
+      print("${data[i]}");
     }
   }
 }
