@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 
@@ -7,6 +8,7 @@ import '../widgets/MainUI.dart';
 
 class EnterSceneState extends State<EnterScene> {
   Locale _locale = const Locale('en');
+  late FocusNode _focusNode;
 
   late Size screenSize;
   late MainUI ui;
@@ -14,6 +16,16 @@ class EnterSceneState extends State<EnterScene> {
   @override
   void initState() {
     super.initState();
+    _focusNode = FocusNode();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
   }
 
   void _updateUI() {
@@ -43,23 +55,33 @@ class EnterSceneState extends State<EnterScene> {
           Locale('en'),
           Locale('ko'),
         ],
-        home: Builder(
-            builder: (context) {
-              screenSize = MediaQuery.of(context).size;
-              ui = MainUI(onUpdate: _updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this,);
-              ui.loadSetting();
-              ui.setScreenSize(screenSize);
-
-              if(screenSize.width < screenSize.height) {
-                return portrait(context);
-              } else {
-                if (screenSize.height > 600) {
-                  return landscape(context);
-                } else {
-                  return landscapeSmall(context);
-                }
+        home: RawKeyboardListener(
+          focusNode: _focusNode,
+          onKey: (RawKeyEvent event) {
+            if (event is RawKeyDownEvent) {
+              if (event.logicalKey == LogicalKeyboardKey.keyR) {
+                _updateUI();
               }
             }
+          },
+          child: Builder(
+              builder: (context) {
+                screenSize = MediaQuery.of(context).size;
+                ui = MainUI(onUpdate: _updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this,);
+                ui.loadSetting();
+                ui.setScreenSize(screenSize);
+
+                if(screenSize.width < screenSize.height) {
+                  return portrait(context);
+                } else {
+                  if (screenSize.height > 600) {
+                    return landscape(context);
+                  } else {
+                    return landscapeSmall(context);
+                  }
+                }
+              }
+          ),
         )
     );
   }
@@ -92,6 +114,7 @@ class EnterSceneState extends State<EnterScene> {
               flex: 3,
               child: Center(
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Padding(
                       padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.005)),
@@ -105,7 +128,18 @@ class EnterSceneState extends State<EnterScene> {
                       padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.1)),
                       child: ui.getStartButton(context),
                     ),
-                    ui.getPuzzleType(context),
+                    Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          MainUI.getPuzzleShape(context),
+                          const SizedBox(
+                            width: 50,
+                          ),
+                          MainUI.getPuzzleSize(context),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -163,7 +197,7 @@ class EnterSceneState extends State<EnterScene> {
                       padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.05)),
                       child: ui.getStartButton(context),
                     ),
-                    ui.getPuzzleType(context),
+                    MainUI.getPuzzleType(context),
                   ],
                 ),
               ),
@@ -224,7 +258,7 @@ class EnterSceneState extends State<EnterScene> {
                           padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.05)),
                           child: ui.getStartButton(context),
                         ),
-                        ui.getPuzzleType(context),
+                        MainUI.getPuzzleType(context),
                       ],
                     ),
                     //continue puzzle

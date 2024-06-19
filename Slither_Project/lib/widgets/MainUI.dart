@@ -12,13 +12,13 @@ import '../l10n/app_localizations.dart';
 //`underline with list` means words of localization (only use for showing)
 class MainUI {
   late Size screenSize;
-  List<String> puzzleType = ["square"];
-  List<String> _puzzleType = ["square"];
+  List<String> puzzleType = ["square", "square2"];
+  static List<String> _puzzleType = ["square", "square2"];
   List<String> puzzleSize = ["small"];
-  List<String> _puzzleSize = ["small"];
+  static List<String> _puzzleSize = ["small"];
   ///shape, size
   List<String> selectedType = ["square", "small"];
-  final List<String> _selectedType = ["square", "small"];
+  static final List<String> _selectedType = ["square", "small"];
   //continue data
   List<String> progressPuzzle = UserInfo.getContinuePuzzle().isEmpty ? [""] : UserInfo.getContinuePuzzle().toList();
   String selectedContinue = "";
@@ -234,26 +234,30 @@ class MainUI {
 
   ///apply language about dropdown button's list
   void applyLanguageCode() {
+    print("in applyLanguageCode : ${_selectedType[0]}");
     //main local
-    _puzzleType = [appLocalizations.translate('MainUI_puzzleShape_square')];
-    _selectedType[0] = _puzzleType[0];
+    _puzzleType = [
+      appLocalizations.translate('MainUI_puzzleShape_square'),
+      appLocalizations.translate('MainUI_puzzleShape_square_inst')
+    ];
+    //_selectedType[0] = _puzzleType[0];
     _puzzleSize = [appLocalizations.translate('MainUI_puzzleSize_small')];
-    _selectedType[1] = _puzzleSize[0];
+    //_selectedType[1] = _puzzleSize[0];
 
 
     //main en
-    puzzleType = ["square"];
-    selectedType[0] = puzzleType[0];
+    puzzleType = ["square", "square2"];
+    //selectedType[0] = puzzleType[0];
     puzzleSize = ["small"];
-    selectedType[1] = puzzleSize[0];
+    //selectedType[1] = puzzleSize[0];
   }
 
   //about puzzle difficulty
-  Widget getPuzzleType(BuildContext context) {
+  static Widget getPuzzleType(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        getPuzzleShape(context),
+        //getPuzzleShape(context),
         const SizedBox(
           width: 50,
         ),
@@ -262,7 +266,7 @@ class MainUI {
     );
   }
 
-  DropdownButton getPuzzleShape(BuildContext context) {
+  static DropdownButton getPuzzleShape(BuildContext context) {
     return DropdownButton(items: _puzzleType
       .map((e) => DropdownMenuItem(
         value: e, // 선택 시 onChanged 를 통해 반환할 value
@@ -271,6 +275,7 @@ class MainUI {
       .toList(),
       onChanged: (value) {
         _selectedType[0] = value;
+        print("_selectedType : ${_selectedType[0]}");
       },
       value: _selectedType[0],
       style: const TextStyle(color: Colors.white, fontSize: 24),
@@ -278,7 +283,7 @@ class MainUI {
     );
   }
 
-  DropdownButton getPuzzleSize(BuildContext context) {
+  static DropdownButton getPuzzleSize(BuildContext context) {
     return DropdownButton(items: _puzzleSize
       .map((e) => DropdownMenuItem(
         value: e, // 선택 시 onChanged 를 통해 반환할 value
