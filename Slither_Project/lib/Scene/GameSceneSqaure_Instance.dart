@@ -1,12 +1,11 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:slitherlink_project/Scene/GameSceneStateSquare.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../ThemeColor.dart';
 import '../widgets/GameUI.dart';
-import '../widgets/SquareBox.dart';
+import '../widgets/SquareBox_Inst.dart';
 
 class GameSceneSquareInst extends StatefulWidget {
   //to access to parameter with Navigator push, variable should be final
@@ -18,7 +17,7 @@ class GameSceneSquareInst extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  GameSceneStateSquare createState() => GameSceneStateSquare();
+  GameSceneStateSquareInst createState() => GameSceneStateSquareInst();
 }
 
 class SquareProviderInst with ChangeNotifier {
@@ -39,7 +38,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
   var puzzleHeight = 10;   //num of Square - vertical
   var numOfEdge = 4;
   late List<Widget> squareField;
-  late List<List<SquareBox>> puzzle;
+  List<List<SquareBoxInst>> puzzle = [];
   var findCycle = false;
   bool isDebug = false;
 
@@ -63,6 +62,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
 
   @override
   void initState() {
+    print("GameSceneStateSquareInst is start");
     super.initState();
     _provider = SquareProviderInst();
     loadPuzzle();
@@ -143,9 +143,9 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
     );
   }
 
-  List<List<SquareBox>> initSquarePuzzle(width, height) {
-    puzzle = [];
-    List<SquareBox> temp = [];
+  List<List<SquareBoxInst>> initSquarePuzzle(width, height) {
+    List<List<SquareBoxInst>> puzzle = [];
+    List<SquareBoxInst> temp = [];
     int i, j;
 
     for(i = 0 ; i < height ; i++) {
@@ -153,13 +153,13 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
 
       for(j = 0 ; j < width ; j++) {
         if(i == 0 && j == 0) {
-          temp.add(SquareBox(isFirstRow: true, isFirstColumn: true, row: i, column: j,));
+          temp.add(SquareBoxInst(gameField: this, isFirstRow: true, isFirstColumn: true, row: i, column: j,));
         } else if(i == 0) {
-          temp.add(SquareBox(isFirstRow: true, row: i, column: j,));
+          temp.add(SquareBoxInst(gameField: this, isFirstRow: true, row: i, column: j,));
         } else if(j == 0) {
-          temp.add(SquareBox(isFirstColumn: true, row: i, column: j,));
+          temp.add(SquareBoxInst(gameField: this, isFirstColumn: true, row: i, column: j,));
         } else {
-          temp.add(SquareBox(row: i, column: j,));
+          temp.add(SquareBoxInst(gameField: this, row: i, column: j,));
         }
       }
       puzzle.add(temp);
@@ -174,8 +174,8 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
       //print("answer is empty");
       return Future.value([]);
     }
-    List<List<SquareBox>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
-    //print("puzzle SquareBox => row ${puzzle.length}, col ${puzzle[0].length}");
+    puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
+    //print("puzzle SquareBoxInst => row ${puzzle.length}, col ${puzzle[0].length}");
     List<Widget> columnChildren = [];
 
     //marking answer line
@@ -224,11 +224,13 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
       );
     }
 
-    squareField = columnChildren;
-    _provider.setSquareField(squareField);
+    setState(() {
+      squareField = columnChildren;
+      _provider.setSquareField(squareField);
+    });
   }
 
-  void setNumWithAnswer(List<List<SquareBox>> puzzle) {
+  void setNumWithAnswer(List<List<SquareBoxInst>> puzzle) {
     int count = 0;
 
     for(int i = 0 ; i < puzzle.length ; i++) {
@@ -263,7 +265,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
   }
 
   //answer is key-value pair
-  void applyUIWithAnswer(List<List<SquareBox>> puzzle, List<List<int>> answer) {
+  void applyUIWithAnswer(List<List<SquareBoxInst>> puzzle, List<List<int>> answer) {
     int lineType;
 
     for(int i = 0 ; i < answer.length ; i++) {      //10 ,11, 10, 11...
@@ -446,8 +448,8 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
       //print("answer is empty");
       return Future.value([]);
     }
-    List<List<SquareBox>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
-    //print("puzzle SquareBox => row ${puzzle.length}, col ${puzzle[0].length}");
+    List<List<SquareBoxInst>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
+    //print("puzzle SquareBoxInst => row ${puzzle.length}, col ${puzzle[0].length}");
     List<Widget> columnChildren = [];
 
     //marking answer line
@@ -475,7 +477,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
     return columnChildren;
   }
 
-  ///SquareBox List's index
+  ///SquareBoxInst List's index
   Set<Color> getNearColor(int row, int col, String pos) {
     Set<Color> use = {};
 
@@ -921,7 +923,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
     print("getUsingColor : $using");
   }
 
-  List<List<SquareBox>> getPuzzle() {
+  List<List<SquareBoxInst>> getPuzzle() {
     return puzzle;
   }
 }

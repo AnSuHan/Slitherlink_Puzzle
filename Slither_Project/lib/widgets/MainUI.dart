@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
+import '../Scene/GameSceneSqaure_Instance.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
@@ -401,13 +402,26 @@ class MainUI {
 
   void changeScene(BuildContext context, String key, {bool isContinue = false}) {
     //print("change Scene with key : $key, isContinue : $isContinue");
+    List<String> token = key.split("_");
 
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => GameSceneSquare(isContinue: isContinue, loadKey: key),
-        )
-    );
+    switch(token[0]) {
+      case "square":
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GameSceneSquareInst(isContinue: isContinue, loadKey: key),
+            )
+        );
+        break;
+      case "triangle":
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GameSceneSquare(isContinue: isContinue, loadKey: key),
+            )
+        );
+        break;
+    }
   }
 
   //about screen size
