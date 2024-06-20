@@ -140,4 +140,22 @@ class ThemeColor {
     //print("rtColor in getLineColor : $rtColor");
     return rtColor;
   }
+
+  Color getColorWithName(String name) {
+    if(lineColor.containsKey(name)) {
+      return lineColor[name]!;
+    }
+    return const Color(0x00000000);
+  }
+
+  int getColorNum(Color color) {
+    Map<Color, String> reverse = {};
+    lineColor.forEach((key, value) {
+      reverse[value] = key;
+    });
+    String rt = reverse[color]!;
+    int value = int.parse(rt.split("_")[1]);
+
+    return value;
+  }
 }

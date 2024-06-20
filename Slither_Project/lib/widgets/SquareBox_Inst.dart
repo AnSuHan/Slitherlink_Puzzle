@@ -116,7 +116,7 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
             Container(
               height: 10,
               width: 50,
-              color: colorUp,
+              color: getLineColor(context, up, thisColor: colorUp, row: row, column: column, dir: "up"),
               child: GestureDetector(
                 onTap: () {
                   lastClick = "up";
@@ -159,7 +159,7 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
             !isFirstColumn ? Container() : Container(
               height: 50,
               width: 10,
-              color: colorLeft,
+              color: getLineColor(context, left, thisColor: colorLeft, row: row, column: column, dir: "left"),
               child: GestureDetector(
                 onTap: () {
                   lastClick = "left";
@@ -196,7 +196,7 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
             Container(
               height: 50,
               width: 10,
-              color: colorRight,
+              color: getLineColor(context, right, thisColor: colorRight, row: row, column: column, dir: "right"),
               child: GestureDetector(
                 onTap: () {
                   lastClick = "right";
@@ -243,7 +243,7 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
             Container(
               height: 10,
               width: 50,
-              color: colorDown,
+              color: getLineColor(context, down, thisColor: colorDown, row: row, column: column, dir: "down"),
               child: GestureDetector(
                 onTap: () {
                   lastClick = "down";
@@ -347,27 +347,6 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
     }
 
     return colors;
-  }
-
-  void changeColor(String pos, Color color) {
-    setState(() {
-      switch (pos) {
-        case "up":
-          widget.colorUp = color;
-          break;
-        case "down":
-          widget.colorDown = color;
-          break;
-        case "left":
-          widget.colorLeft = color;
-          break;
-        case "right":
-          widget.colorRight = color;
-          break;
-        default:
-          throw Exception("Invalid position: $pos");
-      }
-    });
   }
 
   //return over 1

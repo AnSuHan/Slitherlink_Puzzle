@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../MakePuzzle/ReadSquare.dart';
 import '../ThemeColor.dart';
 import '../widgets/GameUI.dart';
+import '../widgets/GameUI_Inst.dart';
 import '../widgets/SquareBox_Inst.dart';
 
 class GameSceneSquareInst extends StatefulWidget {
@@ -24,11 +25,13 @@ class SquareProviderInst with ChangeNotifier {
   List<Widget> squareField = [];
 
   List<Widget> getSquareField() {
+    print("get provider");
     return squareField;
   }
   void setSquareField(List<Widget> field) {
     squareField = field;
     notifyListeners();
+    print("set provider");
   }
 }
 
@@ -53,7 +56,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
   late List<List<int>> submit;
   //UI
   bool showAppbar = false;
-  GameUI ui = GameUI();
+  GameUIInst ui = GameUIInst();
   Map<String, Color> settingColor = ThemeColor().getColor();
   //save and load
   ReadSquare readSquare = ReadSquare();
@@ -889,21 +892,32 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
   }
 
   void changeColor(BuildContext context, int row, int col, String pos, Color color) {
-    switch(pos) {
-      case "up":
-        puzzle[row][col].colorUp = color;
-        break;
-      case "down":
-        puzzle[row][col].colorDown = color;
-        break;
-      case "left":
-        puzzle[row][col].colorLeft = color;
-        break;
-      case "right":
-        puzzle[row][col].colorRight = color;
-        break;
-    }
-    print("changeColor in GameScene $row, $col, $pos, $color");
+    setState(() {
+      switch(pos) {
+        case "up":
+          puzzle[row][col].colorUp = color;
+          puzzle[row][col].up = ThemeColor().getColorNum(color);
+          print("color : ${puzzle[row][col].colorUp}, colorNum : ${puzzle[row][col].up}");
+          break;
+        case "down":
+          puzzle[row][col].colorDown = color;
+          puzzle[row][col].down = ThemeColor().getColorNum(color);
+          print("color : ${puzzle[row][col].colorDown}, colorNum : ${puzzle[row][col].down}");
+          break;
+        case "left":
+          puzzle[row][col].colorLeft = color;
+          puzzle[row][col].left = ThemeColor().getColorNum(color);
+          print("color : ${puzzle[row][col].colorLeft}, colorNum : ${puzzle[row][col].left}");
+          break;
+        case "right":
+          puzzle[row][col].colorRight = color;
+          puzzle[row][col].right = ThemeColor().getColorNum(color);
+          print("color : ${puzzle[row][col].colorRight}, colorNum : ${puzzle[row][col].right}");
+          break;
+      }
+    });
+
+    //print("changeColor in GameScene $row, $col, $pos, $color, $pr");
     //print("${puzzle[row][col-1].colorDown} ${puzzle[row][col].colorDown} ${puzzle[row][col+1].colorDown}");
 
     buildSquarePuzzleColor();
