@@ -12,12 +12,12 @@ import '../l10n/app_localizations.dart';
 //`underline with list` means words of localization (only use for showing)
 class MainUI {
   late Size screenSize;
-  List<String> puzzleType = ["square", "square2"];
-  static List<String> _puzzleType = ["square", "square2"];
+  List<String> puzzleType = ["square", "triangle"];
+  static List<String> _puzzleType = ["square", "triangle"];
   List<String> puzzleSize = ["small"];
   static List<String> _puzzleSize = ["small"];
   ///shape, size
-  List<String> selectedType = ["square", "small"];
+  static List<String> selectedType = ["square", "small"];
   static final List<String> _selectedType = ["square", "small"];
   //continue data
   List<String> progressPuzzle = UserInfo.getContinuePuzzle().isEmpty ? [""] : UserInfo.getContinuePuzzle().toList();
@@ -234,39 +234,52 @@ class MainUI {
 
   ///apply language about dropdown button's list
   void applyLanguageCode() {
-    print("in applyLanguageCode : ${_selectedType[0]}");
     //main local
     _puzzleType = [
       appLocalizations.translate('MainUI_puzzleShape_square'),
-      appLocalizations.translate('MainUI_puzzleShape_square_inst')
+      appLocalizations.translate('MainUI_puzzleShape_triangle')
     ];
-    //_selectedType[0] = _puzzleType[0];
+    switch(_selectedType[0]) {
+      case "square":
+      case "사각형":
+        _selectedType[0] = appLocalizations.translate('MainUI_puzzleShape_square');
+        break;
+      case "triangle":
+      case "삼각형":
+        _selectedType[0] = appLocalizations.translate('MainUI_puzzleShape_triangle');
+        break;
+    }
     _puzzleSize = [appLocalizations.translate('MainUI_puzzleSize_small')];
-    //_selectedType[1] = _puzzleSize[0];
+    switch(_selectedType[1]) {
+      case "small":
+      case "소형":
+        _selectedType[1] = appLocalizations.translate('MainUI_puzzleSize_small');
+        break;
+    }
 
 
     //main en
-    puzzleType = ["square", "square2"];
+    puzzleType = ["square", "triangle"];
     //selectedType[0] = puzzleType[0];
     puzzleSize = ["small"];
     //selectedType[1] = puzzleSize[0];
   }
 
   //about puzzle difficulty
-  static Widget getPuzzleType(BuildContext context) {
+  static Widget getPuzzleType(BuildContext context, VoidCallback onUpdate) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        //getPuzzleShape(context),
+        getPuzzleShape(context, onUpdate),
         const SizedBox(
           width: 50,
         ),
-        getPuzzleSize(context),
+        getPuzzleSize(context, onUpdate),
       ],
     );
   }
 
-  static DropdownButton getPuzzleShape(BuildContext context) {
+  static DropdownButton getPuzzleShape(BuildContext context, VoidCallback onUpdate) {
     return DropdownButton(items: _puzzleType
       .map((e) => DropdownMenuItem(
         value: e, // 선택 시 onChanged 를 통해 반환할 value
@@ -275,7 +288,19 @@ class MainUI {
       .toList(),
       onChanged: (value) {
         _selectedType[0] = value;
-        print("_selectedType : ${_selectedType[0]}");
+        //en
+        switch(value) {
+          case "square":
+          case "사각형":
+            selectedType[0] = "square";
+            break;
+
+          case "triangle":
+          case "삼각형":
+            selectedType[0] = "triangle";
+            break;
+        }
+        onUpdate();
       },
       value: _selectedType[0],
       style: const TextStyle(color: Colors.white, fontSize: 24),
@@ -283,7 +308,7 @@ class MainUI {
     );
   }
 
-  static DropdownButton getPuzzleSize(BuildContext context) {
+  static DropdownButton getPuzzleSize(BuildContext context, VoidCallback onUpdate) {
     return DropdownButton(items: _puzzleSize
       .map((e) => DropdownMenuItem(
         value: e, // 선택 시 onChanged 를 통해 반환할 value
@@ -345,6 +370,7 @@ class MainUI {
       onPressed: () {
         int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
+        print("progressKey : $progressKey");
 
         //restrict puzzle's EOF
         if(Answer(context: context).checkRemainPuzzle(context, selectedType[0], selectedType[1])) {

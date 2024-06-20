@@ -1,6 +1,7 @@
 {
   "MainUI_btnStart": "Start New game",
   "MainUI_puzzleShape_square": "square",
+  "MainUI_puzzleShape_triangle": "triangle",
   "MainUI_puzzleShape_square_inst": "square2",
   "MainUI_puzzleSize_small": "small",
   "MainUI_btnContinue_title": "Game in progress",

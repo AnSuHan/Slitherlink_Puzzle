@@ -129,16 +129,7 @@ class EnterSceneState extends State<EnterScene> {
                       child: ui.getStartButton(context),
                     ),
                     Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          MainUI.getPuzzleShape(context),
-                          const SizedBox(
-                            width: 50,
-                          ),
-                          MainUI.getPuzzleSize(context),
-                        ],
-                      ),
+                      child: MainUI.getPuzzleType(context, _updateUI),
                     ),
                   ],
                 ),
@@ -197,7 +188,7 @@ class EnterSceneState extends State<EnterScene> {
                       padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.05)),
                       child: ui.getStartButton(context),
                     ),
-                    MainUI.getPuzzleType(context),
+                    MainUI.getPuzzleType(context, _updateUI),
                   ],
                 ),
               ),
@@ -258,7 +249,7 @@ class EnterSceneState extends State<EnterScene> {
                           padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.05)),
                           child: ui.getStartButton(context),
                         ),
-                        MainUI.getPuzzleType(context),
+                        MainUI.getPuzzleType(context, _updateUI),
                       ],
                     ),
                     //continue puzzle
