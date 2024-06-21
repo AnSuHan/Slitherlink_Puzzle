@@ -11,7 +11,7 @@ class SquareBoxInst extends StatefulWidget {
   final int row;
   final int column;
 
-  //0 : 기본, 1~ : 유저가 선택, 2 : 힌트
+  //0 : 기본, 1~ : 유저가 선택, -3 : 힌트
   //-1 : 비활성(미선택), -2 : 비활성(선택)
   var up = 0, down = 0, left = 0, right = 0;
   var num = 0;
@@ -120,8 +120,9 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
               child: GestureDetector(
                 onTap: () {
                   lastClick = "up";
+
                   setState(() {
-                    if(up == 0 || up == 2) {
+                    if(up == 0 || up == -3) {
                       up = 1;
                     } else if(up >= 1) {
                       up = 0;
@@ -134,10 +135,12 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
                     colorUp = getLineColor(context, up, thisColor: colorUp, row: row, column: column, dir: "up");
                     widget.colorUp = colorUp;
                     if(up >= 1) {
-                      up = setUpData(colorUp);
-                      colorUp = setUpColor(up);
+                      up = setupData(colorUp);
+                      colorUp = setupColor(up);
                     }
                   });
+
+                  gameField.setProvider(context: context);
                   gameField.checkCompletePuzzle(context);
                 },
               ),
@@ -163,8 +166,9 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
               child: GestureDetector(
                 onTap: () {
                   lastClick = "left";
+
                   setState(() {
-                    if(left == 0 || left == 2) {
+                    if(left == 0 || left == -3) {
                       left = 1;
                     } else if(left >= 1) {
                       left = 0;
@@ -177,10 +181,11 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
                     colorLeft = getLineColor(context, left, thisColor: colorLeft, row: row, column: column, dir: "left");
                     widget.colorLeft = colorLeft;
                     if(left >= 1) {
-                      left = setUpData(colorLeft);
-                      colorLeft = setUpColor(left);
+                      left = setupData(colorLeft);
+                      colorLeft = setupColor(left);
                     }
                   });
+                  gameField.setProvider(context: context);
                   gameField.checkCompletePuzzle(context);
                 },
               ),
@@ -200,8 +205,9 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
               child: GestureDetector(
                 onTap: () {
                   lastClick = "right";
+
                   setState(() {
-                    if(right == 0 || right == 2) {
+                    if(right == 0 || right == -3) {
                       right = 1;
                     } else if(right >= 1) {
                       right = 0;
@@ -214,10 +220,12 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
                     colorRight = getLineColor(context, right, thisColor: colorRight, row: row, column: column, dir: "right");
                     widget.colorRight = colorRight;
                     if(right >= 1) {
-                      right = setUpData(colorRight);
-                      colorRight = setUpColor(right);
+                      right = setupData(colorRight);
+                      colorRight = setupColor(right);
                     }
                   });
+
+                  gameField.setProvider(context: context);
                   gameField.checkCompletePuzzle(context);
                 },
               ),
@@ -247,8 +255,9 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
               child: GestureDetector(
                 onTap: () {
                   lastClick = "down";
+
                   setState(() {
-                    if(down == 0 || down == 2) {
+                    if(down == 0 || down == -3) {
                       down = 1;
                     } else if(down >= 1) {
                       down = 0;
@@ -261,10 +270,12 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
                     colorDown = getLineColor(context, down, thisColor: colorDown, row: row, column: column, dir: "down");
                     widget.colorDown = colorDown;
                     if(down >= 1) {
-                      down = setUpData(colorDown);
-                      colorDown = setUpColor(down);
+                      down = setupData(colorDown);
+                      colorDown = setupColor(down);
                     }
                   });
+
+                  gameField.setProvider(context: context);
                   gameField.checkCompletePuzzle(context);
                 },
               ),
@@ -304,6 +315,7 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
         else {
           //set only this color
           if(colors.length == 1) {
+            print("colors : $colors");
             color = colors.first;
           }
           //change all near colors
@@ -322,24 +334,30 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
           }
         }
         break;
-      case 2:
-        color = themeColor.getLineColor(type: 2);
-        break;
       case -1:
         color = themeColor.getLineColor(type: -1);
         break;
       case -2:
         color = themeColor.getLineColor(type: -2);
         break;
+      case -3:
+        color = themeColor.getLineColor(type: -3);
+        break;
       default:
         color = Colors.grey;
     }
 
+    thisColor = color;
     return color;
   }
 
   Set<Color> isExistNearColor() {
-    List<Color> noUse = [themeColor.getLineColor(type: 0), themeColor.getLineColor(type: 2), themeColor.getLineColor(type: -1), themeColor.getLineColor(type: -2)];
+    List<Color> noUse = [
+      themeColor.getLineColor(type: 0),   //normal
+      themeColor.getLineColor(type: -1),  //disable
+      themeColor.getLineColor(type: -2),  //disable select
+      themeColor.getLineColor(type: -3)   //hint
+    ];
 
     Set<Color> colors = gameField.getNearColor(widget.row, widget.column, lastClick);
     for(int i = 0 ; i < noUse.length ; i++) {
@@ -350,7 +368,7 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
   }
 
   //return over 1
-  int setUpData(Color color) {
+  int setupData(Color color) {
     Map<Color, String> items = {};
 
     ThemeColor().lineColor.forEach((key, value) {
@@ -363,7 +381,7 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
     return intValue;
   }
 
-  Color setUpColor(int value) {
+  Color setupColor(int value) {
     String key = "line_";
     if(value < 10) {
       key += "0$value";

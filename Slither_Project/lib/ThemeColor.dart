@@ -132,7 +132,7 @@ class ThemeColor {
         rtColor = lineColor["line_wrong"]!;
         break;
       //hint
-      case 2:
+      case -3:
         rtColor = lineColor["line_hint"]!;
         break;
     }
