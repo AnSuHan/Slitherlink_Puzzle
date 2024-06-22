@@ -18,9 +18,11 @@ class SquareBoxInst extends StatefulWidget {
 
   Color colorUp, colorDown, colorLeft, colorRight;
   GameSceneStateSquareInst? gameField;
+  final SquareProviderInst provider; // Provider 객체 추가
 
   SquareBoxInst({
     Key? key,
+    required this.provider,
     this.gameField,
     this.isFirstRow = false,
     this.isFirstColumn = false,
@@ -54,6 +56,7 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
   void initState() {
     super.initState();
     _computeColors();
+    gameField = widget.provider.gameField; // GameSceneStateSquareInst 참조 가져오기
   }
 
   @override
@@ -140,7 +143,6 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
                     }
                   });
 
-                  gameField.setProvider(context: context);
                   gameField.checkCompletePuzzle(context);
                 },
               ),
@@ -185,7 +187,6 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
                       colorLeft = setupColor(left);
                     }
                   });
-                  gameField.setProvider(context: context);
                   gameField.checkCompletePuzzle(context);
                 },
               ),
@@ -225,7 +226,6 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
                     }
                   });
 
-                  gameField.setProvider(context: context);
                   gameField.checkCompletePuzzle(context);
                 },
               ),
@@ -275,7 +275,6 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
                     }
                   });
 
-                  gameField.setProvider(context: context);
                   gameField.checkCompletePuzzle(context);
                 },
               ),
@@ -296,7 +295,7 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
 
   Color getLineColor(BuildContext context, int type, {Color? thisColor, int? row, int? column, String? dir}) {
     Color? color = thisColor;
-    //0 : 기본, 1 : 유저가 선택, 2 : 힌트
+    //0 : 기본, 1 : 유저가 선택, -3 : 힌트
     //-1 : 비활성(미선택), -2 : 비활성(선택)
     //print("type : $type, thisColor : $thisColor");
     switch(type) {
@@ -317,12 +316,14 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
           if(colors.length == 1) {
             print("colors : $colors");
             color = colors.first;
+            widget.provider.getNewColor(row!, column!, dir!);
           }
           //change all near colors
           else if(colors.length == 2){
             color = colors.first;
             //두 개의 색이 만난 경우 변경해야 하는 라인들의 목록
             List<dynamic> changes = gameField.getOldColorList(row!, column!, dir!, color);
+            widget.provider.getNewColor(row, column, dir);
             print("_____ getOldColorList _____");
             for(int i = 0 ; i < changes.length ; i++) {
               print("changes : ${changes[i]}");

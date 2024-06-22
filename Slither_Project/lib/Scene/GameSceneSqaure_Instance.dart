@@ -23,6 +23,8 @@ class GameSceneSquareInst extends StatefulWidget {
 
 class SquareProviderInst with ChangeNotifier {
   List<Widget> squareField = [];
+  List<List<SquareBoxInst>> puzzle = [];
+  late GameSceneStateSquareInst gameField; // GameSceneStateSquareInst 인스턴스 추가
 
   List<Widget> getSquareField() {
     print("get provider");
@@ -33,6 +35,22 @@ class SquareProviderInst with ChangeNotifier {
     notifyListeners();
     print("set provider");
   }
+
+  void setPuzzle(List<List<SquareBoxInst>> puzzle) {
+    this.puzzle = puzzle;
+  }
+
+  void setGameField(GameSceneStateSquareInst gameField) {
+    this.gameField = gameField;
+  }
+
+  Color getNewColor(int row, int col, String pos) {
+    Color rtColor = const Color(0x00000000);
+    print("in provider getNewColor()");
+
+
+    return rtColor;
+  }
 }
 
 class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
@@ -40,7 +58,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
   var puzzleWidth = 20;    //num of Square - horizontal
   var puzzleHeight = 10;   //num of Square - vertical
   var numOfEdge = 4;
-  late List<Widget> squareField;
+  //late List<Widget> squareField;
   List<List<SquareBoxInst>> puzzle = [];
   var findCycle = false;
   bool isDebug = false;
@@ -89,16 +107,18 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
       );
     }
 
-    squareField = await buildSquarePuzzleAnswer(answer, isContinue: widget.isContinue);
-    _provider.setSquareField(squareField);
+    //squareField = await buildSquarePuzzleAnswer(answer, isContinue: widget.isContinue);
+    _provider.setSquareField(await buildSquarePuzzleAnswer(answer, isContinue: widget.isContinue));
+    _provider.setGameField(this);
   }
 
   void restart() async {
     submit = List.generate(answer.length, (row) =>
         List.filled(answer[row].length, 0),
     );
-    squareField = await buildSquarePuzzleAnswer(answer);
-    _provider.setSquareField(squareField);
+    //squareField = await buildSquarePuzzleAnswer(answer);
+    _provider.setSquareField(await buildSquarePuzzleAnswer(answer));
+    _provider.setGameField(this);
   }
 
   @override
@@ -109,6 +129,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
         builder: (context, provider, child) {
           screenSize = MediaQuery.of(context).size;
           ui.setScreenSize(screenSize);
+          _provider = provider;
 
           return Scaffold(
             appBar: !showAppbar ? null : ui.getGameAppBar(context, settingColor["appBar"]!, settingColor["appIcon"]!),
@@ -156,18 +177,19 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
 
       for(j = 0 ; j < width ; j++) {
         if(i == 0 && j == 0) {
-          temp.add(SquareBoxInst(gameField: this, isFirstRow: true, isFirstColumn: true, row: i, column: j,));
+          temp.add(SquareBoxInst(gameField: this, provider: _provider, isFirstRow: true, isFirstColumn: true, row: i, column: j,));
         } else if(i == 0) {
-          temp.add(SquareBoxInst(gameField: this, isFirstRow: true, row: i, column: j,));
+          temp.add(SquareBoxInst(gameField: this, provider: _provider, isFirstRow: true, row: i, column: j,));
         } else if(j == 0) {
-          temp.add(SquareBoxInst(gameField: this, isFirstColumn: true, row: i, column: j,));
+          temp.add(SquareBoxInst(gameField: this, provider: _provider, isFirstColumn: true, row: i, column: j,));
         } else {
-          temp.add(SquareBoxInst(gameField: this, row: i, column: j,));
+          temp.add(SquareBoxInst(gameField: this, provider: _provider, row: i, column: j,));
         }
       }
       puzzle.add(temp);
     }
 
+    _provider.setPuzzle(puzzle);
     return puzzle;
   }
 
@@ -228,8 +250,8 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
     }
 
     setState(() {
-      squareField = columnChildren;
-      _provider.setSquareField(squareField);
+      //squareField = columnChildren;
+      _provider.setSquareField(columnChildren);
     });
   }
 
@@ -421,8 +443,8 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
   ///control only submit data
   void applyLabel(List<List<int>> data) async {
     submit = data;
-    squareField = await buildSquarePuzzleLabel(answer, submit);
-    _provider.setSquareField(squareField);
+    //squareField = await buildSquarePuzzleLabel(answer, submit);
+    _provider.setSquareField(await buildSquarePuzzleLabel(answer, submit));
   }
 
   Future<List<Widget>> puzzleToSquareField() async {
