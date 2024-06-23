@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../Scene/GameSceneSquareProvider.dart';
 import '../ThemeColor.dart';
-import '../provider/SquareProviderProvider.dart';
 
 // ignore: must_be_immutable
 class SquareBoxProvider extends StatefulWidget {
@@ -12,12 +10,11 @@ class SquareBoxProvider extends StatefulWidget {
   final int row;
   final int column;
 
+  //각 숫자는 색에 대한 의미를 같이 가짐
   //0 : 기본, 1~ : 유저가 선택, -3 : 힌트
   //-1 : 비활성(미선택), -2 : 비활성(선택)
   var up = 0, down = 0, left = 0, right = 0;
   var num = 0;
-
-  Color colorUp, colorDown, colorLeft, colorRight;
 
   SquareBoxProvider({
     Key? key,
@@ -25,12 +22,7 @@ class SquareBoxProvider extends StatefulWidget {
     this.isFirstColumn = false,
     required this.row,
     required this.column,
-  }) :
-        colorUp = const Color(0xFFC0C0C0),
-        colorDown = const Color(0xFFC0C0C0),
-        colorLeft = const Color(0xFFC0C0C0),
-        colorRight = const Color(0xFFC0C0C0),
-        super(key: key);
+  }) : super(key: key);
 
   @override
   SquareBoxStateProvider createState() => SquareBoxStateProvider();
@@ -41,19 +33,7 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
   Map<String, Color> settingColor = ThemeColor().getColor();
   ThemeColor themeColor = ThemeColor();
 
-  late Color colorUp;
-  late Color colorDown;
-  late Color colorLeft;
-  late Color colorRight;
-
   String lastClick = "";
-  //late GameSceneStateSquareProvider gameField;
-
-  @override
-  void initState() {
-    super.initState();
-    _computeColors();
-  }
 
   @override
   void didUpdateWidget(covariant SquareBoxProvider oldWidget) {
@@ -63,20 +43,8 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
         widget.left != oldWidget.left ||
         widget.right != oldWidget.right ||
         widget.row != oldWidget.row ||
-        widget.column != oldWidget.column ||
-        widget.colorUp != oldWidget.colorUp ||
-        widget.colorDown != oldWidget.colorDown ||
-        widget.colorLeft != oldWidget.colorLeft ||
-        widget.colorRight != oldWidget.colorRight) {
-      _computeColors();
+        widget.column != oldWidget.column) {
     }
-  }
-
-  void _computeColors() {
-    colorUp = getLineColor(context, widget.up, thisColor: widget.colorUp, row: widget.row, column: widget.column);
-    colorDown = getLineColor(context, widget.down, thisColor: widget.colorDown, row: widget.row, column: widget.column);
-    colorLeft = getLineColor(context, widget.left, thisColor: widget.colorLeft, row: widget.row, column: widget.column);
-    colorRight = getLineColor(context, widget.right, thisColor: widget.colorRight, row: widget.row, column: widget.column);
   }
 
   @override
@@ -114,7 +82,7 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
             Container(
               height: 10,
               width: 50,
-              color: getLineColor(context, up, thisColor: colorUp, row: row, column: column, dir: "up"),
+              color: setupColor(widget.up),
               child: GestureDetector(
                 onTap: () {
                   lastClick = "up";
@@ -130,12 +98,6 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                       up = -1;
                     }
                     widget.up = up;
-                    colorUp = getLineColor(context, up, thisColor: colorUp, row: row, column: column, dir: "up");
-                    widget.colorUp = colorUp;
-                    if(up >= 1) {
-                      up = setupData(colorUp);
-                      colorUp = setupColor(up);
-                    }
                   });
 
                   //gameField.checkCompletePuzzle(context);
@@ -160,7 +122,7 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
             !isFirstColumn ? Container() : Container(
               height: 50,
               width: 10,
-              color: getLineColor(context, left, thisColor: colorLeft, row: row, column: column, dir: "left"),
+              color: setupColor(widget.left),
               child: GestureDetector(
                 onTap: () {
                   lastClick = "left";
@@ -176,12 +138,6 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                       left = -1;
                     }
                     widget.left = left;
-                    colorLeft = getLineColor(context, left, thisColor: colorLeft, row: row, column: column, dir: "left");
-                    widget.colorLeft = colorLeft;
-                    if(left >= 1) {
-                      left = setupData(colorLeft);
-                      colorLeft = setupColor(left);
-                    }
                   });
 
                   //gameField.checkCompletePuzzle(context);
@@ -200,7 +156,7 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
             Container(
               height: 50,
               width: 10,
-              color: getLineColor(context, right, thisColor: colorRight, row: row, column: column, dir: "right"),
+              color: setupColor(widget.right),
               child: GestureDetector(
                 onTap: () {
                   lastClick = "right";
@@ -216,12 +172,6 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                       right = -1;
                     }
                     widget.right = right;
-                    colorRight = getLineColor(context, right, thisColor: colorRight, row: row, column: column, dir: "right");
-                    widget.colorRight = colorRight;
-                    if(right >= 1) {
-                      right = setupData(colorRight);
-                      colorRight = setupColor(right);
-                    }
                   });
 
                   //gameField.checkCompletePuzzle(context);
@@ -250,7 +200,7 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
             Container(
               height: 10,
               width: 50,
-              color: getLineColor(context, down, thisColor: colorDown, row: row, column: column, dir: "down"),
+              color: setupColor(widget.down),
               child: GestureDetector(
                 onTap: () {
                   lastClick = "down";
@@ -266,12 +216,6 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                       down = -1;
                     }
                     widget.down = down;
-                    colorDown = getLineColor(context, down, thisColor: colorDown, row: row, column: column, dir: "down");
-                    widget.colorDown = colorDown;
-                    if(down >= 1) {
-                      down = setupData(colorDown);
-                      colorDown = setupColor(down);
-                    }
                   });
 
                   //gameField.checkCompletePuzzle(context);
@@ -293,8 +237,8 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
     );
   }
 
-  Color getLineColor(BuildContext context, int type, {Color? thisColor, int? row, int? column, String? dir}) {
-    Color? color = thisColor;
+  Color getLineColor(BuildContext context, int type, {int? row, int? column, String? dir}) {
+    Color? color = Colors.black;
     //0 : 기본, 1 : 유저가 선택, -3 : 힌트
     //-1 : 비활성(미선택), -2 : 비활성(선택)
     //print("type : $type, thisColor : $thisColor");
@@ -306,8 +250,6 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
         Set<Color> colors = isExistNearColor();
 
         //use new color
-        ///TODO : 현재 색을 변경해야 하는 라인 1개는 찾을 수 있지만, 색을 변경해도 UI에 반영이 되지 않음
-        ///TODO : 따라서 Triangle의 작성을 시작하고 해당 클래스는 instance로만 작성
         if(colors.isEmpty) {
           color = themeColor.getLineColor();
         }
@@ -320,7 +262,7 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
           //change all near colors
           else if(colors.length == 2){
             color = colors.first;
-            //두 개의 색이 만난 경우 변경해야 하는 라인들의 목록
+            //두 개의 색이 만난 경우 변경해야 하는 라인의 목록
             /*
             List<dynamic> changes = gameField.getOldColorList(row!, column!, dir!, color);
             print("_____ getOldColorList _____");
@@ -348,7 +290,6 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
         color = Colors.grey;
     }
 
-    thisColor = color;
     return color;
   }
 
@@ -386,7 +327,23 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
 
   Color setupColor(int value) {
     String key = "line_";
-    if(value < 10) {
+    if(value <= 0) {
+      switch(value) {
+        case 0:
+          key += "normal";
+          break;
+        case -1:
+          key += "disable";
+          break;
+        case -2:
+          key += "wrong";
+          break;
+        case -3:
+          key += "hint";
+          break;
+      }
+    }
+    else if(value < 10) {
       key += "0$value";
     }
     else {
