@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../ThemeColor.dart';
+import '../provider/SquareProviderProvider.dart';
 
 // ignore: must_be_immutable
 class SquareBoxProvider extends StatefulWidget {
@@ -100,8 +102,8 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                     widget.up = up;
                   });
 
-                  //gameField.checkCompletePuzzle(context);
-                  //gameField.updatePuzzle();
+                  Provider.of<SquareProviderProvider>(context, listen: false)
+                      .updateSquareBox(row, column, up: up);
                 },
               ),
             ),
@@ -140,8 +142,8 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                     widget.left = left;
                   });
 
-                  //gameField.checkCompletePuzzle(context);
-                  //gameField.updatePuzzle();
+                  Provider.of<SquareProviderProvider>(context, listen: false)
+                      .updateSquareBox(row, column, left: left);
                 },
               ),
             ),
@@ -174,8 +176,8 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                     widget.right = right;
                   });
 
-                  //gameField.checkCompletePuzzle(context);
-                  //gameField.updatePuzzle();
+                  Provider.of<SquareProviderProvider>(context, listen: false)
+                      .updateSquareBox(row, column, right: right);
                 },
               ),
             ),
@@ -218,8 +220,8 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                     widget.down = down;
                   });
 
-                  //gameField.checkCompletePuzzle(context);
-                  //gameField.updatePuzzle();
+                  Provider.of<SquareProviderProvider>(context, listen: false)
+                      .updateSquareBox(row, column, down: down);
                 },
               ),
             ),

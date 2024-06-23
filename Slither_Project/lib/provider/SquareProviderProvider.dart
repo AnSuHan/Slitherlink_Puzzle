@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../MakePuzzle/ReadSquare.dart';
 import '../Scene/GameSceneSquareProvider.dart';
 import '../widgets/SquareBoxProvider.dart';
 
 class SquareProviderProvider with ChangeNotifier {
   SquareProviderProvider({isContinue = false});
+
+  ReadSquare readSquare = ReadSquare();
 
   List<Widget> squareField = [];
   List<List<SquareBoxProvider>> puzzle = [];
@@ -19,6 +22,52 @@ class SquareProviderProvider with ChangeNotifier {
     print("call init");
     puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
     squareField = await buildSquarePuzzleAnswer(answer, isContinue: isContinue);
+    notifyListeners();
+    setLineColor(2, 4, "down", 3);
+  }
+
+  ///update `puzzle` variable
+  void updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) {
+    if (up != null) puzzle[row][column].up = up;
+    if (down != null) puzzle[row][column].down = down;
+    if (left != null) puzzle[row][column].left = left;
+    if (right != null) puzzle[row][column].right = right;
+
+    refreshSubmit();
+    notifyListeners();
+  }
+
+  void refreshSubmit() async {
+    submit = await readSquare.readSubmit(puzzle);
+
+    String temp = "";
+    for(int i = 0 ; i < submit.length ; i++) {
+      for(int j = 0 ; j < submit[i].length ; j++) {
+        temp += "${submit[i][j]} ";
+      }
+      print("row $i : $temp");
+      temp = "";
+    }
+  }
+
+  //row, column is puzzle's row, column
+  void setLineColor(int row, int column, String dir, int color) {
+    switch(dir) {
+      case "up":
+        puzzle[row][column].up = color;
+        break;
+      case "down":
+        puzzle[row][column].down = color;
+        break;
+      case "left":
+        puzzle[row][column].left = color;
+        break;
+      case "right":
+        puzzle[row][column].right = color;
+        break;
+    }
+    refreshSubmit();
+    notifyListeners();
   }
 
   List<List<SquareBoxProvider>> initSquarePuzzle(width, height) {
