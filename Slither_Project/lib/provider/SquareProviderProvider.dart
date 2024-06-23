@@ -16,9 +16,10 @@ class SquareProviderProvider with ChangeNotifier {
   bool isContinue = false;
 
   ///Init
-  void init() {
+  void init() async {
     print("call init");
-
+    puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
+    squareField = await buildSquarePuzzleAnswer(answer, isContinue: isContinue);
   }
 
   List<List<SquareBoxProvider>> initSquarePuzzle(width, height) {
@@ -791,24 +792,6 @@ class SquareProviderProvider with ChangeNotifier {
     //print("${puzzle[row][col-1].colorDown} ${puzzle[row][col].colorDown} ${puzzle[row][col+1].colorDown}");
 
     buildSquarePuzzleColor();
-  }
-
-  void printUsingColor() {
-    Set<Color> using = {};
-    for(int i = 0 ; i < puzzle.length ; i++) {
-      for(int j = 0 ; j < puzzle[i].length ; j++){
-        using.add(puzzle[i][j].colorUp);
-        using.add(puzzle[i][j].colorDown);
-        using.add(puzzle[i][j].colorLeft);
-        using.add(puzzle[i][j].colorRight);
-      }
-    }
-
-    print("getUsingColor : $using");
-  }
-
-  List<List<SquareBoxProvider>> getPuzzle() {
-    return puzzle;
   }
 
   ///getter and setter about widgets
