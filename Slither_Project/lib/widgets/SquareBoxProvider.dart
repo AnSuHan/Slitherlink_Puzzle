@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../Scene/GameSceneSquare_Instance.dart';
+import '../Scene/GameSceneSquareProvider.dart';
 import '../ThemeColor.dart';
-import '../provider/SquareProviderInst.dart';
+import '../provider/SquareProviderProvider.dart';
 
 // ignore: must_be_immutable
-class SquareBoxInst extends StatefulWidget {
+class SquareBoxProvider extends StatefulWidget {
   final bool isFirstRow;
   final bool isFirstColumn;
   //SquareBox's position in `puzzle`
@@ -18,13 +18,9 @@ class SquareBoxInst extends StatefulWidget {
   var num = 0;
 
   Color colorUp, colorDown, colorLeft, colorRight;
-  GameSceneStateSquareInst? gameField;
-  final SquareProviderInst provider; // Provider 객체 추가
 
-  SquareBoxInst({
+  SquareBoxProvider({
     Key? key,
-    required this.provider,
-    this.gameField,
     this.isFirstRow = false,
     this.isFirstColumn = false,
     required this.row,
@@ -37,10 +33,10 @@ class SquareBoxInst extends StatefulWidget {
         super(key: key);
 
   @override
-  SquareBoxStateInst createState() => SquareBoxStateInst();
+  SquareBoxStateProvider createState() => SquareBoxStateProvider();
 }
 
-class SquareBoxStateInst extends State<SquareBoxInst> {
+class SquareBoxStateProvider extends State<SquareBoxProvider> {
   //setting color
   Map<String, Color> settingColor = ThemeColor().getColor();
   ThemeColor themeColor = ThemeColor();
@@ -51,17 +47,16 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
   late Color colorRight;
 
   String lastClick = "";
-  late GameSceneStateSquareInst gameField;
+  //late GameSceneStateSquareProvider gameField;
 
   @override
   void initState() {
     super.initState();
     _computeColors();
-    gameField = widget.provider.gameField; // GameSceneStateSquareInst 참조 가져오기
   }
 
   @override
-  void didUpdateWidget(covariant SquareBoxInst oldWidget) {
+  void didUpdateWidget(covariant SquareBoxProvider oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.up != oldWidget.up ||
         widget.down != oldWidget.down ||
@@ -97,7 +92,6 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
 
     int row = widget.row;
     int column = widget.column;
-    gameField = widget.gameField!;
 
     return Column(
       children: [
@@ -144,8 +138,8 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
                     }
                   });
 
-                  gameField.checkCompletePuzzle(context);
-                  gameField.updatePuzzle();
+                  //gameField.checkCompletePuzzle(context);
+                  //gameField.updatePuzzle();
                 },
               ),
             ),
@@ -190,8 +184,8 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
                     }
                   });
 
-                  gameField.checkCompletePuzzle(context);
-                  gameField.updatePuzzle();
+                  //gameField.checkCompletePuzzle(context);
+                  //gameField.updatePuzzle();
                 },
               ),
             ),
@@ -230,8 +224,8 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
                     }
                   });
 
-                  gameField.checkCompletePuzzle(context);
-                  gameField.updatePuzzle();
+                  //gameField.checkCompletePuzzle(context);
+                  //gameField.updatePuzzle();
                 },
               ),
             ),
@@ -280,8 +274,8 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
                     }
                   });
 
-                  gameField.checkCompletePuzzle(context);
-                  gameField.updatePuzzle();
+                  //gameField.checkCompletePuzzle(context);
+                  //gameField.updatePuzzle();
                 },
               ),
             ),
@@ -322,19 +316,19 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
           if(colors.length == 1) {
             print("colors : $colors");
             color = colors.first;
-            widget.provider.getNewColor(row!, column!, dir!);
           }
           //change all near colors
           else if(colors.length == 2){
             color = colors.first;
             //두 개의 색이 만난 경우 변경해야 하는 라인들의 목록
+            /*
             List<dynamic> changes = gameField.getOldColorList(row!, column!, dir!, color);
-            widget.provider.getNewColor(row, column, dir);
             print("_____ getOldColorList _____");
             for(int i = 0 ; i < changes.length ; i++) {
               print("changes : ${changes[i]}");
-              gameField.changeColor(context, changes[i][0], changes[i][1], changes[i][2], color);
+              //gameField.changeColor(context, changes[i][0], changes[i][1], changes[i][2], color);
             }
+             */
           }
           else {
             throw Exception("UnExpected Exception occurred");
@@ -366,12 +360,14 @@ class SquareBoxStateInst extends State<SquareBoxInst> {
       themeColor.getLineColor(type: -3)   //hint
     ];
 
+    /*
     Set<Color> colors = gameField.getNearColor(widget.row, widget.column, lastClick);
     for(int i = 0 ; i < noUse.length ; i++) {
       colors.remove(noUse[i]);
     }
+     */
 
-    return colors;
+    return {};
   }
 
   //return over 1

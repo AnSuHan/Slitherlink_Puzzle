@@ -3,7 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
-import '../Scene/GameSceneSqaure_Instance.dart';
+import '../Scene/GameSceneSquareProvider.dart';
+import '../Scene/GameSceneSquare_Instance.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
@@ -409,7 +410,7 @@ class MainUI {
         Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => GameSceneSquareInst(isContinue: isContinue, loadKey: key),
+              builder: (context) => GameSceneSquareProvider(isContinue: isContinue, loadKey: key),
             )
         );
         break;

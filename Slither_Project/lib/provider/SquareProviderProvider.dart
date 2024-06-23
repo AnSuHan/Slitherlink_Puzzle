@@ -1,175 +1,29 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 
-import '../MakePuzzle/ReadSquare.dart';
+import '../Scene/GameSceneSquareProvider.dart';
 import '../ThemeColor.dart';
-import '../widgets/GameUI.dart';
-import '../widgets/GameUI_Inst.dart';
-import '../widgets/SquareBox_Inst.dart';
+import '../widgets/SquareBoxProvider.dart';
 
-class GameSceneSquareInst extends StatefulWidget {
-  //to access to parameter with Navigator push, variable should be final
-  final bool isContinue;
-  final String loadKey;
+class SquareProviderProvider with ChangeNotifier {
+  SquareProviderProvider({isContinue = false});
 
-  const GameSceneSquareInst({
-    Key? key, required this.isContinue, required this.loadKey
-  }) : super(key: key);
-
-  @override
-  GameSceneStateSquareInst createState() => GameSceneStateSquareInst();
-}
-
-class SquareProviderInst with ChangeNotifier {
   List<Widget> squareField = [];
-  List<List<SquareBoxInst>> puzzle = [];
-  late GameSceneStateSquareInst gameField; // GameSceneStateSquareInst 인스턴스 추가
+  List<List<SquareBoxProvider>> puzzle = [];
+  late GameSceneStateSquareProvider gameField; // GameSceneStateSquareProvider 인스턴스 추가
 
-  List<Widget> getSquareField() {
-    print("get provider");
-    return squareField;
-  }
-  void setSquareField(List<Widget> field) {
-    squareField = field;
-    notifyListeners();
-    print("set provider");
-  }
-
-  void setPuzzle(List<List<SquareBoxInst>> puzzle) {
-    this.puzzle = puzzle;
-  }
-
-  void setGameField(GameSceneStateSquareInst gameField) {
-    this.gameField = gameField;
-  }
-
-  Color getNewColor(int row, int col, String pos) {
-    Color rtColor = const Color(0x00000000);
-    print("in provider getNewColor()");
-
-
-    return rtColor;
-  }
-}
-
-class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
-  late Size screenSize;
-  var puzzleWidth = 20;    //num of Square - horizontal
-  var puzzleHeight = 10;   //num of Square - vertical
-  var numOfEdge = 4;
-  //late List<Widget> squareField;
-  List<List<SquareBoxInst>> puzzle = [];
-  var findCycle = false;
-  bool isDebug = false;
-
-  //provider for using setState in other class
-  SquareProviderInst _provider = SquareProviderInst();
-
-  //check complete puzzle;
-  bool isComplete = false;
-  bool isContinue = false;
-  String loadKey = "";
   late List<List<int>> answer;
   late List<List<int>> submit;
-  //UI
-  bool showAppbar = false;
-  GameUIInst ui = GameUIInst();
-  Map<String, Color> settingColor = ThemeColor().getColor();
-  //save and load
-  ReadSquare readSquare = ReadSquare();
+  bool isContinue = false;
 
-  GameSceneStateSquareInst({this.isContinue = false, this.loadKey = ""});
+  ///Init
+  void init() {
+    print("call init");
 
-  @override
-  void initState() {
-    print("GameSceneStateSquareInst is start");
-    super.initState();
-    _provider = SquareProviderInst();
-    loadPuzzle();
   }
 
-  void loadPuzzle() async {
-    //print("loadKey : ${widget.loadKey}");
-    isComplete = false;
-
-    if(widget.isContinue) {
-      //answer = await readSquare.loadPuzzle(MainUI.getProgressKey());
-      answer = await readSquare.loadPuzzle(widget.loadKey);
-
-      submit = await readSquare.loadPuzzle("${widget.loadKey}_continue");
-    }
-    else {
-      answer = await readSquare.loadPuzzle(widget.loadKey);
-
-      submit = List.generate(answer.length, (row) =>
-          List.filled(answer[row].length, 0),
-      );
-    }
-
-    //squareField = await buildSquarePuzzleAnswer(answer, isContinue: widget.isContinue);
-    _provider.setSquareField(await buildSquarePuzzleAnswer(answer, isContinue: widget.isContinue));
-    _provider.setGameField(this);
-  }
-
-  void restart() async {
-    submit = List.generate(answer.length, (row) =>
-        List.filled(answer[row].length, 0),
-    );
-    //squareField = await buildSquarePuzzleAnswer(answer);
-    _provider.setSquareField(await buildSquarePuzzleAnswer(answer));
-    _provider.setGameField(this);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider( // ChangeNotifierProvider 사용
-      create: (context) => _provider, //ChangeNotifier class
-      child: Consumer<SquareProviderInst>(
-        builder: (context, provider, child) {
-          screenSize = MediaQuery.of(context).size;
-          ui.setScreenSize(screenSize);
-          _provider = provider;
-
-          return Scaffold(
-            appBar: !showAppbar ? null : ui.getGameAppBar(context, settingColor["appBar"]!, settingColor["appIcon"]!),
-            body: GestureDetector(
-              onTap: () {
-                setState(() {
-                  showAppbar = !showAppbar;
-                });
-              },
-              child: AbsorbPointer(
-                absorbing: isComplete,
-                child: Container(
-                  color: settingColor["background"],
-                  child: InteractiveViewer(
-                    boundaryMargin: EdgeInsets.symmetric(
-                      horizontal: screenSize.width * 0.4,
-                      vertical: screenSize.height * 0.4,
-                    ),
-                    constrained: false,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 20),
-                      child: Column(
-                        //provider와 ChangeNotifier를 통해 접근
-                        children: _provider.getSquareField(),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  List<List<SquareBoxInst>> initSquarePuzzle(width, height) {
-    List<List<SquareBoxInst>> puzzle = [];
-    List<SquareBoxInst> temp = [];
+  List<List<SquareBoxProvider>> initSquarePuzzle(width, height) {
+    List<List<SquareBoxProvider>> puzzle = [];
+    List<SquareBoxProvider> temp = [];
     int i, j;
 
     for(i = 0 ; i < height ; i++) {
@@ -177,19 +31,18 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
 
       for(j = 0 ; j < width ; j++) {
         if(i == 0 && j == 0) {
-          temp.add(SquareBoxInst(gameField: this, provider: _provider, isFirstRow: true, isFirstColumn: true, row: i, column: j,));
+          temp.add(SquareBoxProvider(isFirstRow: true, isFirstColumn: true, row: i, column: j,));
         } else if(i == 0) {
-          temp.add(SquareBoxInst(gameField: this, provider: _provider, isFirstRow: true, row: i, column: j,));
+          temp.add(SquareBoxProvider(isFirstRow: true, row: i, column: j,));
         } else if(j == 0) {
-          temp.add(SquareBoxInst(gameField: this, provider: _provider, isFirstColumn: true, row: i, column: j,));
+          temp.add(SquareBoxProvider(isFirstColumn: true, row: i, column: j,));
         } else {
-          temp.add(SquareBoxInst(gameField: this, provider: _provider, row: i, column: j,));
+          temp.add(SquareBoxProvider(row: i, column: j,));
         }
       }
       puzzle.add(temp);
     }
 
-    _provider.setPuzzle(puzzle);
     return puzzle;
   }
 
@@ -200,7 +53,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
       return Future.value([]);
     }
     puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
-    //print("puzzle SquareBoxInst => row ${puzzle.length}, col ${puzzle[0].length}");
+    //print("puzzle SquareBoxProvider => row ${puzzle.length}, col ${puzzle[0].length}");
     List<Widget> columnChildren = [];
 
     //marking answer line
@@ -248,14 +101,9 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
         ),
       );
     }
-
-    setState(() {
-      //squareField = columnChildren;
-      _provider.setSquareField(columnChildren);
-    });
   }
 
-  void setNumWithAnswer(List<List<SquareBoxInst>> puzzle) {
+  void setNumWithAnswer(List<List<SquareBoxProvider>> puzzle) {
     int count = 0;
 
     for(int i = 0 ; i < puzzle.length ; i++) {
@@ -290,7 +138,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
   }
 
   //answer is key-value pair
-  void applyUIWithAnswer(List<List<SquareBoxInst>> puzzle, List<List<int>> answer) {
+  void applyUIWithAnswer(List<List<SquareBoxProvider>> puzzle, List<List<int>> answer) {
     int lineType;
 
     for(int i = 0 ; i < answer.length ; i++) {      //10 ,11, 10, 11...
@@ -410,7 +258,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
     //complete puzzle
     print("complete puzzle!");
     //clear continue puzzle
-    isComplete = true;
+    //isComplete = true;
     showComplete(context);
     //UserInfo.ContinuePuzzle();
   }
@@ -444,7 +292,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
   void applyLabel(List<List<int>> data) async {
     submit = data;
     //squareField = await buildSquarePuzzleLabel(answer, submit);
-    _provider.setSquareField(await buildSquarePuzzleLabel(answer, submit));
+    //_provider.setSquareField(await buildSquarePuzzleLabel(answer, submit));
   }
 
   Future<List<Widget>> puzzleToSquareField() async {
@@ -473,8 +321,8 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
       //print("answer is empty");
       return Future.value([]);
     }
-    List<List<SquareBoxInst>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
-    //print("puzzle SquareBoxInst => row ${puzzle.length}, col ${puzzle[0].length}");
+    List<List<SquareBoxProvider>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
+    //print("puzzle SquareBoxProvider => row ${puzzle.length}, col ${puzzle[0].length}");
     List<Widget> columnChildren = [];
 
     //marking answer line
@@ -502,7 +350,7 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
     return columnChildren;
   }
 
-  ///SquareBoxInst List's index
+  ///SquareBoxProvider List's index
   Set<Color> getNearColor(int row, int col, String pos) {
     Set<Color> use = {};
 
@@ -914,31 +762,31 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
   }
 
   void changeColor(BuildContext context, int row, int col, String pos, Color color) {
-    setState(() {
-      switch(pos) {
-        case "up":
-          puzzle[row][col].colorUp = color;
-          puzzle[row][col].up = ThemeColor().getColorNum(color);
-          print("color : ${puzzle[row][col].colorUp}, colorNum : ${puzzle[row][col].up}");
-          break;
-        case "down":
-          puzzle[row][col].colorDown = color;
-          puzzle[row][col].down = ThemeColor().getColorNum(color);
-          print("color : ${puzzle[row][col].colorDown}, colorNum : ${puzzle[row][col].down}");
-          break;
-        case "left":
-          puzzle[row][col].colorLeft = color;
-          puzzle[row][col].left = ThemeColor().getColorNum(color);
-          print("color : ${puzzle[row][col].colorLeft}, colorNum : ${puzzle[row][col].left}");
-          break;
-        case "right":
-          puzzle[row][col].colorRight = color;
-          puzzle[row][col].right = ThemeColor().getColorNum(color);
-          print("color : ${puzzle[row][col].colorRight}, colorNum : ${puzzle[row][col].right}");
-          break;
-      }
-    });
+    switch(pos) {
+      case "up":
+        puzzle[row][col].colorUp = color;
+        puzzle[row][col].up = ThemeColor().getColorNum(color);
+        print("color : ${puzzle[row][col].colorUp}, colorNum : ${puzzle[row][col].up}");
+        break;
+      case "down":
+        puzzle[row][col].colorDown = color;
+        puzzle[row][col].down = ThemeColor().getColorNum(color);
+        print("color : ${puzzle[row][col].colorDown}, colorNum : ${puzzle[row][col].down}");
+        break;
+      case "left":
+        puzzle[row][col].colorLeft = color;
+        puzzle[row][col].left = ThemeColor().getColorNum(color);
+        print("color : ${puzzle[row][col].colorLeft}, colorNum : ${puzzle[row][col].left}");
+        break;
+      case "right":
+        puzzle[row][col].colorRight = color;
+        puzzle[row][col].right = ThemeColor().getColorNum(color);
+        print("color : ${puzzle[row][col].colorRight}, colorNum : ${puzzle[row][col].right}");
+        break;
+    }
 
+
+    notifyListeners();
     //print("changeColor in GameScene $row, $col, $pos, $color, $pr");
     //print("${puzzle[row][col-1].colorDown} ${puzzle[row][col].colorDown} ${puzzle[row][col+1].colorDown}");
 
@@ -959,7 +807,112 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
     print("getUsingColor : $using");
   }
 
-  List<List<SquareBoxInst>> getPuzzle() {
+  List<List<SquareBoxProvider>> getPuzzle() {
     return puzzle;
+  }
+
+  ///getter and setter about widgets
+
+  List<Widget> getSquareField() {
+    print("get provider");
+    return squareField;
+  }
+  void setSquareField(List<Widget> field) {
+    squareField = field;
+    notifyListeners();
+    print("provider setSquareField");
+  }
+
+  void setPuzzle(List<List<SquareBoxProvider>> puzzle) {
+    this.puzzle = puzzle;
+    puzzleToWidget();
+  }
+
+  void setGameField(GameSceneStateSquareProvider gameField) {
+    print("provider setGameField\n---------------");
+    this.gameField = gameField;
+    notifyListeners();
+  }
+
+  void setContinue(bool isContinue) {
+    this.isContinue = isContinue;
+  }
+
+  void setAnswer(List<List<int>> answer) {
+    print("provider setAnswer");
+    this.answer = answer;
+  }
+
+  void setSubmit(List<List<int>> submit) {
+    print("provider setSubmit");
+    this.submit = submit;
+  }
+
+  ///inner process
+
+  void puzzleToWidget() {
+    //puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
+    //print("puzzle SquareBoxProvider => row ${puzzle.length}, col ${puzzle[0].length}");
+    List<Widget> columnChildren = [];
+
+    //marking answer line
+    applyUIWithAnswer(puzzle, answer);
+
+    for (int i = 0; i < puzzle.length; i++) {
+      List<Widget> rowChildren = [];
+      for (int j = 0; j < puzzle[i].length; j++) {
+        rowChildren.add(puzzle[i][j]);
+      }
+      columnChildren.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: rowChildren,
+        ),
+      );
+    }
+    //marking number with answer
+    setNumWithAnswer(puzzle);
+    //setDefaultLineStep1(puzzle);
+    clearLineForStart();
+
+    //apply saved submit lines
+    if(isContinue) {
+      applyUIWithAnswer(puzzle, submit);
+    }
+
+    squareField = columnChildren;
+    notifyListeners();
+  }
+
+  Color getNewColor(int row, int col, String pos) {
+    Color rtColor = const Color(0x00000000);
+    print("---------------");
+    print("in provider getNewColor($row, $col, $pos)");
+    List<dynamic> oldColorList = getOldColorList(row, col, pos, ThemeColor().getLineColor(type: 0));
+    print("oldColorList : $oldColorList");
+
+    List<Color> oldColors = [];
+    for(int i = 0 ; i < oldColorList.length ; i++) {
+      int row = int.parse(oldColorList[i][0].toString());
+      int col = int.parse(oldColorList[i][1].toString());
+
+      switch(pos) {
+        case "up":
+          oldColors.add(puzzle[row][col].colorUp);
+          break;
+        case "down":
+          oldColors.add(puzzle[row][col].colorDown);
+          break;
+        case "left":
+          oldColors.add(puzzle[row][col].colorLeft);
+          break;
+        case "right":
+          oldColors.add(puzzle[row][col].colorRight);
+          break;
+      }
+    }
+    print("oldColors : $oldColors");
+
+    return rtColor;
   }
 }

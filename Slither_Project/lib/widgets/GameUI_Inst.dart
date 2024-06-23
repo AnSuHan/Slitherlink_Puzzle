@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
-import '../Scene/GameSceneSqaure_Instance.dart';
+import '../Scene/GameSceneSquare_Instance.dart';
 import '../Scene/GameSceneStateSquare.dart';
 import 'MainUI.dart';
 
