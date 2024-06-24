@@ -158,4 +158,14 @@ class ThemeColor {
 
     return value;
   }
+
+  int getNormalLineNum() {
+    return lineColor.length - 4;
+  }
+
+  //return over 0
+  int getNormalRandom() {
+    //print("getNormalLineNum : ${getNormalLineNum()}");  //15
+    return Random().nextInt(getNormalLineNum()) + 1;
+  }
 }

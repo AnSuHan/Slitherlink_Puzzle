@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../Scene/GameSceneSquareProvider.dart';
+import '../ThemeColor.dart';
 import '../widgets/SquareBoxProvider.dart';
 
 class SquareProviderProvider with ChangeNotifier {
   SquareProviderProvider({isContinue = false});
 
   ReadSquare readSquare = ReadSquare();
+  ThemeColor themeColor = ThemeColor();
 
   List<Widget> squareField = [];
   List<List<SquareBoxProvider>> puzzle = [];
@@ -19,7 +21,6 @@ class SquareProviderProvider with ChangeNotifier {
 
   ///Init
   void init() async {
-    print("call init");
     puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
     squareField = await buildSquarePuzzleAnswer(answer, isContinue: isContinue);
     notifyListeners();
@@ -28,10 +29,114 @@ class SquareProviderProvider with ChangeNotifier {
 
   ///update `puzzle` variable
   void updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) {
-    if (up != null) puzzle[row][column].up = up;
-    if (down != null) puzzle[row][column].down = down;
-    if (left != null) puzzle[row][column].left = left;
-    if (right != null) puzzle[row][column].right = right;
+    Set<int> nearColor = {};
+    int lineValue = 0; //new line's value
+
+    if (down != null) {
+      nearColor = getNearColor(row, column, "down");
+      lineValue = down;
+    } else if (right != null) {
+      nearColor = getNearColor(row, column, "right");
+      lineValue = right;
+    } else if (up != null) {
+      nearColor = getNearColor(row, column, "up");
+      lineValue = up;
+    } else if (left != null) {
+      nearColor = getNearColor(row, column, "left");
+      lineValue = left;
+    }
+    print("nearColor : $nearColor, lineValue : $lineValue");
+
+    //forced line color
+    if(lineValue <= 0) {
+      if (down != null) {
+        puzzle[row][column].down = lineValue;
+      }
+      else if (right != null) {
+        puzzle[row][column].right = lineValue;
+      }
+      else if (up != null) {
+        puzzle[row][column].up = lineValue;
+      }
+      else if (left != null) {
+        puzzle[row][column].left = lineValue;
+      }
+    }
+    //random line color
+    else if(nearColor.isEmpty) {
+      lineValue = themeColor.getNormalRandom();
+
+      if (down != null) {
+        puzzle[row][column].down = lineValue;
+      }
+      else if (right != null) {
+        puzzle[row][column].right = lineValue;
+      }
+      else if (up != null) {
+        puzzle[row][column].up = lineValue;
+      }
+      else if (left != null) {
+        puzzle[row][column].left = lineValue;
+      }
+    }
+    //continue line color
+    else {
+      lineValue = nearColor.first;
+      List<dynamic> oldList = [];
+
+      //새로 입력된 라인의 색만 처리하면 되는 경우
+      //새로운 라인 주변에 0이 아닌 색이 1개만 있는 경우 getOldColorList를 호출할 필요가 없음
+      if(nearColor.length == 1) {
+        if (down != null) {
+          puzzle[row][column].down = lineValue;
+        }
+        else if (right != null) {
+          puzzle[row][column].right = lineValue;
+        }
+        else if (up != null) {
+          puzzle[row][column].up = lineValue;
+        }
+        else if (left != null) {
+          puzzle[row][column].left = lineValue;
+        }
+        print("set $row, $column, $lineValue");
+
+        refreshSubmit();
+        notifyListeners();
+        return;
+      }
+
+      //1개 이상의 라인 색을 변경해야 하는 경우
+      if (down != null) {
+        puzzle[row][column].down = lineValue;
+        oldList = getOldColorList(row, column, "down", lineValue);
+      }
+      else if (right != null) {
+        puzzle[row][column].right = lineValue;
+        oldList = getOldColorList(row, column, "right", lineValue);
+      }
+      else if (up != null) {
+        puzzle[row][column].up = lineValue;
+        oldList = getOldColorList(row, column, "up", lineValue);
+      }
+      else if (left != null) {
+        puzzle[row][column].left = lineValue;
+        oldList = getOldColorList(row, column, "left", lineValue);
+      }
+
+      print("oldList : $oldList");
+
+      //change old list to new color
+      for(int i = 0 ; i < oldList.length ; i++) {
+        int oldRow = int.parse(oldList[i][0].toString());
+        int oldColumn = int.parse(oldList[i][1].toString());
+        String pos = oldList[i][2].toString();
+
+        setLineColor(oldRow, oldColumn, pos, lineValue);
+        print("set [$oldRow, $oldColumn, $lineValue]");
+      }
+    }
+
 
     refreshSubmit();
     notifyListeners();
@@ -44,6 +149,12 @@ class SquareProviderProvider with ChangeNotifier {
     for(int i = 0 ; i < submit.length ; i++) {
       for(int j = 0 ; j < submit[i].length ; j++) {
         temp += "${submit[i][j]} ";
+        if(j % 5 == 4 && j > 0 && j < submit[i].length - 1) {
+          temp += " _ ";
+        }
+      }
+      if(i > 10) {
+        break;
       }
       print("row $i : $temp");
       temp = "";
@@ -505,7 +616,7 @@ class SquareProviderProvider with ChangeNotifier {
         case "up":
           use.add(puzzle[row][col].left);
           use.add(puzzle[row][col].right);
-          use.add(puzzle[row + 1][col].up);
+          use.add(puzzle[row][col + 1].up);
           break;
         case "down":
           use.add(puzzle[row][col].left);
@@ -529,7 +640,7 @@ class SquareProviderProvider with ChangeNotifier {
       }
     }
 
-    use.remove(const Color(0xff000000));
+    use.remove(0);
     return use;
   }
 
@@ -777,69 +888,281 @@ class SquareProviderProvider with ChangeNotifier {
       }
     }
 
-    return rtValue;
+    print("end of getOldColorList : $rtValue");
+    //return rtValue;
     return getContinueOld(rtValue);
   }
 
   List<dynamic> getContinueOld(List<dynamic> start) {
-    List<dynamic> rtValue = [start];
-    List<dynamic> temp = [];
+    List<dynamic> rtValue = start;
+    print("getContinueOld start $start, rtValue $rtValue");
 
-    int count = 0;
-    while(true) {
-      temp = rtValue[count];
+    int row = int.parse(start[0][0].toString());
+    int col = int.parse(start[0][1].toString());
+    String pos = start[0][2].toString();
+    int normal = 0;
+    int find = 0;
 
-      if(temp[0] != 0 && temp[1] != 0) {
-
-      }
-      else if(temp[0] == 0 && temp[1] != 0) {
-
-      }
-      else if(temp[0] != 0 && temp[1] == 0) {
-
-      }
-      else if(temp[0] == 0 && temp[1] == 0) {
-
-      }
-
-    }
-
-
-    return rtValue;
-  }
-
-  void changeColor(BuildContext context, int row, int col, String pos, int color) {
     switch(pos) {
-      case "up":
-        puzzle[row][col].up = color;
-        print("color : ${puzzle[row][col].up}, colorNum : ${puzzle[row][col].up}");
-        break;
       case "down":
-        puzzle[row][col].down = color;
-        print("color : ${puzzle[row][col].down}, colorNum : ${puzzle[row][col].down}");
-        break;
-      case "left":
-        puzzle[row][col].left = color;
-        print("color : ${puzzle[row][col].left}, colorNum : ${puzzle[row][col].left}");
+        find = puzzle[row][col].down;
         break;
       case "right":
-        puzzle[row][col].right = color;
-        print("color : ${puzzle[row][col].right}, colorNum : ${puzzle[row][col].right}");
+        find = puzzle[row][col].right;
+        break;
+      case "up":
+        find = puzzle[row][col].up;
+        break;
+      case "left":
+        find = puzzle[row][col].left;
         break;
     }
 
+    //same as getNearColor except for comparing color
+    if(row != 0 && col != 0) {
+      switch(pos) {
+        case "down":
+        //use.add(puzzle[row][col - 1].down);
+          if(puzzle[row][col - 1].down != normal && puzzle[row][col - 1].down != find) {
+            rtValue.add([row, col - 1, "down"]);
+          }
+          if (puzzle[row][col - 1].right != normal && puzzle[row][col - 1].right != find) {
+            rtValue.add([row, col - 1, "right"]);
+          }
+          if (puzzle[row][col].right != normal && puzzle[row][col].right != find) {
+            rtValue.add([row, col, "right"]);
+          }
+          if (puzzle.length > row + 1) {
+            if (puzzle[row + 1][col - 1].right != normal && puzzle[row + 1][col - 1].right != find) {
+              rtValue.add([row + 1, col - 1, "right"]);
+            }
+            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+          }
+          if (puzzle[row].length > col + 1) {
+            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          break;
+        case "right":
+          if (puzzle[row - 1][col].right != normal && puzzle[row - 1][col].right != find) {
+            rtValue.add([row - 1, col, "right"]);
+          }
+          if (puzzle[row - 1][col].down != normal && puzzle[row - 1][col].down != find) {
+            rtValue.add([row - 1, col, "down"]);
+          }
+          if (puzzle[row][col].down != normal && puzzle[row][col].down != find) {
+            rtValue.add([row, col, "down"]);
+          }
+          if (puzzle[row].length > col + 1) {
+            if (puzzle[row - 1][col + 1].down != normal && puzzle[row - 1][col + 1].down != find) {
+              rtValue.add([row - 1, col + 1, "down"]);
+            }
+            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          if (puzzle.length > row + 1) {
+            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+          }
+          break;
+      }
+    }
+    else if (col != 0) {
+      switch (pos) {
+        case "up":
+          if (puzzle[row][col - 1].up != normal && puzzle[row][col - 1].up != find) {
+            rtValue.add([row, col - 1, "up"]);
+          }
+          if (puzzle[row][col - 1].right != normal && puzzle[row][col - 1].right != find) {
+            rtValue.add([row, col - 1, "right"]);
+          }
+          if (puzzle[row][col].right != normal && puzzle[row][col].right != find) {
+            rtValue.add([row, col, "right"]);
+          }
+          if (puzzle[row].length > col + 1) {
+            if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != find) {
+              rtValue.add([row, col + 1, "up"]);
+            }
+          }
+          break;
+        case "down":
+          if (puzzle[row][col - 1].down != normal && puzzle[row][col - 1].down != find) {
+            rtValue.add([row, col - 1, "down"]);
+          }
+          if (puzzle[row][col - 1].right != normal && puzzle[row][col - 1].right != find) {
+            rtValue.add([row, col - 1, "right"]);
+          }
+          if (puzzle[row][col].right != normal && puzzle[row][col].right != find) {
+            rtValue.add([row, col, "right"]);
+          }
+          if (puzzle[row].length > col + 1) {
+            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          if (puzzle.length > row + 1) {
+            if (puzzle[row + 1][col - 1].right != normal && puzzle[row + 1][col - 1].right != find) {
+              rtValue.add([row + 1, col - 1, "right"]);
+            }
+            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+          }
+          break;
+        case "right":
+          if (puzzle[row][col].up != normal && puzzle[row][col].up != find) {
+            rtValue.add([row, col, "up"]);
+          }
+          if (puzzle[row][col].down != normal && puzzle[row][col].down != find) {
+            rtValue.add([row, col, "down"]);
+          }
+          if (puzzle[row].length > col + 1) {
+            if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != find) {
+              rtValue.add([row, col + 1, "up"]);
+            }
+            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          if (puzzle.length > row + 1) {
+            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+          }
+          break;
+      }
+    }
+    else if (row != 0) {
+      switch (pos) {
+        case "down":
+          if (puzzle[row][col].left != normal && puzzle[row][col].left != find) {
+            rtValue.add([row, col, "left"]);
+          }
+          if (puzzle[row][col].right != normal && puzzle[row][col].right != find) {
+            rtValue.add([row, col, "right"]);
+          }
+          if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != find) {
+            rtValue.add([row + 1, col, "left"]);
+          }
+          if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
+            rtValue.add([row + 1, col, "right"]);
+          }
+          if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
+            rtValue.add([row, col + 1, "down"]);
+          }
+          break;
+        case "left":
+          if (puzzle[row - 1][col].left != normal && puzzle[row - 1][col].left != find) {
+            rtValue.add([row - 1, col, "left"]);
+          }
+          if (puzzle[row - 1][col].down != normal && puzzle[row - 1][col].down != find) {
+            rtValue.add([row - 1, col, "down"]);
+          }
+          if (puzzle[row][col].down != normal && puzzle[row][col].down != find) {
+            rtValue.add([row, col, "down"]);
+          }
+          if (puzzle.length > row + 1) {
+            if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != find) {
+              rtValue.add([row + 1, col, "left"]);
+            }
+          }
+          break;
+        case "right":
+          if (puzzle[row - 1][col].right != normal && puzzle[row - 1][col].right != find) {
+            rtValue.add([row - 1, col, "right"]);
+          }
+          if (puzzle[row - 1][col].down != normal && puzzle[row - 1][col].down != find) {
+            rtValue.add([row - 1, col, "down"]);
+          }
+          if (puzzle[row - 1][col + 1].down != normal && puzzle[row - 1][col + 1].down != find) {
+            rtValue.add([row - 1, col + 1, "down"]);
+          }
+          if (puzzle[row][col].down != normal && puzzle[row][col].down != find) {
+            rtValue.add([row, col, "down"]);
+          }
+          if (puzzle.length > row + 1) {
+            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+            if (puzzle[row + 1][col + 1].down != normal && puzzle[row + 1][col + 1].down != find) {
+              rtValue.add([row + 1, col + 1, "down"]);
+            }
+          }
+          break;
+      }
+    }
+    else {
+      switch(pos) {
+        case "up":
+          if (puzzle[row][col].left != normal && puzzle[row][col].left != find) {
+            rtValue.add([row, col, "left"]);
+          }
+          if (puzzle[row][col].right != normal && puzzle[row][col].right != find) {
+            rtValue.add([row, col, "right"]);
+          }
+          if (puzzle[row + 1][col].up != normal && puzzle[row + 1][col].up != find) {
+            rtValue.add([row + 1, col, "up"]);
+          }
+          break;
+        case "down":
+          if (puzzle[row][col].left != normal && puzzle[row][col].left != find) {
+            rtValue.add([row, col, "left"]);
+          }
+          if (puzzle[row][col].right != normal && puzzle[row][col].right != find) {
+            rtValue.add([row, col, "right"]);
+          }
+          if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != find) {
+            rtValue.add([row + 1, col, "left"]);
+          }
+          if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
+            rtValue.add([row + 1, col, "right"]);
+          }
+          if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
+            rtValue.add([row, col + 1, "down"]);
+          }
+          break;
+        case "left":
+          if (puzzle[row][col].up != normal && puzzle[row][col].up != find) {
+            rtValue.add([row, col, "up"]);
+          }
+          if (puzzle[row][col].down != normal && puzzle[row][col].down != find) {
+            rtValue.add([row, col, "down"]);
+          }
+          if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != find) {
+            rtValue.add([row + 1, col, "left"]);
+          }
+          break;
+        case "right":
+          if (puzzle[row][col].up != normal && puzzle[row][col].up != find) {
+            rtValue.add([row, col, "up"]);
+          }
+          if (puzzle[row][col].down != normal && puzzle[row][col].down != find) {
+            rtValue.add([row, col, "down"]);
+          }
+          if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != find) {
+            rtValue.add([row, col + 1, "up"]);
+          }
+          if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
+            rtValue.add([row, col + 1, "down"]);
+          }
+          if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
+            rtValue.add([row + 1, col, "right"]);
+          }
+          break;
+      }
+    }
 
-    notifyListeners();
-    //print("changeColor in GameScene $row, $col, $pos, $color, $pr");
-    //print("${puzzle[row][col-1].down} ${puzzle[row][col].down} ${puzzle[row][col+1].down}");
-
-    buildSquarePuzzleColor();
+    return rtValue;
   }
 
   ///getter and setter about widgets
 
   List<Widget> getSquareField() {
-    print("get provider");
     return squareField;
   }
   void setSquareField(List<Widget> field) {
@@ -864,12 +1187,10 @@ class SquareProviderProvider with ChangeNotifier {
   }
 
   void setAnswer(List<List<int>> answer) {
-    print("provider setAnswer");
     this.answer = answer;
   }
 
   void setSubmit(List<List<int>> submit) {
-    print("provider setSubmit");
     this.submit = submit;
   }
 
@@ -907,37 +1228,5 @@ class SquareProviderProvider with ChangeNotifier {
 
     squareField = columnChildren;
     notifyListeners();
-  }
-
-  Color getNewColor(int row, int col, String pos) {
-    Color rtColor = const Color(0x00000000);
-    print("---------------");
-    print("in provider getNewColor($row, $col, $pos)");
-    List<dynamic> oldColorList = getOldColorList(row, col, pos, 0);
-    print("oldColorList : $oldColorList");
-
-    List<int> oldColors = [];
-    for(int i = 0 ; i < oldColorList.length ; i++) {
-      int row = int.parse(oldColorList[i][0].toString());
-      int col = int.parse(oldColorList[i][1].toString());
-
-      switch(pos) {
-        case "up":
-          oldColors.add(puzzle[row][col].up);
-          break;
-        case "down":
-          oldColors.add(puzzle[row][col].down);
-          break;
-        case "left":
-          oldColors.add(puzzle[row][col].left);
-          break;
-        case "right":
-          oldColors.add(puzzle[row][col].right);
-          break;
-      }
-    }
-    print("oldColors : $oldColors");
-
-    return rtColor;
   }
 }
