@@ -837,8 +837,8 @@ class SquareProviderProvider with ChangeNotifier {
           if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
-          if (puzzle[row + 1][col].up != normal && puzzle[row + 1][col].up != now) {
-            rtValue.add([row + 1, col, "up"]);
+          if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != now) {
+            rtValue.add([row, col + 1, "up"]);
           }
           break;
         case "down":
@@ -922,10 +922,14 @@ class SquareProviderProvider with ChangeNotifier {
     int count = 0;
     do {
       print("\nfind color(will be changed) is $find / time ${count + 1}");
+      if(rtTempList.length <= count) {
+        break;
+      }
       row = int.parse(rtTempList[count][0].toString());
       col = int.parse(rtTempList[count][1].toString());
+      pos = rtTempList[count][2];
       rtList = List.from(rtTempList);
-      print("NOW : row $row col $col");
+      print("NOW : row $row col $col len ${rtTempList.length}");
       count++;
 
       //same as find color
@@ -1169,7 +1173,7 @@ class SquareProviderProvider with ChangeNotifier {
 
       print("rtTempList $rtTempList");
 
-    } while(!(rtList.length == rtTempList.length &&
+    } while(true || !(rtList.length == rtTempList.length &&
         rtList.every((element) => rtTempList.contains(element)) &&
         rtTempList.every((element) => rtList.contains(element))));
 
