@@ -63,179 +63,183 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
     int row = widget.row;
     int column = widget.column;
 
-    return Column(
-      children: [
-        !isFirstRow ? Container() : Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Consumer<SquareProviderProvider>(
+      builder: (context, squareProvider, child) {
+        return Column(
           children: [
-            isFirstColumn ? Row(
+            !isFirstRow ? Container() : Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                isFirstColumn ? Row(
+                  children: [
+                    Container(
+                      height: 5,
+                      width: 5,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(
+                      width: 2.5,
+                    ),
+                  ],
+                ) : Container(),
+                Container(
+                  height: 10,
+                  width: 50,
+                  color: setupColor(widget.up),
+                  child: GestureDetector(
+                    onTap: () {
+                      lastClick = "up";
+
+                      setState(() {
+                        if(up == 0 || up == -3) {
+                          up = 1;
+                        } else if(up >= 1) {
+                          up = 0;
+                        } else if(up == -1) {
+                          up = -2;
+                        } else if(up == -2) {
+                          up = -1;
+                        }
+                        widget.up = up;
+                      });
+
+                      Provider.of<SquareProviderProvider>(context, listen: false)
+                          .updateSquareBox(row, column, up: up);
+                    },
+                  ),
+                ),
+                const SizedBox(
+                  width: 2.5,
+                ),
                 Container(
                   height: 5,
                   width: 5,
                   color: Colors.grey,
                 ),
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                !isFirstColumn ? Container() : Container(
+                  height: 50,
+                  width: 10,
+                  color: setupColor(widget.left),
+                  child: GestureDetector(
+                    onTap: () {
+                      lastClick = "left";
+
+                      setState(() {
+                        if(left == 0 || left == -3) {
+                          left = 1;
+                        } else if(left >= 1) {
+                          left = 0;
+                        } else if(left == -1) {
+                          left = -2;
+                        } else if(left == -2) {
+                          left = -1;
+                        }
+                        widget.left = left;
+                      });
+
+                      Provider.of<SquareProviderProvider>(context, listen: false)
+                          .updateSquareBox(row, column, left: left);
+                    },
+                  ),
+                ),
+                Container(
+                  height: 50,
+                  width: 50,
+                  color: settingColor["box"],
+                  child: Center(
+                    child: Text(num.toString(), style: TextStyle(color: settingColor["number"])),
+                  ),
+                ),
+                Container(
+                  height: 50,
+                  width: 10,
+                  color: setupColor(widget.right),
+                  child: GestureDetector(
+                    onTap: () {
+                      lastClick = "right";
+
+                      setState(() {
+                        if(right == 0 || right == -3) {
+                          right = 1;
+                        } else if(right >= 1) {
+                          right = 0;
+                        } else if(right == -1) {
+                          right = -2;
+                        } else if(right == -2) {
+                          right = -1;
+                        }
+                        widget.right = right;
+                      });
+
+                      Provider.of<SquareProviderProvider>(context, listen: false)
+                          .updateSquareBox(row, column, right: right);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                isFirstColumn ? Row(
+                  children: [
+                    Container(
+                      height: 5,
+                      width: 5,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(
+                      width: 2.5,
+                    ),
+                  ],
+                ) : Container(),
+                Container(
+                  height: 10,
+                  width: 50,
+                  color: setupColor(widget.down),
+                  child: GestureDetector(
+                    onTap: () {
+                      lastClick = "down";
+
+                      setState(() {
+                        if(down == 0 || down == -3) {
+                          down = 1;
+                        } else if(down >= 1) {
+                          down = 0;
+                        } else if(down == -1) {
+                          down = -2;
+                        } else if(down == -2) {
+                          down = -1;
+                        }
+                        widget.down = down;
+                      });
+
+                      Provider.of<SquareProviderProvider>(context, listen: false)
+                          .updateSquareBox(row, column, down: down);
+                    },
+                  ),
+                ),
                 const SizedBox(
                   width: 2.5,
                 ),
-              ],
-            ) : Container(),
-            Container(
-              height: 10,
-              width: 50,
-              color: setupColor(widget.up),
-              child: GestureDetector(
-                onTap: () {
-                  lastClick = "up";
-
-                  setState(() {
-                    if(up == 0 || up == -3) {
-                      up = 1;
-                    } else if(up >= 1) {
-                      up = 0;
-                    } else if(up == -1) {
-                      up = -2;
-                    } else if(up == -2) {
-                      up = -1;
-                    }
-                    widget.up = up;
-                  });
-
-                  Provider.of<SquareProviderProvider>(context, listen: false)
-                      .updateSquareBox(row, column, up: up);
-                },
-              ),
-            ),
-            const SizedBox(
-              width: 2.5,
-            ),
-            Container(
-              height: 5,
-              width: 5,
-              color: Colors.grey,
-            ),
-          ],
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            !isFirstColumn ? Container() : Container(
-              height: 50,
-              width: 10,
-              color: setupColor(widget.left),
-              child: GestureDetector(
-                onTap: () {
-                  lastClick = "left";
-
-                  setState(() {
-                    if(left == 0 || left == -3) {
-                      left = 1;
-                    } else if(left >= 1) {
-                      left = 0;
-                    } else if(left == -1) {
-                      left = -2;
-                    } else if(left == -2) {
-                      left = -1;
-                    }
-                    widget.left = left;
-                  });
-
-                  Provider.of<SquareProviderProvider>(context, listen: false)
-                      .updateSquareBox(row, column, left: left);
-                },
-              ),
-            ),
-            Container(
-              height: 50,
-              width: 50,
-              color: settingColor["box"],
-              child: Center(
-                child: Text(num.toString(), style: TextStyle(color: settingColor["number"])),
-              ),
-            ),
-            Container(
-              height: 50,
-              width: 10,
-              color: setupColor(widget.right),
-              child: GestureDetector(
-                onTap: () {
-                  lastClick = "right";
-
-                  setState(() {
-                    if(right == 0 || right == -3) {
-                      right = 1;
-                    } else if(right >= 1) {
-                      right = 0;
-                    } else if(right == -1) {
-                      right = -2;
-                    } else if(right == -2) {
-                      right = -1;
-                    }
-                    widget.right = right;
-                  });
-
-                  Provider.of<SquareProviderProvider>(context, listen: false)
-                      .updateSquareBox(row, column, right: right);
-                },
-              ),
-            ),
-          ],
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            isFirstColumn ? Row(
-              children: [
                 Container(
                   height: 5,
                   width: 5,
                   color: Colors.grey,
                 ),
-                const SizedBox(
-                  width: 2.5,
-                ),
               ],
-            ) : Container(),
-            Container(
-              height: 10,
-              width: 50,
-              color: setupColor(widget.down),
-              child: GestureDetector(
-                onTap: () {
-                  lastClick = "down";
-
-                  setState(() {
-                    if(down == 0 || down == -3) {
-                      down = 1;
-                    } else if(down >= 1) {
-                      down = 0;
-                    } else if(down == -1) {
-                      down = -2;
-                    } else if(down == -2) {
-                      down = -1;
-                    }
-                    widget.down = down;
-                  });
-
-                  Provider.of<SquareProviderProvider>(context, listen: false)
-                      .updateSquareBox(row, column, down: down);
-                },
-              ),
-            ),
-            const SizedBox(
-              width: 2.5,
-            ),
-            Container(
-              height: 5,
-              width: 5,
-              color: Colors.grey,
             ),
           ],
-        ),
-      ],
+        );
+      }
     );
   }
 

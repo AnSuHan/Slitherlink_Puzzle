@@ -125,7 +125,7 @@ class SquareProviderProvider with ChangeNotifier {
         oldList = getOldColorList(row, column, "left", lineValue);
       }
 
-      print("oldList : $oldList");
+      print("\n★★★★★ oldList : $oldList\n");
 
       //change old list to new color
       for(int i = 0 ; i < oldList.length ; i++) {
@@ -160,6 +160,7 @@ class SquareProviderProvider with ChangeNotifier {
       //print("row $i : $temp");
       temp = "";
     }
+    notifyListeners();
   }
 
   //row, column is puzzle's row, column
