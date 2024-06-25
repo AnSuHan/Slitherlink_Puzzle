@@ -106,6 +106,7 @@ class SquareProviderProvider with ChangeNotifier {
         return;
       }
 
+      print("standard color is $lineValue");
       //1개 이상의 라인 색을 변경해야 하는 경우
       if (down != null) {
         puzzle[row][column].down = lineValue;
@@ -133,7 +134,7 @@ class SquareProviderProvider with ChangeNotifier {
         String pos = oldList[i][2].toString();
 
         setLineColor(oldRow, oldColumn, pos, lineValue);
-        print("set [$oldRow, $oldColumn, $lineValue]");
+        print("set [$oldRow, $oldColumn, $pos, $lineValue]");
       }
     }
 
@@ -156,7 +157,7 @@ class SquareProviderProvider with ChangeNotifier {
       if(i > 10) {
         break;
       }
-      print("row $i : $temp");
+      //print("row $i : $temp");
       temp = "";
     }
   }
@@ -894,14 +895,14 @@ class SquareProviderProvider with ChangeNotifier {
   }
 
   List<dynamic> getContinueOld(List<dynamic> start) {
-    List<dynamic> rtValue = start;
-    print("getContinueOld start $start, rtValue $rtValue");
+    List<List<dynamic>> rtList = [start[0]];
+    List<List<dynamic>> rtTempList = [start[0]];
 
     int row = int.parse(start[0][0].toString());
     int col = int.parse(start[0][1].toString());
     String pos = start[0][2].toString();
-    int normal = 0;
     int find = 0;
+    print("getContinueOld row $row, col $col, pos $pos");
 
     switch(pos) {
       case "down":
@@ -918,246 +919,270 @@ class SquareProviderProvider with ChangeNotifier {
         break;
     }
 
-    //same as getNearColor except for comparing color
-    if(row != 0 && col != 0) {
-      switch(pos) {
-        case "down":
-        //use.add(puzzle[row][col - 1].down);
-          if(puzzle[row][col - 1].down != normal && puzzle[row][col - 1].down != find) {
-            rtValue.add([row, col - 1, "down"]);
-          }
-          if (puzzle[row][col - 1].right != normal && puzzle[row][col - 1].right != find) {
-            rtValue.add([row, col - 1, "right"]);
-          }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != find) {
-            rtValue.add([row, col, "right"]);
-          }
-          if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col - 1].right != normal && puzzle[row + 1][col - 1].right != find) {
-              rtValue.add([row + 1, col - 1, "right"]);
-            }
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-          }
-          if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-          }
-          break;
-        case "right":
-          if (puzzle[row - 1][col].right != normal && puzzle[row - 1][col].right != find) {
-            rtValue.add([row - 1, col, "right"]);
-          }
-          if (puzzle[row - 1][col].down != normal && puzzle[row - 1][col].down != find) {
-            rtValue.add([row - 1, col, "down"]);
-          }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != find) {
-            rtValue.add([row, col, "down"]);
-          }
-          if (puzzle[row].length > col + 1) {
-            if (puzzle[row - 1][col + 1].down != normal && puzzle[row - 1][col + 1].down != find) {
-              rtValue.add([row - 1, col + 1, "down"]);
-            }
-            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-          }
-          if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-          }
-          break;
-      }
-    }
-    else if (col != 0) {
-      switch (pos) {
-        case "up":
-          if (puzzle[row][col - 1].up != normal && puzzle[row][col - 1].up != find) {
-            rtValue.add([row, col - 1, "up"]);
-          }
-          if (puzzle[row][col - 1].right != normal && puzzle[row][col - 1].right != find) {
-            rtValue.add([row, col - 1, "right"]);
-          }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != find) {
-            rtValue.add([row, col, "right"]);
-          }
-          if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != find) {
-              rtValue.add([row, col + 1, "up"]);
-            }
-          }
-          break;
-        case "down":
-          if (puzzle[row][col - 1].down != normal && puzzle[row][col - 1].down != find) {
-            rtValue.add([row, col - 1, "down"]);
-          }
-          if (puzzle[row][col - 1].right != normal && puzzle[row][col - 1].right != find) {
-            rtValue.add([row, col - 1, "right"]);
-          }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != find) {
-            rtValue.add([row, col, "right"]);
-          }
-          if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-          }
-          if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col - 1].right != normal && puzzle[row + 1][col - 1].right != find) {
-              rtValue.add([row + 1, col - 1, "right"]);
-            }
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-          }
-          break;
-        case "right":
-          if (puzzle[row][col].up != normal && puzzle[row][col].up != find) {
-            rtValue.add([row, col, "up"]);
-          }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != find) {
-            rtValue.add([row, col, "down"]);
-          }
-          if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != find) {
-              rtValue.add([row, col + 1, "up"]);
-            }
-            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-          }
-          if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-          }
-          break;
-      }
-    }
-    else if (row != 0) {
-      switch (pos) {
-        case "down":
-          if (puzzle[row][col].left != normal && puzzle[row][col].left != find) {
-            rtValue.add([row, col, "left"]);
-          }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != find) {
-            rtValue.add([row, col, "right"]);
-          }
-          if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != find) {
-            rtValue.add([row + 1, col, "left"]);
-          }
-          if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
-            rtValue.add([row + 1, col, "right"]);
-          }
-          if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
-            rtValue.add([row, col + 1, "down"]);
-          }
-          break;
-        case "left":
-          if (puzzle[row - 1][col].left != normal && puzzle[row - 1][col].left != find) {
-            rtValue.add([row - 1, col, "left"]);
-          }
-          if (puzzle[row - 1][col].down != normal && puzzle[row - 1][col].down != find) {
-            rtValue.add([row - 1, col, "down"]);
-          }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != find) {
-            rtValue.add([row, col, "down"]);
-          }
-          if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != find) {
-              rtValue.add([row + 1, col, "left"]);
-            }
-          }
-          break;
-        case "right":
-          if (puzzle[row - 1][col].right != normal && puzzle[row - 1][col].right != find) {
-            rtValue.add([row - 1, col, "right"]);
-          }
-          if (puzzle[row - 1][col].down != normal && puzzle[row - 1][col].down != find) {
-            rtValue.add([row - 1, col, "down"]);
-          }
-          if (puzzle[row - 1][col + 1].down != normal && puzzle[row - 1][col + 1].down != find) {
-            rtValue.add([row - 1, col + 1, "down"]);
-          }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != find) {
-            rtValue.add([row, col, "down"]);
-          }
-          if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-            if (puzzle[row + 1][col + 1].down != normal && puzzle[row + 1][col + 1].down != find) {
-              rtValue.add([row + 1, col + 1, "down"]);
-            }
-          }
-          break;
-      }
-    }
-    else {
-      switch(pos) {
-        case "up":
-          if (puzzle[row][col].left != normal && puzzle[row][col].left != find) {
-            rtValue.add([row, col, "left"]);
-          }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != find) {
-            rtValue.add([row, col, "right"]);
-          }
-          if (puzzle[row + 1][col].up != normal && puzzle[row + 1][col].up != find) {
-            rtValue.add([row + 1, col, "up"]);
-          }
-          break;
-        case "down":
-          if (puzzle[row][col].left != normal && puzzle[row][col].left != find) {
-            rtValue.add([row, col, "left"]);
-          }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != find) {
-            rtValue.add([row, col, "right"]);
-          }
-          if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != find) {
-            rtValue.add([row + 1, col, "left"]);
-          }
-          if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
-            rtValue.add([row + 1, col, "right"]);
-          }
-          if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
-            rtValue.add([row, col + 1, "down"]);
-          }
-          break;
-        case "left":
-          if (puzzle[row][col].up != normal && puzzle[row][col].up != find) {
-            rtValue.add([row, col, "up"]);
-          }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != find) {
-            rtValue.add([row, col, "down"]);
-          }
-          if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != find) {
-            rtValue.add([row + 1, col, "left"]);
-          }
-          break;
-        case "right":
-          if (puzzle[row][col].up != normal && puzzle[row][col].up != find) {
-            rtValue.add([row, col, "up"]);
-          }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != find) {
-            rtValue.add([row, col, "down"]);
-          }
-          if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != find) {
-            rtValue.add([row, col + 1, "up"]);
-          }
-          if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != find) {
-            rtValue.add([row, col + 1, "down"]);
-          }
-          if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != find) {
-            rtValue.add([row + 1, col, "right"]);
-          }
-          break;
-      }
-    }
+    int count = 0;
+    do {
+      print("\nfind color(will be changed) is $find / time ${count + 1}");
+      row = int.parse(rtTempList[count][0].toString());
+      col = int.parse(rtTempList[count][1].toString());
+      rtList = List.from(rtTempList);
+      print("NOW : row $row col $col");
+      count++;
 
-    return rtValue;
+      //same as find color
+      if(row != 0 && col != 0) {
+        switch(pos) {
+          case "down":
+          //use.add(puzzle[row][col - 1].down);
+            if(puzzle[row][col - 1].down == find) {
+              addIfNotExist(rtTempList, [row, col - 1, "down"]);
+            }
+            if (puzzle[row][col - 1].right == find) {
+              addIfNotExist(rtTempList, [row, col - 1, "right"]);
+            }
+            if (puzzle[row][col].right == find) {
+              addIfNotExist(rtTempList, [row, col, "right"]);
+            }
+            if (puzzle.length > row + 1) {
+              if (puzzle[row + 1][col - 1].right == find) {
+                addIfNotExist(rtTempList, [row + 1, col - 1, "right"]);
+              }
+              if (puzzle[row + 1][col].right == find) {
+                addIfNotExist(rtTempList, [row + 1, col, "right"]);
+              }
+            }
+            if (puzzle[row].length > col + 1) {
+              if (puzzle[row][col + 1].down == find) {
+                addIfNotExist(rtTempList, [row, col + 1, "down"]);
+              }
+            }
+            break;
+          case "right":
+            if (puzzle[row - 1][col].right == find) {
+              addIfNotExist(rtTempList, [row - 1, col, "right"]);
+            }
+            if (puzzle[row - 1][col].down == find) {
+              addIfNotExist(rtTempList, [row - 1, col, "down"]);
+            }
+            if (puzzle[row][col].down == find) {
+              addIfNotExist(rtTempList, [row, col, "down"]);
+            }
+            if (puzzle[row].length > col + 1) {
+              if (puzzle[row - 1][col + 1].down == find) {
+                addIfNotExist(rtTempList, [row - 1, col + 1, "down"]);
+              }
+              if (puzzle[row][col + 1].down == find) {
+                addIfNotExist(rtTempList, [row, col + 1, "down"]);
+              }
+            }
+            if (puzzle.length > row + 1) {
+              if (puzzle[row + 1][col].right == find) {
+                addIfNotExist(rtTempList, [row + 1, col, "right"]);
+              }
+            }
+            break;
+        }
+      }
+      else if (col != 0) {
+        switch (pos) {
+          case "up":
+            if (puzzle[row][col - 1].up == find) {
+              addIfNotExist(rtTempList, [row, col - 1, "up"]);
+            }
+            if (puzzle[row][col - 1].right == find) {
+              addIfNotExist(rtTempList, [row, col - 1, "right"]);
+            }
+            if (puzzle[row][col].right == find) {
+              addIfNotExist(rtTempList, [row, col, "right"]);
+            }
+            if (puzzle[row].length > col + 1) {
+              if (puzzle[row][col + 1].up == find) {
+                addIfNotExist(rtTempList, [row, col + 1, "up"]);
+              }
+            }
+            break;
+          case "down":
+            if (puzzle[row][col - 1].down == find) {
+              addIfNotExist(rtTempList, [row, col - 1, "down"]);
+            }
+            if (puzzle[row][col - 1].right == find) {
+              addIfNotExist(rtTempList, [row, col - 1, "right"]);
+            }
+            if (puzzle[row][col].right == find) {
+              addIfNotExist(rtTempList, [row, col, "right"]);
+            }
+            if (puzzle[row].length > col + 1) {
+              if (puzzle[row][col + 1].down == find) {
+                addIfNotExist(rtTempList, [row, col + 1, "down"]);
+              }
+            }
+            if (puzzle.length > row + 1) {
+              if (puzzle[row + 1][col - 1].right == find) {
+                addIfNotExist(rtTempList, [row + 1, col - 1, "right"]);
+              }
+              if (puzzle[row + 1][col].right == find) {
+                addIfNotExist(rtTempList, [row + 1, col, "right"]);
+              }
+            }
+            break;
+          case "right":
+            if (puzzle[row][col].up == find) {
+              addIfNotExist(rtTempList, [row, col, "up"]);
+            }
+            if (puzzle[row][col].down == find) {
+              addIfNotExist(rtTempList, [row, col, "down"]);
+            }
+            if (puzzle[row].length > col + 1) {
+              if (puzzle[row][col + 1].up == find) {
+                addIfNotExist(rtTempList, [row, col + 1, "up"]);
+              }
+              if (puzzle[row][col + 1].down == find) {
+                addIfNotExist(rtTempList, [row, col + 1, "down"]);
+              }
+            }
+            if (puzzle.length > row + 1) {
+              if (puzzle[row + 1][col].right == find) {
+                addIfNotExist(rtTempList, [row + 1, col, "right"]);
+              }
+            }
+            break;
+        }
+      }
+      else if (row != 0) {
+        switch (pos) {
+          case "down":
+            if (puzzle[row][col].left == find) {
+              addIfNotExist(rtTempList, [row, col, "left"]);
+            }
+            if (puzzle[row][col].right == find) {
+              addIfNotExist(rtTempList, [row, col, "right"]);
+            }
+            if (puzzle[row + 1][col].left == find) {
+              addIfNotExist(rtTempList, [row + 1, col, "left"]);
+            }
+            if (puzzle[row + 1][col].right == find) {
+              addIfNotExist(rtTempList, [row + 1, col, "right"]);
+            }
+            if (puzzle[row][col + 1].down == find) {
+              addIfNotExist(rtTempList, [row, col + 1, "down"]);
+            }
+            break;
+          case "left":
+            if (puzzle[row - 1][col].left == find) {
+              addIfNotExist(rtTempList, [row - 1, col, "left"]);
+            }
+            if (puzzle[row - 1][col].down == find) {
+              addIfNotExist(rtTempList, [row - 1, col, "down"]);
+            }
+            if (puzzle[row][col].down == find) {
+              addIfNotExist(rtTempList, [row, col, "down"]);
+            }
+            if (puzzle.length > row + 1) {
+              if (puzzle[row + 1][col].left == find) {
+                addIfNotExist(rtTempList, [row + 1, col, "left"]);
+              }
+            }
+            break;
+          case "right":
+            if (puzzle[row - 1][col].right == find) {
+              addIfNotExist(rtTempList, [row - 1, col, "right"]);
+            }
+            if (puzzle[row - 1][col].down == find) {
+              addIfNotExist(rtTempList, [row - 1, col, "down"]);
+            }
+            if (puzzle[row - 1][col + 1].down == find) {
+              addIfNotExist(rtTempList, [row - 1, col + 1, "down"]);
+            }
+            if (puzzle[row][col].down == find) {
+              addIfNotExist(rtTempList, [row, col, "down"]);
+            }
+            if (puzzle.length > row + 1) {
+              if (puzzle[row + 1][col].right == find) {
+                addIfNotExist(rtTempList, [row + 1, col, "right"]);
+              }
+              if (puzzle[row + 1][col + 1].down == find) {
+                addIfNotExist(rtTempList, [row + 1, col + 1, "down"]);
+              }
+            }
+            break;
+        }
+      }
+      else {
+        switch(pos) {
+          case "up":
+            if (puzzle[row][col].left == find) {
+              addIfNotExist(rtTempList, [row, col, "left"]);
+            }
+            if (puzzle[row][col].right == find) {
+              addIfNotExist(rtTempList, [row, col, "right"]);
+            }
+            if (puzzle[row + 1][col].up == find) {
+              addIfNotExist(rtTempList, [row + 1, col, "up"]);
+            }
+            break;
+          case "down":
+            if (puzzle[row][col].left == find) {
+              addIfNotExist(rtTempList, [row, col, "left"]);
+            }
+            if (puzzle[row][col].right == find) {
+              addIfNotExist(rtTempList, [row, col, "right"]);
+            }
+            if (puzzle[row + 1][col].left == find) {
+              addIfNotExist(rtTempList, [row + 1, col, "left"]);
+            }
+            if (puzzle[row + 1][col].right == find) {
+              addIfNotExist(rtTempList, [row + 1, col, "right"]);
+            }
+            if (puzzle[row][col + 1].down == find) {
+              addIfNotExist(rtTempList, [row, col + 1, "down"]);
+            }
+            break;
+          case "left":
+            if (puzzle[row][col].up == find) {
+              addIfNotExist(rtTempList, [row, col, "up"]);
+            }
+            if (puzzle[row][col].down == find) {
+              addIfNotExist(rtTempList, [row, col, "down"]);
+            }
+            if (puzzle[row + 1][col].left == find) {
+              addIfNotExist(rtTempList, [row + 1, col, "left"]);
+            }
+            break;
+          case "right":
+            if (puzzle[row][col].up == find) {
+              addIfNotExist(rtTempList, [row, col, "up"]);
+            }
+            if (puzzle[row][col].down == find) {
+              addIfNotExist(rtTempList, [row, col, "down"]);
+            }
+            if (puzzle[row][col + 1].up == find) {
+              addIfNotExist(rtTempList, [row, col + 1, "up"]);
+            }
+            if (puzzle[row][col + 1].down == find) {
+              addIfNotExist(rtTempList, [row, col + 1, "down"]);
+            }
+            if (puzzle[row + 1][col].right == find) {
+              addIfNotExist(rtTempList, [row + 1, col, "right"]);
+            }
+            break;
+        }
+      }
+
+      print("rtTempList $rtTempList");
+
+    } while(!(rtList.length == rtTempList.length &&
+        rtList.every((element) => rtTempList.contains(element)) &&
+        rtTempList.every((element) => rtList.contains(element))));
+
+
+    print("end of getContinueOld : ${rtTempList.toList()}");
+    return rtTempList.toList();
+  }
+
+  void addIfNotExist(List<List<dynamic>> list, List<dynamic> item) {
+    if (!list.any((element) =>
+    element[0] == item[0] && element[1] == item[1] && element[2] == item[2])) {
+      list.add(item);
+    }
   }
 
   ///getter and setter about widgets
