@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
-import '../Scene/GameSceneStateSquare.dart';
+import '../Scene/GameSceneSquareProvider.dart';
+import '../provider/SquareProviderProvider.dart';
 import 'MainUI.dart';
 
 class GameUI {
@@ -129,8 +131,8 @@ class GameUI {
                 child: Text('Restart'),
               ),
               const PopupMenuItem<String>(
-                value: 'menu rule',
-                child: Text("Rule"),
+                value: 'menu hint',
+                child: Text("hint"),
               ),
             ],
             icon: const Icon(Icons.menu),
@@ -197,10 +199,10 @@ class GameUI {
     if(token.length == 2) {
       switch(token[1]) {
         case "restart":
-          //SquareProvider().resetPuzzle();
-          GameSceneStateSquare().restart();
+          Provider.of<SquareProviderProvider>(context, listen: false).restart();
           break;
-        case "rule":
+        case "hint":
+          Provider.of<SquareProviderProvider>(context, listen: false).showHint(context);
           break;
       }
     }
@@ -223,7 +225,7 @@ class GameUI {
   }
   void loadData(String label) async {
     List<List<int>> value = await readSquare.loadPuzzle("${MainUI.getProgressKey()}_$label");
-    GameSceneStateSquare().applyLabel(value);
+    //GameSceneSquareProvider().applyLabel(value);
   }
   void clearData(String label) {
 

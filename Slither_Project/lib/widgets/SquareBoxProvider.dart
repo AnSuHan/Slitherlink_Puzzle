@@ -13,8 +13,8 @@ class SquareBoxProvider extends StatefulWidget {
   final int column;
 
   //각 숫자는 색에 대한 의미를 같이 가짐
-  //0 : 기본, 1~ : 유저가 선택, -3 : 힌트
-  //-1 : 비활성(미선택), -2 : 비활성(선택)
+  //0 : 기본, 1~ : 유저가 선택, -4 : 유저가 x로 표기
+  //-1 : 비활성(미선택), -2 : 비활성(선택), -3 : 힌트
   var up = 0, down = 0, left = 0, right = 0;
   var num = 0;
 
@@ -95,11 +95,13 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                         if(up == 0 || up == -3) {
                           up = 1;
                         } else if(up >= 1) {
-                          up = 0;
+                          up = -4;
                         } else if(up == -1) {
                           up = -2;
                         } else if(up == -2) {
                           up = -1;
+                        } else if(up == -4) {
+                          up = 0;
                         }
                         widget.up = up;
                       });
@@ -107,6 +109,22 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                       Provider.of<SquareProviderProvider>(context, listen: false)
                           .updateSquareBox(row, column, up: up);
                     },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          height: 10,
+                          width: 50,
+                          color: setupColor(widget.up),
+                        ),
+                        if (widget.up == -4)
+                          const Icon(
+                            Icons.close,
+                            color: Colors.black,
+                            size: 10,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(
@@ -135,11 +153,13 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                         if(left == 0 || left == -3) {
                           left = 1;
                         } else if(left >= 1) {
-                          left = 0;
+                          left = -4;
                         } else if(left == -1) {
                           left = -2;
                         } else if(left == -2) {
                           left = -1;
+                        } else if(left == -4) {
+                          left = 0;
                         }
                         widget.left = left;
                       });
@@ -147,6 +167,22 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                       Provider.of<SquareProviderProvider>(context, listen: false)
                           .updateSquareBox(row, column, left: left);
                     },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          height: 10,
+                          width: 50,
+                          color: setupColor(widget.left),
+                        ),
+                        if (widget.left == -4)
+                          const Icon(
+                            Icons.close,
+                            color: Colors.black,
+                            size: 10,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
                 Container(
@@ -169,11 +205,13 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                         if(right == 0 || right == -3) {
                           right = 1;
                         } else if(right >= 1) {
-                          right = 0;
+                          right = -4;
                         } else if(right == -1) {
                           right = -2;
                         } else if(right == -2) {
                           right = -1;
+                        } else if(right == -4) {
+                          right = 0;
                         }
                         widget.right = right;
                       });
@@ -181,6 +219,22 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                       Provider.of<SquareProviderProvider>(context, listen: false)
                           .updateSquareBox(row, column, right: right);
                     },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          height: 10,
+                          width: 50,
+                          color: setupColor(widget.right),
+                        ),
+                        if (widget.right == -4)
+                          const Icon(
+                            Icons.close,
+                            color: Colors.black,
+                            size: 10,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -213,11 +267,13 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                         if(down == 0 || down == -3) {
                           down = 1;
                         } else if(down >= 1) {
-                          down = 0;
+                          down = -4;
                         } else if(down == -1) {
                           down = -2;
                         } else if(down == -2) {
                           down = -1;
+                        } else if(down == -4) {
+                          down = 0;
                         }
                         widget.down = down;
                       });
@@ -225,6 +281,22 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
                       Provider.of<SquareProviderProvider>(context, listen: false)
                           .updateSquareBox(row, column, down: down);
                     },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          height: 10,
+                          width: 50,
+                          color: setupColor(widget.down),
+                        ),
+                        if (widget.down == -4)
+                          const Icon(
+                            Icons.close,
+                            color: Colors.black,
+                            size: 10,
+                          ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(
@@ -258,6 +330,9 @@ class SquareBoxStateProvider extends State<SquareBoxProvider> {
           break;
         case -3:
           key += "hint";
+          break;
+        case -4:
+          key += "x";
           break;
       }
     }

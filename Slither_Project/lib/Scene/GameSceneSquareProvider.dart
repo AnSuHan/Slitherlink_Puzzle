@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../MakePuzzle/ReadSquare.dart';
 import '../ThemeColor.dart';
 import '../provider/SquareProviderProvider.dart';
+import '../widgets/GameUI.dart';
 import '../widgets/GameUI_Inst.dart';
 import '../widgets/SquareBoxProvider.dart';
 
@@ -38,7 +39,7 @@ class GameSceneStateSquareProvider extends State<GameSceneSquareProvider> {
   //UI
   late Size screenSize;
   bool showAppbar = false;
-  GameUIInst ui = GameUIInst();
+  GameUI ui = GameUI();
   Map<String, Color> settingColor = ThemeColor().getColor();
 
 

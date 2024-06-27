@@ -208,4 +208,36 @@ class ReadSquare {
     
     return lineData;
   }
+
+  Future<void> writeSubmit(List<List<SquareBoxProvider>> puzzle, List<List<int>> submit) async {
+    for (int i = 0; i < puzzle.length; i++) {
+      for (int j = 0; j < puzzle[i].length; j++) {
+        //down, right
+        if (i != 0 && j != 0) {
+          puzzle[i][j].down = submit[(i + 1) * 2][j];
+          puzzle[i][j].right = submit[(i * 2) + 1][j + 1];
+        }
+        //up, down, right
+        else if (j != 0) {
+          puzzle[i][j].up = submit[i][j];
+          puzzle[i][j].down = submit[i + 2][j];
+          puzzle[i][j].right = submit[i + 1][j + 1];
+        }
+        //down, left, right
+        else if (i != 0) {
+          puzzle[i][j].down = submit[i * 2 + 2][j];
+          puzzle[i][j].left = submit[i * 2 + 1][j];
+          puzzle[i][j].right = submit[i * 2 + 1][j + 1];
+        }
+        //up, down, left, right
+        else {
+          puzzle[i][j].up = submit[i][j];
+          puzzle[i][j].down = submit[i + 2][j];
+          puzzle[i][j].left = submit[i + 1][j];
+          puzzle[i][j].right = submit[i + 1][j + 1];
+        }
+      }
+    }
+  }
+
 }

@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
@@ -141,6 +143,32 @@ class SquareProviderProvider with ChangeNotifier {
 
     refreshSubmit();
     notifyListeners();
+  }
+
+  void restart() async {
+    for(int i = 0 ; i < submit.length ; i++) {
+      for(int j = 0 ; j < submit[i].length ; j++) {
+        submit[i][j] = 0;
+      }
+    }
+
+    await readSquare.writeSubmit(puzzle, submit);
+    notifyListeners();
+  }
+
+  void showHint(BuildContext context) async {
+    List<List<dynamic>> items = await checkCompletePuzzleCompletely(context);
+    print("hint items : $items");
+    List<dynamic> item;
+    if(items.length > 1) {
+      item = items[Random().nextInt(items.length - 1)];
+    }
+    else {
+      item = items[0];
+    }
+
+    print("hint item : $item");
+    setLineColor(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
   }
 
   void refreshSubmit() async {
@@ -423,6 +451,151 @@ class SquareProviderProvider with ChangeNotifier {
     //UserInfo.ContinuePuzzle();
   }
 
+  Future<List<List<dynamic>>> checkCompletePuzzleCompletely(BuildContext context) async {
+    List<List<dynamic>> rtValue = [];
+
+    submit = await readSquare.readSubmit(puzzle);
+
+    String dir = "";
+    int row = 0, col = 0;
+
+    //compare submit and answer
+    for(int i = 0 ; i < answer.length ; i++) {
+      for(int j = 0 ; j < answer[i].length ; j++) {
+        //정답이라고 입력했는데 오답인 경우 || 오답이라고 입력했는데 정답인 경우
+        //submit : 1~15, answer : 0,1
+        if((submit[i][j] >= 1 && answer[i][j] == 0) || (submit[i][j] == -4 && answer[i][j] == 1)) {
+          if (i <= 2) {
+            if ((i % 2 == 0 && j == 0) || (i % 2 != 0 && j <= 1)) {
+              row = 0;
+              col = 0;
+
+              if (i == 0) {
+                dir = "up";
+              } else if (i == 2) {
+                dir = "down";
+              } else if (i == 1 && j == 0) {
+                dir = "left";
+              } else if (i == 1 && j == 1) {
+                dir = "right";
+              }
+            } else {
+              row = 0;
+
+              if (i == 0) {
+                dir = "up";
+                col = j;
+              } else if (i == 2) {
+                dir = "down";
+                col = j;
+              } else if (i == 1) {
+                dir = "right";
+                col = j - 1;
+              }
+            }
+          } else {
+            if ((i % 2 == 0 && j == 0) || (i % 2 != 0 && j <= 1)) {
+              col = 0;
+
+              if (i % 2 == 0) {
+                dir = "down";
+                row = (i - 1) ~/ 2;
+              } else if (j == 0) {
+                dir = "left";
+                row = (i - 1) ~/ 2;
+              } else if (j == 1) {
+                dir = "right";
+                row = (i - 1) ~/ 2;
+              }
+            } else {
+              // 1번과 2번 조건 모두 불만족
+              if (i % 2 == 0) {
+                dir = "down";
+                row = (i - 1) ~/ 2;
+                col = j;
+              } else {
+                dir = "right";
+                row = (i - 1) ~/ 2;
+                col = j - 1;
+              }
+            }
+          }
+
+          rtValue.add([row, col, dir]);
+        }
+      }
+    }
+
+    //현재 입력한 데이터가 모두 정답인 경우, answer 중 입력되지 않은 것을 리턴
+    if(rtValue.isEmpty) {
+      for(int i = 0 ; i < answer.length ; i++) {
+        for(int j = 0 ; j < answer[i].length ; j++) {
+          if(submit[i][j] == 0 && answer[i][j] == 1) {
+            if (i <= 2) {
+              if ((i % 2 == 0 && j == 0) || (i % 2 != 0 && j <= 1)) {
+                row = 0;
+                col = 0;
+
+                if (i == 0) {
+                  dir = "up";
+                } else if (i == 2) {
+                  dir = "down";
+                } else if (i == 1 && j == 0) {
+                  dir = "left";
+                } else if (i == 1 && j == 1) {
+                  dir = "right";
+                }
+              } else {
+                row = 0;
+
+                if (i == 0) {
+                  dir = "up";
+                  col = j;
+                } else if (i == 2) {
+                  dir = "down";
+                  col = j;
+                } else if (i == 1) {
+                  dir = "right";
+                  col = j - 1;
+                }
+              }
+            } else {
+              if ((i % 2 == 0 && j == 0) || (i % 2 != 0 && j <= 1)) {
+                col = 0;
+
+                if (i % 2 == 0) {
+                  dir = "down";
+                  row = (i - 1) ~/ 2;
+                } else if (j == 0) {
+                  dir = "left";
+                  row = (i - 1) ~/ 2;
+                } else if (j == 1) {
+                  dir = "right";
+                  row = (i - 1) ~/ 2;
+                }
+              } else {
+                // 1번과 2번 조건 모두 불만족
+                if (i % 2 == 0) {
+                  dir = "down";
+                  row = (i - 1) ~/ 2;
+                  col = j;
+                } else {
+                  dir = "right";
+                  row = (i - 1) ~/ 2;
+                  col = j - 1;
+                }
+              }
+            }
+
+            rtValue.add([row, col, dir]);
+          }
+        }
+      }
+    }
+
+    return rtValue;
+  }
+
   void showComplete(BuildContext context) {
     print("call showComplete");
     // Show AlertDialog if isComplete is true
@@ -517,29 +690,29 @@ class SquareProviderProvider with ChangeNotifier {
     if(row != 0 && col != 0) {
       switch(pos) {
         case "down":
-          use.add(puzzle[row][col - 1].down);
-          use.add(puzzle[row][col - 1].right);
-          use.add(puzzle[row][col].right);
+          addIfPositive(use, puzzle[row][col - 1].down);
+          addIfPositive(use, puzzle[row][col - 1].right);
+          addIfPositive(use, puzzle[row][col].right);
 
           if(puzzle.length > row + 1) {
-            use.add(puzzle[row + 1][col - 1].right);
-            use.add(puzzle[row + 1][col].right);
+            addIfPositive(use, puzzle[row + 1][col - 1].right);
+            addIfPositive(use, puzzle[row + 1][col].right);
           }
           if(puzzle[row].length > col + 1) {
-            use.add(puzzle[row][col + 1].down);
+            addIfPositive(use, puzzle[row][col + 1].down);
           }
           break;
         case "right":
-          use.add(puzzle[row - 1][col].right);
-          use.add(puzzle[row - 1][col].down);
-          use.add(puzzle[row][col].down);
+          addIfPositive(use, puzzle[row - 1][col].right);
+          addIfPositive(use, puzzle[row - 1][col].down);
+          addIfPositive(use, puzzle[row][col].down);
 
           if(puzzle[row].length > col + 1) {
-            use.add(puzzle[row - 1][col + 1].down);
-            use.add(puzzle[row][col + 1].down);
+            addIfPositive(use, puzzle[row - 1][col + 1].down);
+            addIfPositive(use, puzzle[row][col + 1].down);
           }
           if(puzzle.length > row + 1) {
-            use.add(puzzle[row + 1][col].right);
+            addIfPositive(use, puzzle[row + 1][col].right);
           }
           break;
       }
@@ -547,37 +720,37 @@ class SquareProviderProvider with ChangeNotifier {
     else if(col != 0) {
       switch(pos) {
         case "up":
-          use.add(puzzle[row][col - 1].up);
-          use.add(puzzle[row][col - 1].right);
-          use.add(puzzle[row][col].right);
+          addIfPositive(use, puzzle[row][col - 1].up);
+          addIfPositive(use, puzzle[row][col - 1].right);
+          addIfPositive(use, puzzle[row][col].right);
 
           if(puzzle[row].length > col + 1) {
-            use.add(puzzle[row][col + 1].up);
+            addIfPositive(use, puzzle[row][col + 1].up);
           }
           break;
         case "down":
-          use.add(puzzle[row][col - 1].down);
-          use.add(puzzle[row][col - 1].right);
-          use.add(puzzle[row][col].right);
+          addIfPositive(use, puzzle[row][col - 1].down);
+          addIfPositive(use, puzzle[row][col - 1].right);
+          addIfPositive(use, puzzle[row][col].right);
 
           if(puzzle[row].length > col + 1) {
-            use.add(puzzle[row][col + 1].down);
+            addIfPositive(use, puzzle[row][col + 1].down);
           }
           if(puzzle.length > row + 1) {
-            use.add(puzzle[row + 1][col - 1].right);
-            use.add(puzzle[row + 1][col].right);
+            addIfPositive(use, puzzle[row + 1][col - 1].right);
+            addIfPositive(use, puzzle[row + 1][col].right);
           }
           break;
         case "right":
-          use.add(puzzle[row][col].up);
-          use.add(puzzle[row][col].down);
+          addIfPositive(use, puzzle[row][col].up);
+          addIfPositive(use, puzzle[row][col].down);
 
           if(puzzle[row].length > col + 1) {
-            use.add(puzzle[row][col + 1].up);
-            use.add(puzzle[row][col + 1].down);
+            addIfPositive(use, puzzle[row][col + 1].up);
+            addIfPositive(use, puzzle[row][col + 1].down);
           }
           if(puzzle.length > row + 1) {
-            use.add(puzzle[row + 1][col].right);
+            addIfPositive(use, puzzle[row + 1][col].right);
           }
           break;
       }
@@ -585,30 +758,30 @@ class SquareProviderProvider with ChangeNotifier {
     else if(row != 0) {
       switch(pos) {
         case "down":
-          use.add(puzzle[row][col].left);
-          use.add(puzzle[row][col].right);
-          use.add(puzzle[row + 1][col].left);
-          use.add(puzzle[row + 1][col].right);
-          use.add(puzzle[row][col + 1].down);
+          addIfPositive(use, puzzle[row][col].left);
+          addIfPositive(use, puzzle[row][col].right);
+          addIfPositive(use, puzzle[row + 1][col].left);
+          addIfPositive(use, puzzle[row + 1][col].right);
+          addIfPositive(use, puzzle[row][col + 1].down);
           break;
         case "left":
-          use.add(puzzle[row - 1][col].left);
-          use.add(puzzle[row - 1][col].down);
-          use.add(puzzle[row][col].down);
+          addIfPositive(use, puzzle[row - 1][col].left);
+          addIfPositive(use, puzzle[row - 1][col].down);
+          addIfPositive(use, puzzle[row][col].down);
 
           if(puzzle.length > row + 1) {
-            use.add(puzzle[row + 1][col].left);
+            addIfPositive(use, puzzle[row + 1][col].left);
           }
           break;
         case "right":
-          use.add(puzzle[row - 1][col].right);
-          use.add(puzzle[row - 1][col].down);
-          use.add(puzzle[row - 1][col + 1].down);
-          use.add(puzzle[row][col].down);
+          addIfPositive(use, puzzle[row - 1][col].right);
+          addIfPositive(use, puzzle[row - 1][col].down);
+          addIfPositive(use, puzzle[row - 1][col + 1].down);
+          addIfPositive(use, puzzle[row][col].down);
 
           if(puzzle.length > row + 1) {
-            use.add(puzzle[row + 1][col].right);
-            use.add(puzzle[row + 1][col + 1].down);
+            addIfPositive(use, puzzle[row + 1][col].right);
+            addIfPositive(use, puzzle[row + 1][col + 1].down);
           }
           break;
       }
@@ -616,34 +789,40 @@ class SquareProviderProvider with ChangeNotifier {
     else {
       switch(pos) {
         case "up":
-          use.add(puzzle[row][col].left);
-          use.add(puzzle[row][col].right);
-          use.add(puzzle[row][col + 1].up);
+          addIfPositive(use, puzzle[row][col].left);
+          addIfPositive(use, puzzle[row][col].right);
+          addIfPositive(use, puzzle[row][col + 1].up);
           break;
         case "down":
-          use.add(puzzle[row][col].left);
-          use.add(puzzle[row][col].right);
-          use.add(puzzle[row + 1][col].left);
-          use.add(puzzle[row + 1][col].right);
-          use.add(puzzle[row][col + 1].down);
+          addIfPositive(use, puzzle[row][col].left);
+          addIfPositive(use, puzzle[row][col].right);
+          addIfPositive(use, puzzle[row + 1][col].left);
+          addIfPositive(use, puzzle[row + 1][col].right);
+          addIfPositive(use, puzzle[row][col + 1].down);
           break;
         case "left":
-          use.add(puzzle[row][col].up);
-          use.add(puzzle[row][col].down);
-          use.add(puzzle[row + 1][col].left);
+          addIfPositive(use, puzzle[row][col].up);
+          addIfPositive(use, puzzle[row][col].down);
+          addIfPositive(use, puzzle[row + 1][col].left);
           break;
         case "right":
-          use.add(puzzle[row][col].up);
-          use.add(puzzle[row][col].down);
-          use.add(puzzle[row][col + 1].up);
-          use.add(puzzle[row][col + 1].down);
-          use.add(puzzle[row + 1][col].right);
+          addIfPositive(use, puzzle[row][col].up);
+          addIfPositive(use, puzzle[row][col].down);
+          addIfPositive(use, puzzle[row][col + 1].up);
+          addIfPositive(use, puzzle[row][col + 1].down);
+          addIfPositive(use, puzzle[row + 1][col].right);
           break;
       }
     }
 
     use.remove(0);
     return use;
+  }
+
+  void addIfPositive(Set<int> use, int value) {
+    if(value > 0) {
+      use.add(value);
+    }
   }
 
   List<dynamic> getOldColorList(int row, int col, String pos, int now) {
