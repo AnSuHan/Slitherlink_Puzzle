@@ -3,14 +3,14 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
-import '../Scene/GameSceneSquareProvider.dart';
-import '../provider/SquareProviderProvider.dart';
+import '../Scene/GameSceneSquare.dart';
+import '../provider/SquareProvider.dart';
 import 'MainUI.dart';
 
 class GameUI {
   late Size screenSize;
   late ReadSquare readSquare;
-  final SquareProviderProvider squareProvider;
+  final SquareProvider squareProvider;
 
   GameUI(this.squareProvider) {
     readSquare = ReadSquare(squareProvider: squareProvider);
@@ -206,10 +206,10 @@ class GameUI {
     if(token.length == 2) {
       switch(token[1]) {
         case "restart":
-          Provider.of<SquareProviderProvider>(context, listen: false).restart();
+          Provider.of<SquareProvider>(context, listen: false).restart();
           break;
         case "hint":
-          Provider.of<SquareProviderProvider>(context, listen: false).showHint(context);
+          Provider.of<SquareProvider>(context, listen: false).showHint(context);
           break;
       }
     }

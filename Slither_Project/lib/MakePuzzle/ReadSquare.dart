@@ -2,17 +2,17 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../provider/SquareProviderProvider.dart';
-import '../widgets/SquareBoxProvider.dart';
+import '../provider/SquareProvider.dart';
+import '../widgets/SquareBox.dart';
 import 'ReadPuzzleData.dart';
 
 //handle data with puzzle in GameSceneStateSquare
 class ReadSquare {
-  List<List<SquareBoxProvider>> puzzle = [];
+  List<List<SquareBox>> puzzle = [];
   late List<List<bool>> data;
   late ReadPuzzleData read;
   late List<List<int>> lineData;
-  final SquareProviderProvider squareProvider;
+  final SquareProvider squareProvider;
 
   ReadSquare({required this.squareProvider}) {
     puzzle = []; // 초기화
@@ -20,7 +20,7 @@ class ReadSquare {
     read = ReadPuzzleData();
   }
 
-  void setPuzzle(List<List<SquareBoxProvider>> puzzle) {
+  void setPuzzle(List<List<SquareBox>> puzzle) {
     this.puzzle = puzzle;
   }
 
@@ -73,7 +73,7 @@ class ReadSquare {
   }
 
 
-  Future<List<List<int>>> readSubmit(List<List<SquareBoxProvider>> puzzle) async {
+  Future<List<List<int>>> readSubmit(List<List<SquareBox>> puzzle) async {
     lineData = List.generate(puzzle.length * 2 + 1, (row) =>
         List.filled(row % 2 == 0 ? puzzle[0].length : puzzle[0].length + 1, 0),
     );
@@ -141,7 +141,7 @@ class ReadSquare {
     return lineData;
   }
 
-  Future<void> writeSubmit(List<List<SquareBoxProvider>> puzzle, List<List<int>> submit) async {
+  Future<void> writeSubmit(List<List<SquareBox>> puzzle, List<List<int>> submit) async {
     for (int i = 0; i < puzzle.length; i++) {
       for (int j = 0; j < puzzle[i].length; j++) {
         //down, right

@@ -3,22 +3,22 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
-import '../Scene/GameSceneSquareProvider.dart';
+import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
-import '../widgets/SquareBoxProvider.dart';
+import '../widgets/SquareBox.dart';
 
-class SquareProviderProvider with ChangeNotifier {
+class SquareProvider with ChangeNotifier {
   late ReadSquare readSquare;
 
-  SquareProviderProvider({this.isContinue = false}) {
+  SquareProvider({this.isContinue = false}) {
     readSquare = ReadSquare(squareProvider: this);
   }
 
   ThemeColor themeColor = ThemeColor();
 
   List<Widget> squareField = [];
-  List<List<SquareBoxProvider>> puzzle = [];
-  late GameSceneStateSquareProvider gameField; // instance of GameSceneStateSquareProvider
+  List<List<SquareBox>> puzzle = [];
+  late GameStateSquare gameField; // instance of GameSceneStateSquareProvider
 
   late List<List<int>> answer;
   late List<List<int>> submit;
@@ -348,7 +348,7 @@ class SquareProviderProvider with ChangeNotifier {
       //print("answer is empty");
       return Future.value([]);
     }
-    List<List<SquareBoxProvider>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
+    List<List<SquareBox>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
     //print("puzzle SquareBoxProvider => row ${puzzle.length}, col ${puzzle[0].length}");
     List<Widget> columnChildren = [];
 
@@ -387,12 +387,12 @@ class SquareProviderProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void setPuzzle(List<List<SquareBoxProvider>> puzzle) {
+  void setPuzzle(List<List<SquareBox>> puzzle) {
     this.puzzle = puzzle;
     puzzleToWidget();
   }
 
-  void setGameField(GameSceneStateSquareProvider gameField) {
+  void setGameField(GameStateSquare gameField) {
     this.gameField = gameField;
     notifyListeners();
   }
@@ -409,7 +409,7 @@ class SquareProviderProvider with ChangeNotifier {
     this.submit = submit;
   }
 
-  List<List<SquareBoxProvider>> getPuzzle() {
+  List<List<SquareBox>> getPuzzle() {
     return puzzle;
   }
 
@@ -1237,9 +1237,9 @@ class SquareProviderProvider with ChangeNotifier {
   ///******************** default setting of making puzzle ********************
   ///**********************************************************************************
   ///**********************************************************************************
-  List<List<SquareBoxProvider>> initSquarePuzzle(width, height) {
-    List<List<SquareBoxProvider>> puzzle = [];
-    List<SquareBoxProvider> temp = [];
+  List<List<SquareBox>> initSquarePuzzle(width, height) {
+    List<List<SquareBox>> puzzle = [];
+    List<SquareBox> temp = [];
     int i, j;
 
     for(i = 0 ; i < height ; i++) {
@@ -1247,13 +1247,13 @@ class SquareProviderProvider with ChangeNotifier {
 
       for(j = 0 ; j < width ; j++) {
         if(i == 0 && j == 0) {
-          temp.add(SquareBoxProvider(isFirstRow: true, isFirstColumn: true, row: i, column: j,));
+          temp.add(SquareBox(isFirstRow: true, isFirstColumn: true, row: i, column: j,));
         } else if(i == 0) {
-          temp.add(SquareBoxProvider(isFirstRow: true, row: i, column: j,));
+          temp.add(SquareBox(isFirstRow: true, row: i, column: j,));
         } else if(j == 0) {
-          temp.add(SquareBoxProvider(isFirstColumn: true, row: i, column: j,));
+          temp.add(SquareBox(isFirstColumn: true, row: i, column: j,));
         } else {
-          temp.add(SquareBoxProvider(row: i, column: j,));
+          temp.add(SquareBox(row: i, column: j,));
         }
       }
       puzzle.add(temp);
@@ -1301,7 +1301,7 @@ class SquareProviderProvider with ChangeNotifier {
   }
 
   //answer is key-value pair
-  void applyUIWithAnswer(List<List<SquareBoxProvider>> puzzle, List<List<int>> answer) {
+  void applyUIWithAnswer(List<List<SquareBox>> puzzle, List<List<int>> answer) {
     int lineType;
 
     for(int i = 0 ; i < answer.length ; i++) {      //10 ,11, 10, 11...
@@ -1353,7 +1353,7 @@ class SquareProviderProvider with ChangeNotifier {
     }
   }
 
-  void setNumWithAnswer(List<List<SquareBoxProvider>> puzzle) {
+  void setNumWithAnswer(List<List<SquareBox>> puzzle) {
     int count = 0;
 
     for(int i = 0 ; i < puzzle.length ; i++) {

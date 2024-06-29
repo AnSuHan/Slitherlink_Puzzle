@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
-import '../Scene/GameSceneStateSquare.dart';
 import '../ThemeColor.dart';
+import '../provider/SquareProvider.dart';
 
 // ignore: must_be_immutable
 class SquareBox extends StatefulWidget {
@@ -11,12 +12,11 @@ class SquareBox extends StatefulWidget {
   final int row;
   final int column;
 
-  //0 : 기본, 1~ : 유저가 선택, 2 : 힌트
-  //-1 : 비활성(미선택), -2 : 비활성(선택)
+  //각 숫자는 색에 대한 의미를 같이 가짐
+  //0 : 기본, 1~ : 유저가 선택, -4 : 유저가 x로 표기
+  //-1 : 비활성(미선택), -2 : 비활성(선택), -3 : 힌트
   var up = 0, down = 0, left = 0, right = 0;
   var num = 0;
-
-  Color colorUp, colorDown, colorLeft, colorRight;
 
   SquareBox({
     Key? key,
@@ -24,34 +24,18 @@ class SquareBox extends StatefulWidget {
     this.isFirstColumn = false,
     required this.row,
     required this.column,
-  }) :
-      colorUp = const Color(0xFFC0C0C0),
-      colorDown = const Color(0xFFC0C0C0),
-      colorLeft = const Color(0xFFC0C0C0),
-      colorRight = const Color(0xFFC0C0C0),
-      super(key: key);
+  }) : super(key: key);
 
   @override
-  SquareBoxState createState() => SquareBoxState();
+  SquareBoxStateProvider createState() => SquareBoxStateProvider();
 }
 
-class SquareBoxState extends State<SquareBox> {
+class SquareBoxStateProvider extends State<SquareBox> {
   //setting color
   Map<String, Color> settingColor = ThemeColor().getColor();
   ThemeColor themeColor = ThemeColor();
 
-  late Color colorUp;
-  late Color colorDown;
-  late Color colorLeft;
-  late Color colorRight;
-
   String lastClick = "";
-
-  @override
-  void initState() {
-    super.initState();
-    _computeColors();
-  }
 
   @override
   void didUpdateWidget(covariant SquareBox oldWidget) {
@@ -61,20 +45,8 @@ class SquareBoxState extends State<SquareBox> {
         widget.left != oldWidget.left ||
         widget.right != oldWidget.right ||
         widget.row != oldWidget.row ||
-        widget.column != oldWidget.column ||
-        widget.colorUp != oldWidget.colorUp ||
-        widget.colorDown != oldWidget.colorDown ||
-        widget.colorLeft != oldWidget.colorLeft ||
-        widget.colorRight != oldWidget.colorRight) {
-      _computeColors();
+        widget.column != oldWidget.column) {
     }
-  }
-
-  void _computeColors() {
-    colorUp = getLineColor(context, widget.up, thisColor: widget.colorUp, row: widget.row, column: widget.column);
-    colorDown = getLineColor(context, widget.down, thisColor: widget.colorDown, row: widget.row, column: widget.column);
-    colorLeft = getLineColor(context, widget.left, thisColor: widget.colorLeft, row: widget.row, column: widget.column);
-    colorRight = getLineColor(context, widget.right, thisColor: widget.colorRight, row: widget.row, column: widget.column);
   }
 
   @override
@@ -91,298 +63,280 @@ class SquareBoxState extends State<SquareBox> {
     int row = widget.row;
     int column = widget.column;
 
-    return Column(
-      children: [
-        !isFirstRow ? Container() : Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Consumer<SquareProvider>(
+      builder: (context, squareProvider, child) {
+        return Column(
           children: [
-            isFirstColumn ? Row(
+            !isFirstRow ? Container() : Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
+                isFirstColumn ? Row(
+                  children: [
+                    Container(
+                      height: 5,
+                      width: 5,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(
+                      width: 2.5,
+                    ),
+                  ],
+                ) : Container(),
+                Container(
+                  height: 10,
+                  width: 50,
+                  color: setupColor(widget.up),
+                  child: GestureDetector(
+                    onTap: () {
+                      lastClick = "up";
+
+                      setState(() {
+                        if(up == 0 || up == -3) {
+                          up = 1;
+                        } else if(up >= 1) {
+                          up = -4;
+                        } else if(up == -1) {
+                          up = -2;
+                        } else if(up == -2) {
+                          up = -1;
+                        } else if(up == -4) {
+                          up = 0;
+                        }
+                        widget.up = up;
+                      });
+
+                      Provider.of<SquareProvider>(context, listen: false)
+                          .updateSquareBox(row, column, up: up);
+                    },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          height: 10,
+                          width: 50,
+                          color: setupColor(widget.up),
+                        ),
+                        if (widget.up == -4)
+                          const Icon(
+                            Icons.close,
+                            color: Colors.black,
+                            size: 10,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(
+                  width: 2.5,
+                ),
                 Container(
                   height: 5,
                   width: 5,
                   color: Colors.grey,
                 ),
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                !isFirstColumn ? Container() : Container(
+                  height: 50,
+                  width: 10,
+                  color: setupColor(widget.left),
+                  child: GestureDetector(
+                    onTap: () {
+                      lastClick = "left";
+
+                      setState(() {
+                        if(left == 0 || left == -3) {
+                          left = 1;
+                        } else if(left >= 1) {
+                          left = -4;
+                        } else if(left == -1) {
+                          left = -2;
+                        } else if(left == -2) {
+                          left = -1;
+                        } else if(left == -4) {
+                          left = 0;
+                        }
+                        widget.left = left;
+                      });
+
+                      Provider.of<SquareProvider>(context, listen: false)
+                          .updateSquareBox(row, column, left: left);
+                    },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          height: 10,
+                          width: 50,
+                          color: setupColor(widget.left),
+                        ),
+                        if (widget.left == -4)
+                          const Icon(
+                            Icons.close,
+                            color: Colors.black,
+                            size: 10,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                Container(
+                  height: 50,
+                  width: 50,
+                  color: settingColor["box"],
+                  child: Center(
+                    child: Text(num.toString(), style: TextStyle(color: settingColor["number"])),
+                  ),
+                ),
+                Container(
+                  height: 50,
+                  width: 10,
+                  color: setupColor(widget.right),
+                  child: GestureDetector(
+                    onTap: () {
+                      lastClick = "right";
+
+                      setState(() {
+                        if(right == 0 || right == -3) {
+                          right = 1;
+                        } else if(right >= 1) {
+                          right = -4;
+                        } else if(right == -1) {
+                          right = -2;
+                        } else if(right == -2) {
+                          right = -1;
+                        } else if(right == -4) {
+                          right = 0;
+                        }
+                        widget.right = right;
+                      });
+
+                      Provider.of<SquareProvider>(context, listen: false)
+                          .updateSquareBox(row, column, right: right);
+                    },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          height: 10,
+                          width: 50,
+                          color: setupColor(widget.right),
+                        ),
+                        if (widget.right == -4)
+                          const Icon(
+                            Icons.close,
+                            color: Colors.black,
+                            size: 10,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                isFirstColumn ? Row(
+                  children: [
+                    Container(
+                      height: 5,
+                      width: 5,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(
+                      width: 2.5,
+                    ),
+                  ],
+                ) : Container(),
+                Container(
+                  height: 10,
+                  width: 50,
+                  color: setupColor(widget.down),
+                  child: GestureDetector(
+                    onTap: () {
+                      lastClick = "down";
+
+                      setState(() {
+                        if(down == 0 || down == -3) {
+                          down = 1;
+                        } else if(down >= 1) {
+                          down = -4;
+                        } else if(down == -1) {
+                          down = -2;
+                        } else if(down == -2) {
+                          down = -1;
+                        } else if(down == -4) {
+                          down = 0;
+                        }
+                        widget.down = down;
+                      });
+
+                      Provider.of<SquareProvider>(context, listen: false)
+                          .updateSquareBox(row, column, down: down);
+                    },
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          height: 10,
+                          width: 50,
+                          color: setupColor(widget.down),
+                        ),
+                        if (widget.down == -4)
+                          const Icon(
+                            Icons.close,
+                            color: Colors.black,
+                            size: 10,
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
                 const SizedBox(
                   width: 2.5,
                 ),
-              ],
-            ) : Container(),
-            Container(
-              height: 10,
-              width: 50,
-                color: colorUp,
-                child: GestureDetector(
-                  onTap: () {
-                    lastClick = "up";
-                    setState(() {
-                      if(up == 0 || up == 2) {
-                        up = 1;
-                      } else if(up >= 1) {
-                        up = 0;
-                      } else if(up == -1) {
-                        up = -2;
-                      } else if(up == -2) {
-                        up = -1;
-                      }
-                      widget.up = up;
-                      colorUp = getLineColor(context, up, thisColor: colorUp, row: row, column: column, dir: "up");
-                      widget.colorUp = colorUp;
-                      if(up >= 1) {
-                        up = setUpData(colorUp);
-                        colorUp = setUpColor(up);
-                      }
-                    });
-                    GameSceneStateSquare.checkCompletePuzzle(context);
-                  },
-                ),
-            ),
-            const SizedBox(
-              width: 2.5,
-            ),
-            Container(
-              height: 5,
-              width: 5,
-              color: Colors.grey,
-            ),
-          ],
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            !isFirstColumn ? Container() : Container(
-              height: 50,
-              width: 10,
-              color: colorLeft,
-              child: GestureDetector(
-                onTap: () {
-                  lastClick = "left";
-                  setState(() {
-                    if(left == 0 || left == 2) {
-                      left = 1;
-                    } else if(left >= 1) {
-                      left = 0;
-                    } else if(left == -1) {
-                      left = -2;
-                    } else if(left == -2) {
-                      left = -1;
-                    }
-                    widget.left = left;
-                    colorLeft = getLineColor(context, left, thisColor: colorLeft, row: row, column: column, dir: "left");
-                    widget.colorLeft = colorLeft;
-                    if(left >= 1) {
-                      left = setUpData(colorLeft);
-                      colorLeft = setUpColor(left);
-                    }
-                  });
-                  GameSceneStateSquare.checkCompletePuzzle(context);
-                },
-              ),
-            ),
-            Container(
-              height: 50,
-              width: 50,
-              color: settingColor["box"],
-              child: Center(
-                child: Text(num.toString(), style: TextStyle(color: settingColor["number"])),
-              ),
-            ),
-            Container(
-              height: 50,
-              width: 10,
-              color: colorRight,
-              child: GestureDetector(
-                onTap: () {
-                  lastClick = "right";
-                  setState(() {
-                    if(right == 0 || right == 2) {
-                      right = 1;
-                    } else if(right >= 1) {
-                      right = 0;
-                    } else if(right == -1) {
-                      right = -2;
-                    } else if(right == -2) {
-                      right = -1;
-                    }
-                    widget.right = right;
-                    colorRight = getLineColor(context, right, thisColor: colorRight, row: row, column: column, dir: "right");
-                    widget.colorRight = colorRight;
-                    if(right >= 1) {
-                      right = setUpData(colorRight);
-                      colorRight = setUpColor(right);
-                    }
-                  });
-                  GameSceneStateSquare.checkCompletePuzzle(context);
-                },
-              ),
-            ),
-          ],
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            isFirstColumn ? Row(
-              children: [
                 Container(
                   height: 5,
                   width: 5,
                   color: Colors.grey,
                 ),
-                const SizedBox(
-                  width: 2.5,
-                ),
               ],
-            ) : Container(),
-            Container(
-              height: 10,
-              width: 50,
-              color: colorDown,
-              child: GestureDetector(
-                onTap: () {
-                  lastClick = "down";
-                  setState(() {
-                    if(down == 0 || down == 2) {
-                      down = 1;
-                    } else if(down >= 1) {
-                      down = 0;
-                    } else if(down == -1) {
-                      down = -2;
-                    } else if(down == -2) {
-                      down = -1;
-                    }
-                    widget.down = down;
-                    colorDown = getLineColor(context, down, thisColor: colorDown, row: row, column: column, dir: "down");
-                    widget.colorDown = colorDown;
-                    if(down >= 1) {
-                      down = setUpData(colorDown);
-                      colorDown = setUpColor(down);
-                    }
-                  });
-                  GameSceneStateSquare.checkCompletePuzzle(context);
-                },
-              ),
-            ),
-            const SizedBox(
-              width: 2.5,
-            ),
-            Container(
-              height: 5,
-              width: 5,
-              color: Colors.grey,
             ),
           ],
-        ),
-      ],
+        );
+      }
     );
   }
 
-  Color getLineColor(BuildContext context, int type, {Color? thisColor, int? row, int? column, String? dir}) {
-    Color? color = thisColor;
-    //0 : 기본, 1 : 유저가 선택, 2 : 힌트
-    //-1 : 비활성(미선택), -2 : 비활성(선택)
-    //print("type : $type, thisColor : $thisColor");
-    switch(type) {
-      case 0:
-        color = themeColor.getLineColor(type: 0);
-        break;
-      case 1:
-        Set<Color> colors = isExistNearColor();
-
-        //use new color
-        ///TODO : 현재 색을 변경해야 하는 라인 1개는 찾을 수 있지만, 색을 변경해도 UI에 반영이 되지 않음
-        ///TODO : 따라서 Triangle의 작성을 시작하고 해당 클래스는 instance로만 작성 
-        if(true || colors.isEmpty) {
-          color = themeColor.getLineColor();
-        }
-        else {
-          //set only this color
-          if(colors.length == 1) {
-            color = colors.first;
-          }
-          //change all near colors
-          else if(colors.length == 2){
-            color = colors.first;
-            //두 개의 색이 만난 경우 변경해야 하는 라인들의 목록
-            List<dynamic> changes = GameSceneStateSquare.getOldColorList(row!, column!, dir!, color);
-            print("_____ getOldColorList _____");
-            for(int i = 0 ; i < changes.length ; i++) {
-              print("changes : ${changes[i]}");
-              GameSceneStateSquare.changeColor(context, changes[i][0], changes[i][1], changes[i][2], color);
-            }
-          }
-          else {
-            throw Exception("UnExpected Exception occurred");
-          }
-        }
-        break;
-      case 2:
-        color = themeColor.getLineColor(type: 2);
-        break;
-      case -1:
-        color = themeColor.getLineColor(type: -1);
-        break;
-      case -2:
-        color = themeColor.getLineColor(type: -2);
-        break;
-      default:
-        color = Colors.grey;
-    }
-
-    return color;
-  }
-
-  Set<Color> isExistNearColor() {
-    List<Color> noUse = [themeColor.getLineColor(type: 0), themeColor.getLineColor(type: 2), themeColor.getLineColor(type: -1), themeColor.getLineColor(type: -2)];
-
-    Set<Color> colors = GameSceneStateSquare.getNearColor(widget.row, widget.column, lastClick);
-    for(int i = 0 ; i < noUse.length ; i++) {
-      colors.remove(noUse[i]);
-    }
-
-    return colors;
-  }
-
-  void changeColor(String pos, Color color) {
-    setState(() {
-      switch (pos) {
-        case "up":
-          widget.colorUp = color;
-          break;
-        case "down":
-          widget.colorDown = color;
-          break;
-        case "left":
-          widget.colorLeft = color;
-          break;
-        case "right":
-          widget.colorRight = color;
-          break;
-        default:
-          throw Exception("Invalid position: $pos");
-      }
-    });
-  }
-
-  //return over 1
-  int setUpData(Color color) {
-    Map<Color, String> items = {};
-
-    ThemeColor().lineColor.forEach((key, value) {
-      items[value] = key;
-    });
-    String value = items[color]!.split("_")[1];
-    int intValue = int.parse(value);
-
-    print("setUpData $intValue");
-    return intValue;
-  }
-
-  Color setUpColor(int value) {
+  Color setupColor(int value) {
     String key = "line_";
-    if(value < 10) {
+    if(value <= 0) {
+      switch(value) {
+        case 0:
+          key += "normal";
+          break;
+        case -1:
+          key += "disable";
+          break;
+        case -2:
+          key += "wrong";
+          break;
+        case -3:
+          key += "hint";
+          break;
+        case -4:
+          key += "x";
+          break;
+      }
+    }
+    else if(value < 10) {
       key += "0$value";
     }
     else {
