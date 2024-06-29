@@ -22,7 +22,6 @@ class ReadSquare {
 
   void setPuzzle(List<List<SquareBoxProvider>> puzzle) {
     this.puzzle = puzzle;
-    print("in setPuzzle, ReadSquare : ${this.puzzle.length}");
   }
 
   Future<void> savePuzzle(String key) async {

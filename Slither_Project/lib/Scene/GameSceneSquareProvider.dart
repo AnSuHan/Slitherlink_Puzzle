@@ -51,7 +51,7 @@ class GameSceneStateSquareProvider extends State<GameSceneSquareProvider> {
   void initState() {
     isContinue = widget.isContinue;
 
-    print("GameSceneStateSquareProvider is start, isContinue : ${widget.isContinue}");
+    //print("GameSceneStateSquareProvider is start, isContinue : ${widget.isContinue}");
     super.initState();
     _provider = SquareProviderProvider(isContinue: isContinue);
     ui = GameUI(_provider);

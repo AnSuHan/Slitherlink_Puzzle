@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../Scene/GameSceneSquareProvider.dart';
@@ -13,6 +14,7 @@ class GameUI {
 
   GameUI(this.squareProvider) {
     readSquare = ReadSquare(squareProvider: squareProvider);
+    initLabel();
   }
 
   //ui status
@@ -232,8 +234,8 @@ class GameUI {
     List<List<int>> value = await readSquare.loadPuzzle("${MainUI.getProgressKey()}_$label");
     squareProvider.loadLabel(value);
   }
-  void clearData(String label) {
-
+  void clearData(String label) async {
+    clearLabel(label);
 
     switch(label) {
       case "Red":
@@ -250,5 +252,26 @@ class GameUI {
 
   void setScreenSize(Size size) {
     screenSize = size;
+  }
+
+  void initLabel() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> labelColor = ["Red", "Green", "Blue"];
+
+    for(int i = 0 ; i < labelColor.length ; i++) {
+      String key = "${MainUI.getProgressKey()}_${labelColor[i]}";
+      if(prefs.containsKey(key)) {
+        labelState[i] = "load";
+      }
+    }
+  }
+
+  void clearLabel(String color) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String key = "${MainUI.getProgressKey()}_$color";
+
+    if(prefs.containsKey(key)) {
+      await prefs.remove(key);
+    }
   }
 }

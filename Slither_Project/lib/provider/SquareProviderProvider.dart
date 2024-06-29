@@ -46,7 +46,7 @@ class SquareProviderProvider with ChangeNotifier {
 
   void showHint(BuildContext context) async {
     List<List<dynamic>> items = await checkCompletePuzzleCompletely(context);
-    print("hint items : $items");
+    //print("hint items : $items");
     List<dynamic> item;
     if(items.length > 1) {
       item = items[Random().nextInt(items.length - 1)];
@@ -385,7 +385,6 @@ class SquareProviderProvider with ChangeNotifier {
   void setSquareField(List<Widget> field) {
     squareField = field;
     notifyListeners();
-    print("provider setSquareField");
   }
 
   void setPuzzle(List<List<SquareBoxProvider>> puzzle) {
@@ -394,7 +393,6 @@ class SquareProviderProvider with ChangeNotifier {
   }
 
   void setGameField(GameSceneStateSquareProvider gameField) {
-    print("provider setGameField\n---------------");
     this.gameField = gameField;
     notifyListeners();
   }
@@ -412,7 +410,6 @@ class SquareProviderProvider with ChangeNotifier {
   }
 
   List<List<SquareBoxProvider>> getPuzzle() {
-    print("in getPuzzle, provider ${puzzle.length}");
     return puzzle;
   }
 
