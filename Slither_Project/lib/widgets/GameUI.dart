@@ -8,7 +8,12 @@ import 'MainUI.dart';
 
 class GameUI {
   late Size screenSize;
-  ReadSquare readSquare = ReadSquare();
+  late ReadSquare readSquare;
+  final SquareProviderProvider squareProvider;
+
+  GameUI(this.squareProvider) {
+    readSquare = ReadSquare(squareProvider: squareProvider);
+  }
 
   //ui status
   final GlobalKey<PopupMenuButtonState<int>> _bookmarkKey = GlobalKey<PopupMenuButtonState<int>>();

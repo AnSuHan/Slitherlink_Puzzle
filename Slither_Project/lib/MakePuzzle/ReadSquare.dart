@@ -2,102 +2,42 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../Scene/GameSceneStateSquare.dart';
+import '../provider/SquareProviderProvider.dart';
 import '../widgets/SquareBoxProvider.dart';
 import 'ReadPuzzleData.dart';
-import '../widgets/SquareBox.dart';
 
 //handle data with puzzle in GameSceneStateSquare
 class ReadSquare {
-  static late List<List<SquareBox>> puzzle;
-  static late List<List<bool>> data;
-  static late ReadPuzzleData read;
+  List<List<SquareBoxProvider>> puzzle = [];
+  late List<List<bool>> data;
+  late ReadPuzzleData read;
   late List<List<int>> lineData;
+  final SquareProviderProvider squareProvider;
 
-  bool checkCycle() {
-    puzzle = GameSceneStateSquare.getPuzzle();
+  ReadSquare({required this.squareProvider}) {
+    puzzle = []; // 초기화
+    lineData = [];
+    read = ReadPuzzleData();
+  }
 
-    return false;
+  void setPuzzle(List<List<SquareBoxProvider>> puzzle) {
+    this.puzzle = puzzle;
+    print("in setPuzzle, ReadSquare : ${this.puzzle.length}");
   }
 
   Future<void> savePuzzle(String key) async {
-    try {
-      read;
-    } catch (e) {
-      read = ReadPuzzleData();
-    }
+    puzzle = squareProvider.getPuzzle();
+    print("in ReadSquare, puzzle len : ${puzzle.length}");
+    lineData = await readSubmit(puzzle);
+    print("end of readSubmit");
 
-    puzzle = GameSceneStateSquare.getPuzzle();
-    data = List.generate(puzzle.length * 2 + 1, (row) =>
-        List.filled(row % 2 == 0 ? puzzle[0].length : puzzle[0].length + 1, false),
-    );
-    //10, 20, 20
-    //print("Call savePuzzle ${puzzle.length} ${puzzle[0].length} ${puzzle[1].length}");
-
-    for(int i = 0 ; i < puzzle.length ; i++) {
-      for(int j = 0 ; j < puzzle[i].length ; j++) {
-        //down, right
-        if(i != 0 && j != 0) {
-          //start from 0,0
-          //1,1 => R(3,2)&D(4,1)
-          //2,5 => R(5,6)&D(6,5)  //3,2 => R(7,3)&D(8,2)
-          if(puzzle[i][j].down == 1) {
-            data[(i + 1) * 2][j] = true;
-          }
-          if(puzzle[i][j].right == 1) {
-            data[(i * 2) + 1][j + 1] = true;
-          }
-        }
-        //up, down, right
-        else if(j != 0) {
-          if(puzzle[i][j].up == 1) {
-            data[i][j] = true;
-          }
-          if(puzzle[i][j].down == 1) {
-            data[i + 2][j] = true;
-          }
-          if(puzzle[i][j].right == 1) {
-            data[i + 1][j + 1] = true;
-          }
-        }
-        //down, left, right
-        else if(i != 0) {
-          if(puzzle[i][j].down == 1) {
-            //1=>4, 2=>6, 3=>8 //x*2+2
-            data[i * 2 + 2][j] = true;
-          }
-          //2=>5, 3=>7
-          if(puzzle[i][j].left == 1) {
-            data[i * 2 + 1][j] = true;
-          }
-          if(puzzle[i][j].right == 1) {
-            data[i * 2 + 1][j + 1] = true;
-          }
-        }
-        //up, down, left, right
-        else {
-          if(puzzle[i][j].up == 1) {
-            data[i][j] = true;
-          }
-          if(puzzle[i][j].down == 1) {
-            data[i + 2][j] = true;
-          }
-          if(puzzle[i][j].left == 1) {
-            data[i + 1][j] = true;
-          }
-          if(puzzle[i][j].right == 1) {
-            data[i + 1][j + 1] = true;
-          }
-        }
-      }
-    }
-    //printData();
     try {
-      await read.writeData(data, key);
+      await read.writeIntData(lineData, key);
       //await read.writePuzzleData("square", data, 0);
     } catch (e) {
       print("EXCEPTION $e");
     }
+    print("end of setPuzzle");
   }
 
   ///param should be "shape`_`size`_`progress`_`{continue}"
@@ -135,11 +75,6 @@ class ReadSquare {
     }
   }
 
-  void printData() {
-    for(int i = 0 ; i < data.length ; i++) {
-      print("${data[i]}");
-    }
-  }
 
   Future<List<List<int>>> readSubmit(List<List<SquareBoxProvider>> puzzle) async {
     lineData = List.generate(puzzle.length * 2 + 1, (row) =>

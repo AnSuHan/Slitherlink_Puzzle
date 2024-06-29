@@ -29,10 +29,10 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
   static late List<List<int>> submit;
   //UI
   static bool showAppbar = false;
-  static GameUI ui = GameUI();
+  //static GameUI ui = GameUI();
   Map<String, Color> settingColor = ThemeColor().getColor();
   //save and load
-  static ReadSquare readSquare = ReadSquare();
+  static late  ReadSquare readSquare;// = ReadSquare();
 
   GameSceneStateSquare({this.isContinue = false, this.loadKey = ""});
 
@@ -80,10 +80,10 @@ class GameSceneStateSquare extends State<GameSceneSquare> {
       child: Consumer<SquareProvider>(
         builder: (context, provider, child) {
           screenSize = MediaQuery.of(context).size;
-          ui.setScreenSize(screenSize);
+          //ui.setScreenSize(screenSize);
 
           return Scaffold(
-            appBar: !showAppbar ? null : ui.getGameAppBar(context, settingColor["appBar"]!, settingColor["appIcon"]!),
+            //appBar: !showAppbar ? null : ui.getGameAppBar(context, settingColor["appBar"]!, settingColor["appIcon"]!),
             body: GestureDetector(
               onTap: () {
                 setState(() {

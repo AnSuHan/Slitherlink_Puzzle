@@ -6,8 +6,6 @@ import '../MakePuzzle/ReadSquare.dart';
 import '../ThemeColor.dart';
 import '../provider/SquareProviderProvider.dart';
 import '../widgets/GameUI.dart';
-import '../widgets/GameUI_Inst.dart';
-import '../widgets/SquareBoxProvider.dart';
 
 class GameSceneSquareProvider extends StatefulWidget {
   //to access to parameter with Navigator push, variable should be final
@@ -23,11 +21,17 @@ class GameSceneSquareProvider extends StatefulWidget {
 }
 
 class GameSceneStateSquareProvider extends State<GameSceneSquareProvider> {
-  GameSceneStateSquareProvider({this.isContinue = false, this.loadKey = ""});
+  //GameSceneStateSquareProvider({this.isContinue = false, this.loadKey = ""});
   //provider for using setState in other class
-  SquareProviderProvider _provider = SquareProviderProvider();
-  //save and load
-  ReadSquare readSquare = ReadSquare();
+  late SquareProviderProvider _provider;
+  late ReadSquare readSquare;
+
+  GameSceneStateSquareProvider({this.isContinue = false, this.loadKey = ""}) {
+    // SquareProviderProvider 객체 초기화
+    _provider = SquareProviderProvider(isContinue: isContinue);
+    // ReadSquare 객체 초기화
+    readSquare = ReadSquare(squareProvider: _provider);
+  }
 
   //check complete puzzle;
   bool isComplete = false;
@@ -39,7 +43,7 @@ class GameSceneStateSquareProvider extends State<GameSceneSquareProvider> {
   //UI
   late Size screenSize;
   bool showAppbar = false;
-  GameUI ui = GameUI();
+  late GameUI ui;
   Map<String, Color> settingColor = ThemeColor().getColor();
 
 
@@ -48,6 +52,7 @@ class GameSceneStateSquareProvider extends State<GameSceneSquareProvider> {
     print("GameSceneStateSquareProvider is start");
     super.initState();
     _provider = SquareProviderProvider(isContinue: isContinue);
+    ui = GameUI(_provider);
     loadPuzzle();
   }
 

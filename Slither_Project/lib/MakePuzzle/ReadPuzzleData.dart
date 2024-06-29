@@ -20,6 +20,11 @@ class ReadPuzzleData {
     //print("jsonData in writeData : ${jsonEncode(intData)}");
   }
 
+  Future<void> writeIntData(List<List<int>> data, String fileName) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setString(fileName, jsonEncode(data));
+  }
+
   Future<List<List<bool>>> readData(String keyName, {bool isContinue = false}) async {
     List<String> tokens = keyName.split("_");
     if(tokens[0].compareTo("square") == 0) {

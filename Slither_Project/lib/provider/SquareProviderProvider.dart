@@ -8,9 +8,12 @@ import '../ThemeColor.dart';
 import '../widgets/SquareBoxProvider.dart';
 
 class SquareProviderProvider with ChangeNotifier {
-  SquareProviderProvider({isContinue = false});
+  late ReadSquare readSquare;
 
-  ReadSquare readSquare = ReadSquare();
+  SquareProviderProvider({isContinue = false}) {
+    readSquare = ReadSquare(squareProvider: this);
+  }
+
   ThemeColor themeColor = ThemeColor();
 
   List<Widget> squareField = [];
@@ -25,124 +28,9 @@ class SquareProviderProvider with ChangeNotifier {
   void init() async {
     puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
     squareField = await buildSquarePuzzleAnswer(answer, isContinue: isContinue);
+    readSquare.setPuzzle(puzzle);
     notifyListeners();
     setLineColor(2, 4, "down", 3);
-  }
-
-  ///update `puzzle` variable
-  void updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) {
-    Set<int> nearColor = {};
-    int lineValue = 0; //new line's value
-
-    if (down != null) {
-      nearColor = getNearColor(row, column, "down");
-      lineValue = down;
-    } else if (right != null) {
-      nearColor = getNearColor(row, column, "right");
-      lineValue = right;
-    } else if (up != null) {
-      nearColor = getNearColor(row, column, "up");
-      lineValue = up;
-    } else if (left != null) {
-      nearColor = getNearColor(row, column, "left");
-      lineValue = left;
-    }
-    print("nearColor : $nearColor, lineValue : $lineValue");
-
-    //forced line color
-    if(lineValue <= 0) {
-      if (down != null) {
-        puzzle[row][column].down = lineValue;
-      }
-      else if (right != null) {
-        puzzle[row][column].right = lineValue;
-      }
-      else if (up != null) {
-        puzzle[row][column].up = lineValue;
-      }
-      else if (left != null) {
-        puzzle[row][column].left = lineValue;
-      }
-    }
-    //random line color
-    else if(nearColor.isEmpty) {
-      lineValue = themeColor.getNormalRandom();
-
-      if (down != null) {
-        puzzle[row][column].down = lineValue;
-      }
-      else if (right != null) {
-        puzzle[row][column].right = lineValue;
-      }
-      else if (up != null) {
-        puzzle[row][column].up = lineValue;
-      }
-      else if (left != null) {
-        puzzle[row][column].left = lineValue;
-      }
-    }
-    //continue line color
-    else {
-      lineValue = nearColor.first;
-      List<dynamic> oldList = [];
-
-      //새로 입력된 라인의 색만 처리하면 되는 경우
-      //새로운 라인 주변에 0이 아닌 색이 1개만 있는 경우 getOldColorList를 호출할 필요가 없음
-      if(nearColor.length == 1) {
-        if (down != null) {
-          puzzle[row][column].down = lineValue;
-        }
-        else if (right != null) {
-          puzzle[row][column].right = lineValue;
-        }
-        else if (up != null) {
-          puzzle[row][column].up = lineValue;
-        }
-        else if (left != null) {
-          puzzle[row][column].left = lineValue;
-        }
-        print("set $row, $column, $lineValue");
-
-        refreshSubmit();
-        notifyListeners();
-        return;
-      }
-
-      print("standard color is $lineValue");
-      //1개 이상의 라인 색을 변경해야 하는 경우
-      if (down != null) {
-        puzzle[row][column].down = lineValue;
-        oldList = getOldColorList(row, column, "down", lineValue);
-      }
-      else if (right != null) {
-        puzzle[row][column].right = lineValue;
-        oldList = getOldColorList(row, column, "right", lineValue);
-      }
-      else if (up != null) {
-        puzzle[row][column].up = lineValue;
-        oldList = getOldColorList(row, column, "up", lineValue);
-      }
-      else if (left != null) {
-        puzzle[row][column].left = lineValue;
-        oldList = getOldColorList(row, column, "left", lineValue);
-      }
-
-      print("\n★★★★★ oldList : $oldList\n");
-
-      //change old list to new color
-      for(int i = 0 ; i < oldList.length ; i++) {
-        int oldRow = int.parse(oldList[i][0].toString());
-        int oldColumn = int.parse(oldList[i][1].toString());
-        String pos = oldList[i][2].toString();
-
-        setLineColor(oldRow, oldColumn, pos, lineValue);
-        print("set [$oldRow, $oldColumn, $pos, $lineValue]");
-      }
-    }
-
-
-    refreshSubmit();
-    notifyListeners();
   }
 
   void restart() async {
@@ -209,200 +97,6 @@ class SquareProviderProvider with ChangeNotifier {
     }
     refreshSubmit();
     notifyListeners();
-  }
-
-  List<List<SquareBoxProvider>> initSquarePuzzle(width, height) {
-    List<List<SquareBoxProvider>> puzzle = [];
-    List<SquareBoxProvider> temp = [];
-    int i, j;
-
-    for(i = 0 ; i < height ; i++) {
-      temp = [];
-
-      for(j = 0 ; j < width ; j++) {
-        if(i == 0 && j == 0) {
-          temp.add(SquareBoxProvider(isFirstRow: true, isFirstColumn: true, row: i, column: j,));
-        } else if(i == 0) {
-          temp.add(SquareBoxProvider(isFirstRow: true, row: i, column: j,));
-        } else if(j == 0) {
-          temp.add(SquareBoxProvider(isFirstColumn: true, row: i, column: j,));
-        } else {
-          temp.add(SquareBoxProvider(row: i, column: j,));
-        }
-      }
-      puzzle.add(temp);
-    }
-
-    return puzzle;
-  }
-
-  Future<List<Widget>> buildSquarePuzzleAnswer(List<List<int>> answer, {bool isContinue = false}) async {
-    //resize puzzle
-    if(answer.isEmpty) {
-      //print("answer is empty");
-      return Future.value([]);
-    }
-    puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
-    //print("puzzle SquareBoxProvider => row ${puzzle.length}, col ${puzzle[0].length}");
-    List<Widget> columnChildren = [];
-
-    //marking answer line
-    applyUIWithAnswer(puzzle, answer);
-
-    for (int i = 0; i < puzzle.length; i++) {
-      List<Widget> rowChildren = [];
-      for (int j = 0; j < puzzle[i].length; j++) {
-        rowChildren.add(puzzle[i][j]);
-      }
-      columnChildren.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: rowChildren,
-        ),
-      );
-    }
-    //marking number with answer
-    setNumWithAnswer(puzzle);
-    //setDefaultLineStep1(puzzle);
-    clearLineForStart();
-
-    //apply saved submit lines
-    if(isContinue) {
-      applyUIWithAnswer(puzzle, submit);
-    }
-
-    return columnChildren;
-  }
-
-  void buildSquarePuzzleColor({BuildContext? context}) {
-    List<Widget> columnChildren = [];
-
-    for (int i = 0; i < puzzle.length; i++) {
-      List<Widget> rowChildren = [];
-      for (int j = 0; j < puzzle[i].length; j++) {
-        rowChildren.add(puzzle[i][j]);
-      }
-      columnChildren.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: rowChildren,
-        ),
-      );
-    }
-  }
-
-  void setNumWithAnswer(List<List<SquareBoxProvider>> puzzle) {
-    int count = 0;
-
-    for(int i = 0 ; i < puzzle.length ; i++) {
-      for(int j = 0 ; j < puzzle[i].length ; j++) {
-        count = 0;
-
-        if(i != 0 && j != 0) {
-          if(puzzle[i - 1][j].down != 0) { count++; } //puzzle[i][j].up
-          if(puzzle[i][j].down != 0) { count++; }
-          if(puzzle[i][j - 1].right != 0) { count++; } //puzzle[i][j].left
-          if(puzzle[i][j].right != 0) { count++; }
-        } else if(i != 0 && j == 0) {
-          if(puzzle[i - 1][j].down != 0) { count++; } //puzzle[i][j].up
-          if(puzzle[i][j].down != 0) { count++; }
-          if(puzzle[i][j].left != 0) { count++; }
-          if(puzzle[i][j].right != 0) { count++; }
-        } else if(i == 0 && j != 0) {
-          if(puzzle[i][j].up != 0) { count++; }
-          if(puzzle[i][j].down != 0) { count++; }
-          if(puzzle[i][j - 1].right != 0) { count++; } //puzzle[i][j].left
-          if(puzzle[i][j].right != 0) { count++; }
-        } else {
-          if(puzzle[i][j].up != 0) { count++; }
-          if(puzzle[i][j].down != 0) { count++; }
-          if(puzzle[i][j].left != 0) { count++; }
-          if(puzzle[i][j].right != 0) { count++; }
-        }
-
-        puzzle[i][j].num = count;
-      }
-    }
-  }
-
-  //answer is key-value pair
-  void applyUIWithAnswer(List<List<SquareBoxProvider>> puzzle, List<List<int>> answer) {
-    int lineType;
-
-    for(int i = 0 ; i < answer.length ; i++) {      //10 ,11, 10, 11...
-      for (int j = 0; j < answer[i].length; j++) {  //3, 5, 7, 9...
-        lineType = answer[i][j];
-        //print("list $i $j / $lineType");
-
-        if(i <= 2 && j <= 1) {  //up, down, left, right 모두 존재
-          if(i == 0) {
-            puzzle[0][j].up = lineType;
-          } else if(i == 2) {
-            puzzle[0][j].down = lineType;
-          } else {
-            if(j == 0) {
-              puzzle[0][0].left = lineType;
-            } else {
-              puzzle[0][0].right = lineType;
-            }
-          }
-        } else if(i <= 2) { //up, down, right 3개 존재
-          if(i == 0) {
-            puzzle[0][j].up = lineType;
-          } else if(i == 1) {
-            puzzle[0][j - 1].right = lineType;
-          } else {
-            puzzle[0][j].down = lineType;
-          }
-        } else if(j <= 1) { //down, left, right 3개 존재
-          if(i % 2 == 0) {
-            puzzle[(i - 1) ~/ 2][j].down = lineType;
-          } else {
-            if(j == 0) {
-              puzzle[i ~/ 2][0].left = lineType;
-            } else {
-              puzzle[i ~/ 2][0].right = lineType;
-            }
-          }
-        } else {            //down, right 2개 존재
-          if(i % 2 == 0) {
-            //puzzle[(i - 1) ~/ 2 + 1][j + 1].down = lineType;
-            //i=4,j=1 => 1,1  //10,2 => 4,2
-            //20,3 => 9,3     //12,7 => 5,7
-            puzzle[i ~/ 2 - 1][j].down = lineType;
-          } else {
-            puzzle[(i - 1) ~/ 2][j - 1].right = lineType;
-          }
-        }
-      }
-    }
-  }
-
-  void clearLineForStart() {
-    for(int i = 0 ; i < puzzle.length ; i++) {
-      for(int j = 0 ; j < puzzle[i].length ; j++) {
-        if(i != 0 && j != 0) {
-          puzzle[i][j].down = 0;
-          puzzle[i][j].right = 0;
-        }
-        else if(i == 0 && j != 0) {
-          puzzle[i][j].up = 0;
-          puzzle[i][j].down = 0;
-          puzzle[i][j].right = 0;
-        }
-        else if(i != 0 && j == 0) {
-          puzzle[i][j].down = 0;
-          puzzle[i][j].left = 0;
-          puzzle[i][j].right = 0;
-        }
-        else {
-          puzzle[i][j].up = 0;
-          puzzle[i][j].down = 0;
-          puzzle[i][j].left = 0;
-          puzzle[i][j].right = 0;
-        }
-      }
-    }
   }
 
   void checkCompletePuzzle(BuildContext context) {
@@ -681,6 +375,166 @@ class SquareProviderProvider with ChangeNotifier {
     applyUIWithAnswer(puzzle, submit);
 
     return columnChildren;
+  }
+
+  ///getter and setter about widgets
+
+  List<Widget> getSquareField() {
+    return squareField;
+  }
+  void setSquareField(List<Widget> field) {
+    squareField = field;
+    notifyListeners();
+    print("provider setSquareField");
+  }
+
+  void setPuzzle(List<List<SquareBoxProvider>> puzzle) {
+    this.puzzle = puzzle;
+    puzzleToWidget();
+  }
+
+  void setGameField(GameSceneStateSquareProvider gameField) {
+    print("provider setGameField\n---------------");
+    this.gameField = gameField;
+    notifyListeners();
+  }
+
+  void setContinue(bool isContinue) {
+    this.isContinue = isContinue;
+  }
+
+  void setAnswer(List<List<int>> answer) {
+    this.answer = answer;
+  }
+
+  void setSubmit(List<List<int>> submit) {
+    this.submit = submit;
+  }
+
+  List<List<SquareBoxProvider>> getPuzzle() {
+    print("in getPuzzle, provider ${puzzle.length}");
+    return puzzle;
+  }
+
+  ///**********************************************************************************
+  ///**********************************************************************************
+  ///****************************** about color ******************************
+  ///**********************************************************************************
+  ///**********************************************************************************
+  ///update `puzzle` variable
+  void updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) {
+    Set<int> nearColor = {};
+    int lineValue = 0; //new line's value
+
+    if (down != null) {
+      nearColor = getNearColor(row, column, "down");
+      lineValue = down;
+    } else if (right != null) {
+      nearColor = getNearColor(row, column, "right");
+      lineValue = right;
+    } else if (up != null) {
+      nearColor = getNearColor(row, column, "up");
+      lineValue = up;
+    } else if (left != null) {
+      nearColor = getNearColor(row, column, "left");
+      lineValue = left;
+    }
+    print("nearColor : $nearColor, lineValue : $lineValue");
+
+    //forced line color
+    if(lineValue <= 0) {
+      if (down != null) {
+        puzzle[row][column].down = lineValue;
+      }
+      else if (right != null) {
+        puzzle[row][column].right = lineValue;
+      }
+      else if (up != null) {
+        puzzle[row][column].up = lineValue;
+      }
+      else if (left != null) {
+        puzzle[row][column].left = lineValue;
+      }
+    }
+    //random line color
+    else if(nearColor.isEmpty) {
+      lineValue = themeColor.getNormalRandom();
+
+      if (down != null) {
+        puzzle[row][column].down = lineValue;
+      }
+      else if (right != null) {
+        puzzle[row][column].right = lineValue;
+      }
+      else if (up != null) {
+        puzzle[row][column].up = lineValue;
+      }
+      else if (left != null) {
+        puzzle[row][column].left = lineValue;
+      }
+    }
+    //continue line color
+    else {
+      lineValue = nearColor.first;
+      List<dynamic> oldList = [];
+
+      //새로 입력된 라인의 색만 처리하면 되는 경우
+      //새로운 라인 주변에 0이 아닌 색이 1개만 있는 경우 getOldColorList를 호출할 필요가 없음
+      if(nearColor.length == 1) {
+        if (down != null) {
+          puzzle[row][column].down = lineValue;
+        }
+        else if (right != null) {
+          puzzle[row][column].right = lineValue;
+        }
+        else if (up != null) {
+          puzzle[row][column].up = lineValue;
+        }
+        else if (left != null) {
+          puzzle[row][column].left = lineValue;
+        }
+        print("set $row, $column, $lineValue");
+
+        refreshSubmit();
+        notifyListeners();
+        return;
+      }
+
+      print("standard color is $lineValue");
+      //1개 이상의 라인 색을 변경해야 하는 경우
+      if (down != null) {
+        puzzle[row][column].down = lineValue;
+        oldList = getOldColorList(row, column, "down", lineValue);
+      }
+      else if (right != null) {
+        puzzle[row][column].right = lineValue;
+        oldList = getOldColorList(row, column, "right", lineValue);
+      }
+      else if (up != null) {
+        puzzle[row][column].up = lineValue;
+        oldList = getOldColorList(row, column, "up", lineValue);
+      }
+      else if (left != null) {
+        puzzle[row][column].left = lineValue;
+        oldList = getOldColorList(row, column, "left", lineValue);
+      }
+
+      print("\n★★★★★ oldList : $oldList\n");
+
+      //change old list to new color
+      for(int i = 0 ; i < oldList.length ; i++) {
+        int oldRow = int.parse(oldList[i][0].toString());
+        int oldColumn = int.parse(oldList[i][1].toString());
+        String pos = oldList[i][2].toString();
+
+        setLineColor(oldRow, oldColumn, pos, lineValue);
+        print("set [$oldRow, $oldColumn, $pos, $lineValue]");
+      }
+    }
+
+
+    refreshSubmit();
+    notifyListeners();
   }
 
   ///SquareBoxProvider List's index
@@ -1369,41 +1223,188 @@ class SquareProviderProvider with ChangeNotifier {
     }
   }
 
-  ///getter and setter about widgets
+  ///**********************************************************************************
+  ///**********************************************************************************
+  ///******************** default setting of making puzzle ********************
+  ///**********************************************************************************
+  ///**********************************************************************************
+  List<List<SquareBoxProvider>> initSquarePuzzle(width, height) {
+    List<List<SquareBoxProvider>> puzzle = [];
+    List<SquareBoxProvider> temp = [];
+    int i, j;
 
-  List<Widget> getSquareField() {
-    return squareField;
-  }
-  void setSquareField(List<Widget> field) {
-    squareField = field;
-    notifyListeners();
-    print("provider setSquareField");
-  }
+    for(i = 0 ; i < height ; i++) {
+      temp = [];
 
-  void setPuzzle(List<List<SquareBoxProvider>> puzzle) {
-    this.puzzle = puzzle;
-    puzzleToWidget();
-  }
+      for(j = 0 ; j < width ; j++) {
+        if(i == 0 && j == 0) {
+          temp.add(SquareBoxProvider(isFirstRow: true, isFirstColumn: true, row: i, column: j,));
+        } else if(i == 0) {
+          temp.add(SquareBoxProvider(isFirstRow: true, row: i, column: j,));
+        } else if(j == 0) {
+          temp.add(SquareBoxProvider(isFirstColumn: true, row: i, column: j,));
+        } else {
+          temp.add(SquareBoxProvider(row: i, column: j,));
+        }
+      }
+      puzzle.add(temp);
+    }
 
-  void setGameField(GameSceneStateSquareProvider gameField) {
-    print("provider setGameField\n---------------");
-    this.gameField = gameField;
-    notifyListeners();
-  }
-
-  void setContinue(bool isContinue) {
-    this.isContinue = isContinue;
-  }
-
-  void setAnswer(List<List<int>> answer) {
-    this.answer = answer;
-  }
-
-  void setSubmit(List<List<int>> submit) {
-    this.submit = submit;
+    return puzzle;
   }
 
-  ///inner process
+  Future<List<Widget>> buildSquarePuzzleAnswer(List<List<int>> answer, {bool isContinue = false}) async {
+    //resize puzzle
+    if(answer.isEmpty) {
+      //print("answer is empty");
+      return Future.value([]);
+    }
+    puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
+    //print("puzzle SquareBoxProvider => row ${puzzle.length}, col ${puzzle[0].length}");
+    List<Widget> columnChildren = [];
+
+    //marking answer line
+    applyUIWithAnswer(puzzle, answer);
+
+    for (int i = 0; i < puzzle.length; i++) {
+      List<Widget> rowChildren = [];
+      for (int j = 0; j < puzzle[i].length; j++) {
+        rowChildren.add(puzzle[i][j]);
+      }
+      columnChildren.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: rowChildren,
+        ),
+      );
+    }
+    //marking number with answer
+    setNumWithAnswer(puzzle);
+    //setDefaultLineStep1(puzzle);
+    clearLineForStart();
+
+    //apply saved submit lines
+    if(isContinue) {
+      applyUIWithAnswer(puzzle, submit);
+    }
+
+    return columnChildren;
+  }
+
+  //answer is key-value pair
+  void applyUIWithAnswer(List<List<SquareBoxProvider>> puzzle, List<List<int>> answer) {
+    int lineType;
+
+    for(int i = 0 ; i < answer.length ; i++) {      //10 ,11, 10, 11...
+      for (int j = 0; j < answer[i].length; j++) {  //3, 5, 7, 9...
+        lineType = answer[i][j];
+        //print("list $i $j / $lineType");
+
+        if(i <= 2 && j <= 1) {  //up, down, left, right 모두 존재
+          if(i == 0) {
+            puzzle[0][j].up = lineType;
+          } else if(i == 2) {
+            puzzle[0][j].down = lineType;
+          } else {
+            if(j == 0) {
+              puzzle[0][0].left = lineType;
+            } else {
+              puzzle[0][0].right = lineType;
+            }
+          }
+        } else if(i <= 2) { //up, down, right 3개 존재
+          if(i == 0) {
+            puzzle[0][j].up = lineType;
+          } else if(i == 1) {
+            puzzle[0][j - 1].right = lineType;
+          } else {
+            puzzle[0][j].down = lineType;
+          }
+        } else if(j <= 1) { //down, left, right 3개 존재
+          if(i % 2 == 0) {
+            puzzle[(i - 1) ~/ 2][j].down = lineType;
+          } else {
+            if(j == 0) {
+              puzzle[i ~/ 2][0].left = lineType;
+            } else {
+              puzzle[i ~/ 2][0].right = lineType;
+            }
+          }
+        } else {            //down, right 2개 존재
+          if(i % 2 == 0) {
+            //puzzle[(i - 1) ~/ 2 + 1][j + 1].down = lineType;
+            //i=4,j=1 => 1,1  //10,2 => 4,2
+            //20,3 => 9,3     //12,7 => 5,7
+            puzzle[i ~/ 2 - 1][j].down = lineType;
+          } else {
+            puzzle[(i - 1) ~/ 2][j - 1].right = lineType;
+          }
+        }
+      }
+    }
+  }
+
+  void setNumWithAnswer(List<List<SquareBoxProvider>> puzzle) {
+    int count = 0;
+
+    for(int i = 0 ; i < puzzle.length ; i++) {
+      for(int j = 0 ; j < puzzle[i].length ; j++) {
+        count = 0;
+
+        if(i != 0 && j != 0) {
+          if(puzzle[i - 1][j].down != 0) { count++; } //puzzle[i][j].up
+          if(puzzle[i][j].down != 0) { count++; }
+          if(puzzle[i][j - 1].right != 0) { count++; } //puzzle[i][j].left
+          if(puzzle[i][j].right != 0) { count++; }
+        } else if(i != 0 && j == 0) {
+          if(puzzle[i - 1][j].down != 0) { count++; } //puzzle[i][j].up
+          if(puzzle[i][j].down != 0) { count++; }
+          if(puzzle[i][j].left != 0) { count++; }
+          if(puzzle[i][j].right != 0) { count++; }
+        } else if(i == 0 && j != 0) {
+          if(puzzle[i][j].up != 0) { count++; }
+          if(puzzle[i][j].down != 0) { count++; }
+          if(puzzle[i][j - 1].right != 0) { count++; } //puzzle[i][j].left
+          if(puzzle[i][j].right != 0) { count++; }
+        } else {
+          if(puzzle[i][j].up != 0) { count++; }
+          if(puzzle[i][j].down != 0) { count++; }
+          if(puzzle[i][j].left != 0) { count++; }
+          if(puzzle[i][j].right != 0) { count++; }
+        }
+
+        puzzle[i][j].num = count;
+      }
+    }
+  }
+
+  void clearLineForStart() {
+    for(int i = 0 ; i < puzzle.length ; i++) {
+      for(int j = 0 ; j < puzzle[i].length ; j++) {
+        if(i != 0 && j != 0) {
+          puzzle[i][j].down = 0;
+          puzzle[i][j].right = 0;
+        }
+        else if(i == 0 && j != 0) {
+          puzzle[i][j].up = 0;
+          puzzle[i][j].down = 0;
+          puzzle[i][j].right = 0;
+        }
+        else if(i != 0 && j == 0) {
+          puzzle[i][j].down = 0;
+          puzzle[i][j].left = 0;
+          puzzle[i][j].right = 0;
+        }
+        else {
+          puzzle[i][j].up = 0;
+          puzzle[i][j].down = 0;
+          puzzle[i][j].left = 0;
+          puzzle[i][j].right = 0;
+        }
+      }
+    }
+  }
+
 
   void puzzleToWidget() {
     //puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);

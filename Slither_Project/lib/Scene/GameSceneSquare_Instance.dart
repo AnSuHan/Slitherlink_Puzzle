@@ -6,7 +6,6 @@ import '../MakePuzzle/ReadSquare.dart';
 import '../ThemeColor.dart';
 import '../provider/SquareProviderInst.dart';
 import '../widgets/GameUI.dart';
-import '../widgets/GameUI_Inst.dart';
 import '../widgets/SquareBox_Inst.dart';
 
 class GameSceneSquareInst extends StatefulWidget {
@@ -43,10 +42,10 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
   late List<List<int>> submit;
   //UI
   bool showAppbar = false;
-  GameUIInst ui = GameUIInst();
+  //GameUIInst ui = GameUIInst();
   Map<String, Color> settingColor = ThemeColor().getColor();
   //save and load
-  ReadSquare readSquare = ReadSquare();
+  //ReadSquare readSquare = ReadSquare();
 
   GameSceneStateSquareInst({this.isContinue = false, this.loadKey = ""});
 
@@ -64,12 +63,12 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
 
     if(widget.isContinue) {
       //answer = await readSquare.loadPuzzle(MainUI.getProgressKey());
-      answer = await readSquare.loadPuzzle(widget.loadKey);
+      //answer = await readSquare.loadPuzzle(widget.loadKey);
 
-      submit = await readSquare.loadPuzzle("${widget.loadKey}_continue");
+      //submit = await readSquare.loadPuzzle("${widget.loadKey}_continue");
     }
     else {
-      answer = await readSquare.loadPuzzle(widget.loadKey);
+      //answer = await readSquare.loadPuzzle(widget.loadKey);
 
       submit = List.generate(answer.length, (row) =>
           List.filled(answer[row].length, 0),
@@ -106,11 +105,11 @@ class GameSceneStateSquareInst extends State<GameSceneSquareInst> {
       child: Consumer<SquareProviderInst>(
         builder: (context, provider, child) {
           screenSize = MediaQuery.of(context).size;
-          ui.setScreenSize(screenSize);
+          //ui.setScreenSize(screenSize);
           _provider = provider;
 
           return Scaffold(
-            appBar: !showAppbar ? null : ui.getGameAppBar(context, settingColor["appBar"]!, settingColor["appIcon"]!),
+            //appBar: !showAppbar ? null : ui.getGameAppBar(context, settingColor["appBar"]!, settingColor["appIcon"]!),
             body: GestureDetector(
               onTap: () {
                 setState(() {
