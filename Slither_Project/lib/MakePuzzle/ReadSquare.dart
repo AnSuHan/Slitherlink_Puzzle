@@ -27,17 +27,13 @@ class ReadSquare {
 
   Future<void> savePuzzle(String key) async {
     puzzle = squareProvider.getPuzzle();
-    print("in ReadSquare, puzzle len : ${puzzle.length}");
     lineData = await readSubmit(puzzle);
-    print("end of readSubmit");
 
     try {
       await read.writeIntData(lineData, key);
-      //await read.writePuzzleData("square", data, 0);
     } catch (e) {
       print("EXCEPTION $e");
     }
-    print("end of setPuzzle");
   }
 
   ///param should be "shape`_`size`_`progress`_`{continue}"
@@ -49,12 +45,14 @@ class ReadSquare {
     }
 
     //get answer data
+    //read from Answer.dart
     if(key.split("_").length == 3) {
       data = await read.readData(key);
       //printData();
       return data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
     }
     //get submit data
+    //read from SharedPreference
     else {
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       String? temp = prefs.getString(key);

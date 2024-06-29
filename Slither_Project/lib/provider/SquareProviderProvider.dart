@@ -10,7 +10,7 @@ import '../widgets/SquareBoxProvider.dart';
 class SquareProviderProvider with ChangeNotifier {
   late ReadSquare readSquare;
 
-  SquareProviderProvider({isContinue = false}) {
+  SquareProviderProvider({this.isContinue = false}) {
     readSquare = ReadSquare(squareProvider: this);
   }
 
@@ -415,6 +415,18 @@ class SquareProviderProvider with ChangeNotifier {
     print("in getPuzzle, provider ${puzzle.length}");
     return puzzle;
   }
+
+  ///**********************************************************************************
+  ///**********************************************************************************
+  ///****************************** about load label ******************************
+  ///**********************************************************************************
+  ///**********************************************************************************
+  void loadLabel(List<List<int>> submit) {
+    this.submit = submit;
+    applyUIWithAnswer(puzzle, submit);
+    notifyListeners();
+  }
+
 
   ///**********************************************************************************
   ///**********************************************************************************

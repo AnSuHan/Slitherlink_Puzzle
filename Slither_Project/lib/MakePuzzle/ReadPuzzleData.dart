@@ -20,6 +20,7 @@ class ReadPuzzleData {
     //print("jsonData in writeData : ${jsonEncode(intData)}");
   }
 
+  //save submit data(int)
   Future<void> writeIntData(List<List<int>> data, String fileName) async {
     final SharedPreferences prefs = await SharedPreferences.getInstance();
     prefs.setString(fileName, jsonEncode(data));

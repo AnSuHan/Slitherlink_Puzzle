@@ -230,7 +230,7 @@ class GameUI {
   }
   void loadData(String label) async {
     List<List<int>> value = await readSquare.loadPuzzle("${MainUI.getProgressKey()}_$label");
-    //GameSceneSquareProvider().applyLabel(value);
+    squareProvider.loadLabel(value);
   }
   void clearData(String label) {
 
