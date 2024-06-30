@@ -286,26 +286,30 @@ class MainUI {
         child: Text(e),
       ))
       .toList(),
-      onChanged: (value) {
-        _selectedType[0] = value;
-        //en
-        switch(value) {
-          case "square":
-          case "사각형":
-            selectedType[0] = "square";
-            break;
-
-          case "triangle":
-          case "삼각형":
-            selectedType[0] = "triangle";
-            break;
-        }
-        onUpdate();
+      onChanged: (value) async {
+        await changePuzzleShape(value, onUpdate);
       },
       value: _selectedType[0],
       style: const TextStyle(color: Colors.white, fontSize: 24),
       dropdownColor: Colors.grey,
     );
+  }
+
+  static Future<void> changePuzzleShape(dynamic value, VoidCallback onUpdate) async {
+    _selectedType[0] = value;
+    //en
+    switch(value) {
+      case "square":
+      case "사각형":
+        selectedType[0] = "square";
+        break;
+
+      case "triangle":
+      case "삼각형":
+        selectedType[0] = "triangle";
+        break;
+    }
+    onUpdate();
   }
 
   static DropdownButton getPuzzleSize(BuildContext context, VoidCallback onUpdate) {
