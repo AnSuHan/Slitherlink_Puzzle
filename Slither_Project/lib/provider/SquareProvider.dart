@@ -55,13 +55,14 @@ class SquareProvider with ChangeNotifier {
       item = items[0];
     }
 
-    print("hint item : $item");
+    //print("hint item : $item");
     setLineColor(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
   }
 
   void refreshSubmit() async {
     submit = await readSquare.readSubmit(puzzle);
 
+    /*
     String temp = "";
     for(int i = 0 ; i < submit.length ; i++) {
       for(int j = 0 ; j < submit[i].length ; j++) {
@@ -76,6 +77,7 @@ class SquareProvider with ChangeNotifier {
       //print("row $i : $temp");
       temp = "";
     }
+     */
     notifyListeners();
   }
 
@@ -138,7 +140,7 @@ class SquareProvider with ChangeNotifier {
     }
 
     //complete puzzle
-    print("complete puzzle!");
+    //print("complete puzzle!");
     //clear continue puzzle
     //isComplete = true;
     showComplete(context);
@@ -291,7 +293,6 @@ class SquareProvider with ChangeNotifier {
   }
 
   void showComplete(BuildContext context) {
-    print("call showComplete");
     // Show AlertDialog if isComplete is true
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showDialog(
@@ -448,7 +449,7 @@ class SquareProvider with ChangeNotifier {
       nearColor = getNearColor(row, column, "left");
       lineValue = left;
     }
-    print("nearColor : $nearColor, lineValue : $lineValue");
+    //print("nearColor : $nearColor, lineValue : $lineValue");
 
     //forced line color
     if(lineValue <= 0) {
@@ -502,14 +503,14 @@ class SquareProvider with ChangeNotifier {
         else if (left != null) {
           puzzle[row][column].left = lineValue;
         }
-        print("set $row, $column, $lineValue");
+        //print("set $row, $column, $lineValue");
 
         refreshSubmit();
         notifyListeners();
         return;
       }
 
-      print("standard color is $lineValue");
+      //print("standard color is $lineValue");
       //1개 이상의 라인 색을 변경해야 하는 경우
       if (down != null) {
         puzzle[row][column].down = lineValue;
@@ -528,7 +529,7 @@ class SquareProvider with ChangeNotifier {
         oldList = getOldColorList(row, column, "left", lineValue);
       }
 
-      print("\n★★★★★ oldList : $oldList\n");
+      //print("\n★★★★★ oldList : $oldList\n");
 
       //change old list to new color
       for(int i = 0 ; i < oldList.length ; i++) {
@@ -537,7 +538,7 @@ class SquareProvider with ChangeNotifier {
         String pos = oldList[i][2].toString();
 
         setLineColor(oldRow, oldColumn, pos, lineValue);
-        print("set [$oldRow, $oldColumn, $pos, $lineValue]");
+        //print("set [$oldRow, $oldColumn, $pos, $lineValue]");
       }
     }
 
@@ -932,20 +933,19 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
-    print("end of getOldColorList : $rtValue");
+    //print("end of getOldColorList : $rtValue");
     //return rtValue;
     return getContinueOld(rtValue);
   }
 
   List<dynamic> getContinueOld(List<dynamic> start) {
-    List<List<dynamic>> rtList = [start[0]];
     List<List<dynamic>> rtTempList = [start[0]];
 
     int row = int.parse(start[0][0].toString());
     int col = int.parse(start[0][1].toString());
     String pos = start[0][2].toString();
     int find = 0;
-    print("getContinueOld row $row, col $col, pos $pos");
+    //print("getContinueOld row $row, col $col, pos $pos");
 
     switch(pos) {
       case "down":
@@ -964,15 +964,14 @@ class SquareProvider with ChangeNotifier {
 
     int count = 0;
     do {
-      print("\nfind color(will be changed) is $find / time ${count + 1}");
+      //print("\n find color(will be changed) is $find / time ${count + 1}");
       if(rtTempList.length <= count) {
         break;
       }
       row = int.parse(rtTempList[count][0].toString());
       col = int.parse(rtTempList[count][1].toString());
       pos = rtTempList[count][2];
-      rtList = List.from(rtTempList);
-      print("NOW : row $row col $col len ${rtTempList.length}");
+      //print("NOW : row $row col $col len ${rtTempList.length}");
       count++;
 
       //same as find color
@@ -1214,14 +1213,12 @@ class SquareProvider with ChangeNotifier {
         }
       }
 
-      print("rtTempList $rtTempList");
+      //print("rtTempList $rtTempList");
 
-    } while(true || !(rtList.length == rtTempList.length &&
-        rtList.every((element) => rtTempList.contains(element)) &&
-        rtTempList.every((element) => rtList.contains(element))));
+    } while(true);
 
 
-    print("end of getContinueOld : ${rtTempList.toList()}");
+    //print("end of getContinueOld : ${rtTempList.toList()}");
     return rtTempList.toList();
   }
 

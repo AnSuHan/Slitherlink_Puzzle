@@ -1,9 +1,9 @@
+// ignore_for_file: file_names
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
-import '../Scene/GameSceneSquare.dart';
 import '../provider/SquareProvider.dart';
 import 'MainUI.dart';
 

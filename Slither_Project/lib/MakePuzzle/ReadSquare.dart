@@ -31,7 +31,7 @@ class ReadSquare {
     try {
       await read.writeIntData(lineData, key);
     } catch (e) {
-      print("EXCEPTION $e");
+      //print("EXCEPTION $e");
     }
   }
 

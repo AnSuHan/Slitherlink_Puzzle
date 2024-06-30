@@ -26,7 +26,6 @@ class MainUI {
 
   final GlobalKey<PopupMenuButtonState<int>> _mainMenuKey = GlobalKey<PopupMenuButtonState<int>>();
   Map<String, String> setting = {};
-  Map<String, String> _setting = {};
 
   final VoidCallback onUpdate;
   //for supporting multilingual
@@ -302,7 +301,6 @@ class MainUI {
             break;
         }
         onUpdate();
-        print("selectedType ${selectedType[0]} ${_selectedType[0]} // $_puzzleType");
       },
       value: _selectedType[0],
       style: const TextStyle(color: Colors.white, fontSize: 24),
@@ -345,7 +343,6 @@ class MainUI {
     if(progressKey.isEmpty) {
       progressKey = progressPuzzle[0];
     }
-    print("progressPuzzle : $progressPuzzle, progressKey : $progressKey");
 
     return DropdownButton(items: progressPuzzle
       .map((e) => DropdownMenuItem(
@@ -373,8 +370,6 @@ class MainUI {
       onPressed: () {
         int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
-        print("progressKey : $progressKey");
-
         //restrict puzzle's EOF
         if(Answer(context: context).checkRemainPuzzle(context, selectedType[0], selectedType[1])) {
           UserInfo.addContinuePuzzle(progressKey);
@@ -382,7 +377,6 @@ class MainUI {
           changeScene(context, progressKey);
         }
         else {
-          print("You solved all available puzzles");
         }
       },
       child: Text(appLocalizations.translate('MainUI_btnStart'), style: const TextStyle(fontSize: 24),),
