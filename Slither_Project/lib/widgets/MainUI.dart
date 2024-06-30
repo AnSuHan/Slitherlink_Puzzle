@@ -243,10 +243,12 @@ class MainUI {
       case "square":
       case "사각형":
         _selectedType[0] = appLocalizations.translate('MainUI_puzzleShape_square');
+        selectedType[0] = "square";
         break;
       case "triangle":
       case "삼각형":
         _selectedType[0] = appLocalizations.translate('MainUI_puzzleShape_triangle');
+        selectedType[0] = "triangle";
         break;
     }
     _puzzleSize = [appLocalizations.translate('MainUI_puzzleSize_small')];
@@ -254,15 +256,14 @@ class MainUI {
       case "small":
       case "소형":
         _selectedType[1] = appLocalizations.translate('MainUI_puzzleSize_small');
+        selectedType[1] = "small";
         break;
     }
 
 
     //main en
     puzzleType = ["square", "triangle"];
-    //selectedType[0] = puzzleType[0];
     puzzleSize = ["small"];
-    //selectedType[1] = puzzleSize[0];
   }
 
   //about puzzle difficulty
@@ -301,6 +302,7 @@ class MainUI {
             break;
         }
         onUpdate();
+        print("selectedType ${selectedType[0]} ${_selectedType[0]} // $_puzzleType");
       },
       value: _selectedType[0],
       style: const TextStyle(color: Colors.white, fontSize: 24),
@@ -343,6 +345,7 @@ class MainUI {
     if(progressKey.isEmpty) {
       progressKey = progressPuzzle[0];
     }
+    print("progressPuzzle : $progressPuzzle, progressKey : $progressKey");
 
     return DropdownButton(items: progressPuzzle
       .map((e) => DropdownMenuItem(
