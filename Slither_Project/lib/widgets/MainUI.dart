@@ -12,13 +12,13 @@ import '../l10n/app_localizations.dart';
 //`underline with list` means words of localization (only use for showing)
 class MainUI {
   late Size screenSize;
-  List<String> puzzleType = ["square"];
-  List<String> _puzzleType = ["square"];
+  List<String> puzzleType = ["square", "triangle"];
+  static List<String> _puzzleType = ["square", "triangle"];
   List<String> puzzleSize = ["small"];
-  List<String> _puzzleSize = ["small"];
+  static List<String> _puzzleSize = ["small"];
   ///shape, size
-  List<String> selectedType = ["square", "small"];
-  final List<String> _selectedType = ["square", "small"];
+  static List<String> selectedType = ["square", "small"];
+  static final List<String> _selectedType = ["square", "small"];
   //continue data
   List<String> progressPuzzle = UserInfo.getContinuePuzzle().isEmpty ? [""] : UserInfo.getContinuePuzzle().toList();
   String selectedContinue = "";
@@ -26,7 +26,6 @@ class MainUI {
 
   final GlobalKey<PopupMenuButtonState<int>> _mainMenuKey = GlobalKey<PopupMenuButtonState<int>>();
   Map<String, String> setting = {};
-  Map<String, String> _setting = {};
 
   final VoidCallback onUpdate;
   //for supporting multilingual
@@ -235,42 +234,60 @@ class MainUI {
   ///apply language about dropdown button's list
   void applyLanguageCode() {
     //main local
-    _puzzleType = [appLocalizations.translate('MainUI_puzzleShape_square')];
-    _selectedType[0] = _puzzleType[0];
+    _puzzleType = [
+      appLocalizations.translate('MainUI_puzzleShape_square'),
+      appLocalizations.translate('MainUI_puzzleShape_triangle')
+    ];
+    switch(_selectedType[0]) {
+      case "square":
+      case "사각형":
+        _selectedType[0] = appLocalizations.translate('MainUI_puzzleShape_square');
+        selectedType[0] = "square";
+        break;
+      case "triangle":
+      case "삼각형":
+        _selectedType[0] = appLocalizations.translate('MainUI_puzzleShape_triangle');
+        selectedType[0] = "triangle";
+        break;
+    }
     _puzzleSize = [appLocalizations.translate('MainUI_puzzleSize_small')];
-    _selectedType[1] = _puzzleSize[0];
+    switch(_selectedType[1]) {
+      case "small":
+      case "소형":
+        _selectedType[1] = appLocalizations.translate('MainUI_puzzleSize_small');
+        selectedType[1] = "small";
+        break;
+    }
 
 
     //main en
-    puzzleType = ["square"];
-    selectedType[0] = puzzleType[0];
+    puzzleType = ["square", "triangle"];
     puzzleSize = ["small"];
-    selectedType[1] = puzzleSize[0];
   }
 
   //about puzzle difficulty
-  Widget getPuzzleType(BuildContext context) {
+  static Widget getPuzzleType(BuildContext context, VoidCallback onUpdate) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        getPuzzleShape(context),
+        getPuzzleShape(context, onUpdate),
         const SizedBox(
           width: 50,
         ),
-        getPuzzleSize(context),
+        getPuzzleSize(context, onUpdate),
       ],
     );
   }
 
-  DropdownButton getPuzzleShape(BuildContext context) {
+  static DropdownButton getPuzzleShape(BuildContext context, VoidCallback onUpdate) {
     return DropdownButton(items: _puzzleType
       .map((e) => DropdownMenuItem(
         value: e, // 선택 시 onChanged 를 통해 반환할 value
         child: Text(e),
       ))
       .toList(),
-      onChanged: (value) {
-        _selectedType[0] = value;
+      onChanged: (value) async {
+        await changePuzzleShape(value, onUpdate);
       },
       value: _selectedType[0],
       style: const TextStyle(color: Colors.white, fontSize: 24),
@@ -278,7 +295,24 @@ class MainUI {
     );
   }
 
-  DropdownButton getPuzzleSize(BuildContext context) {
+  static Future<void> changePuzzleShape(dynamic value, VoidCallback onUpdate) async {
+    _selectedType[0] = value;
+    //en
+    switch(value) {
+      case "square":
+      case "사각형":
+        selectedType[0] = "square";
+        break;
+
+      case "triangle":
+      case "삼각형":
+        selectedType[0] = "triangle";
+        break;
+    }
+    onUpdate();
+  }
+
+  static DropdownButton getPuzzleSize(BuildContext context, VoidCallback onUpdate) {
     return DropdownButton(items: _puzzleSize
       .map((e) => DropdownMenuItem(
         value: e, // 선택 시 onChanged 를 통해 반환할 value
@@ -340,7 +374,6 @@ class MainUI {
       onPressed: () {
         int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
-
         //restrict puzzle's EOF
         if(Answer(context: context).checkRemainPuzzle(context, selectedType[0], selectedType[1])) {
           UserInfo.addContinuePuzzle(progressKey);
@@ -348,7 +381,6 @@ class MainUI {
           changeScene(context, progressKey);
         }
         else {
-          print("You solved all available puzzles");
         }
       },
       child: Text(appLocalizations.translate('MainUI_btnStart'), style: const TextStyle(fontSize: 24),),
@@ -370,13 +402,26 @@ class MainUI {
 
   void changeScene(BuildContext context, String key, {bool isContinue = false}) {
     //print("change Scene with key : $key, isContinue : $isContinue");
+    List<String> token = key.split("_");
 
-    Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => GameSceneSquare(isContinue: isContinue, loadKey: key),
-        )
-    );
+    switch(token[0]) {
+      case "square":
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GameSceneSquare(isContinue: isContinue, loadKey: key),
+            )
+        );
+        break;
+      case "triangle":
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GameSceneSquare(isContinue: isContinue, loadKey: key),
+            )
+        );
+        break;
+    }
   }
 
   //about screen size

@@ -9,6 +9,7 @@ class ThemeColor {
     'line_hint': const Color(0xFFFFD700),     // Gold
     'line_disable': const Color(0x33C0C0C0),  // Gray
     'line_normal': const Color(0xFFC0C0C0),  // Silver
+    'line_x': const Color(0x00000000),
 
     'line_01': const Color(0xFF40E0D0),  // Turquoise
     'line_02': const Color(0xFF00FF00),  // Green
@@ -105,7 +106,7 @@ class ThemeColor {
     //user selection
     if(type == 1) {
       //line_01 ~ line_15
-      int num = Random().nextInt(lineColor.keys.length - 4) + 1;
+      int num = Random().nextInt(getNormalLineNum()) + 1;
       if(num < 10) {
         //print("lineColor : ${lineColor["line_0$num"]!}");
         return lineColor["line_0$num"]!;
@@ -132,12 +133,44 @@ class ThemeColor {
         rtColor = lineColor["line_wrong"]!;
         break;
       //hint
-      case 2:
+      case -3:
         rtColor = lineColor["line_hint"]!;
+        break;
+      //x
+      case -4:
+        rtColor = lineColor["line_x"]!;
         break;
     }
 
     //print("rtColor in getLineColor : $rtColor");
     return rtColor;
+  }
+
+  Color getColorWithName(String name) {
+    if(lineColor.containsKey(name)) {
+      return lineColor[name]!;
+    }
+    return const Color(0x00000000);
+  }
+
+  int getColorNum(Color color) {
+    Map<Color, String> reverse = {};
+    lineColor.forEach((key, value) {
+      reverse[value] = key;
+    });
+    String rt = reverse[color]!;
+    int value = int.parse(rt.split("_")[1]);
+
+    return value;
+  }
+
+  int getNormalLineNum() {
+    return lineColor.length - 5;
+  }
+
+  //return over 0
+  int getNormalRandom() {
+    //print("getNormalLineNum : ${getNormalLineNum()}");  //15
+    return Random().nextInt(getNormalLineNum()) + 1;
   }
 }
