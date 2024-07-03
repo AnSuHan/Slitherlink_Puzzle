@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../Front/EnterScene.dart';
+import 'Front/EnterScene.dart';
 
 void main() {
   //beforeRelease();
