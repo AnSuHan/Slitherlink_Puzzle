@@ -1,7 +1,10 @@
 import 'dart:math';
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
+
 import 'User/UserInfo.dart';
+import 'l10n/app_localizations.dart';
 
 class ThemeColor {
   Map<String, Color> lineColor = {
@@ -80,6 +83,17 @@ class ThemeColor {
 
   List<String> getList() {
     return ["default", "warm", "cool", "earth", "pastel", "vibrant"];
+  }
+
+  List<String> getColorListTr(BuildContext context) {
+    return [
+      AppLocalizations.of(context)!.translate('MainUI_menuSetting_theme01'),
+      AppLocalizations.of(context)!.translate('MainUI_menuSetting_theme02'),
+      AppLocalizations.of(context)!.translate('MainUI_menuSetting_theme03'),
+      AppLocalizations.of(context)!.translate('MainUI_menuSetting_theme04'),
+      AppLocalizations.of(context)!.translate('MainUI_menuSetting_theme05'),
+      AppLocalizations.of(context)!.translate('MainUI_menuSetting_theme06'),
+    ];
   }
 
   Map<String, Color> getColor() {
