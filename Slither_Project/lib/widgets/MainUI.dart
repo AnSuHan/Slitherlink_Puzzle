@@ -1,5 +1,6 @@
 // ignore_for_file: file_names
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
@@ -26,6 +27,9 @@ class MainUI {
 
   final GlobalKey<PopupMenuButtonState<int>> _mainMenuKey = GlobalKey<PopupMenuButtonState<int>>();
   Map<String, String> setting = {};
+  Map<String, String> _setting = {};
+  List<String> _language = [];
+  String _languageValue = "english";
 
   final VoidCallback onUpdate;
   //for supporting multilingual
@@ -168,17 +172,18 @@ class MainUI {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(appLocalizations.translate('MainUI_menuSetting_language')),
-                            DropdownButton(items: UserInfo.getSupportLanguage(context).map((String item) {
+                            DropdownButton(items: _language.map((String item) {
                               return DropdownMenuItem<String>(
                                 value: item,
                                 child: Text(item),
                               );
                             }).toList(),
                               onChanged: (value) {
-                                setting["language"] = value.toString();
+                                _languageValue = value.toString();
+                                //_setting["language"] = value.toString();
                                 onUpdate();
                               },
-                              value: setting["language"],
+                              value: _languageValue,
                               style: const TextStyle(color: Colors.black, fontSize: 18),),
                           ],
                         ),
@@ -191,9 +196,21 @@ class MainUI {
                         TextButton(
                           child: Text(appLocalizations.translate('MainUI_btnApply')),
                           onPressed: () {
+                            switch(_languageValue) {
+                              case "english":
+                              case "영어":
+                                setting["language"] = "english";
+                                break;
+                              case "korean":
+                              case "한국어":
+                                setting["language"] = "korean";
+                                break;
+                            }
                             enterSceneState.changeLanguage(context, languageToCode(setting["language"]!));
                             //https://stackoverflow.com/questions/66932705/how-do-i-resolve-id-does-not-exist-error
+                            //applySetting(setting, _setting);
                             UserInfo.setSettingAll(setting);
+                            loadSetting();
                             onUpdate();
                             Navigator.of(context).pop();
                           },
@@ -227,7 +244,6 @@ class MainUI {
         rtValue = "ko";
         break;
     }
-
     return rtValue;
   }
 
@@ -263,6 +279,46 @@ class MainUI {
     //main en
     puzzleType = ["square", "triangle"];
     puzzleSize = ["small"];
+
+    _language = [
+      appLocalizations.translate('language_en'),
+      appLocalizations.translate('language_ko')
+    ];
+
+    switch(setting["language"]) {
+      case "english":
+        _languageValue = appLocalizations.translate('language_en');
+        break;
+      case "korean":
+        _languageValue = appLocalizations.translate('language_ko');
+        break;
+    }
+
+    //copy setting's keys
+    _setting = { for (var key in setting.keys) key : "" };
+    switch(setting["language"]) {
+      case "english":
+      case "영어":
+        _setting["language"] = appLocalizations.translate('language_en');
+        break;
+      case "korean":
+      case "한국어":
+        _setting["language"] = appLocalizations.translate('language_ko');
+        break;
+    }
+  }
+
+  static void applySetting(Map<String, String> setting, Map<String, String> settingTr) {
+    switch(settingTr["language"]) {
+      case "english":
+      case "영어":
+        setting["language"] = "english";
+        break;
+      case "korean":
+      case "한국어":
+        setting["language"] = "korean";
+        break;
+    }
   }
 
   //about puzzle difficulty

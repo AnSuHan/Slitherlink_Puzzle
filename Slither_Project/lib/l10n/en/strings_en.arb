@@ -18,6 +18,6 @@
   "MainUI_menuSetting_theme05": "pastel",
   "MainUI_menuSetting_theme06": "vibrant",
   "MainUI_menuSetting_language": "Language",
-  "language_english_en" : "english",
-  "language_english_kr" : "korean"
+  "language_en" : "english",
+  "language_ko" : "korean"
 }

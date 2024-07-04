@@ -18,6 +18,6 @@
   "MainUI_menuSetting_theme05": "파스텔",
   "MainUI_menuSetting_theme06": "생동감있는",
   "MainUI_menuSetting_language": "언어",
-  "language_english_en" : "영어",
-  "language_english_kr" : "한국어"
+  "language_en" : "영어",
+  "language_ko" : "한국어"
 }
