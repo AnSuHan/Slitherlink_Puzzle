@@ -1,5 +1,6 @@
 // ignore_for_file: file_names
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
@@ -26,6 +27,10 @@ class MainUI {
 
   final GlobalKey<PopupMenuButtonState<int>> _mainMenuKey = GlobalKey<PopupMenuButtonState<int>>();
   Map<String, String> setting = {};
+  List<String> _theme = [];
+  String _themeValue = "default";
+  List<String> _language = [];
+  String _languageValue = "english";
 
   final VoidCallback onUpdate;
   //for supporting multilingual
@@ -149,17 +154,17 @@ class MainUI {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(appLocalizations.translate('MainUI_menuSetting_theme')),
-                            DropdownButton(items: ThemeColor().getList().map((String item) {
+                            DropdownButton(items: _theme.map((String item) {
                               return DropdownMenuItem<String>(
                                 value: item,
                                 child: Text(item),
                               );
                             }).toList(),
                               onChanged: (value) {
-                                setting["theme"] = value.toString();
+                                _themeValue = value.toString();
                                 onUpdate();
                               },
-                              value: setting["theme"],
+                              value: _themeValue,
                               style: const TextStyle(color: Colors.black, fontSize: 18),),
                           ],
                         ),
@@ -168,17 +173,17 @@ class MainUI {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(appLocalizations.translate('MainUI_menuSetting_language')),
-                            DropdownButton(items: UserInfo.getSupportLanguage(context).map((String item) {
+                            DropdownButton(items: _language.map((String item) {
                               return DropdownMenuItem<String>(
                                 value: item,
                                 child: Text(item),
                               );
                             }).toList(),
                               onChanged: (value) {
-                                setting["language"] = value.toString();
+                                _languageValue = value.toString();
                                 onUpdate();
                               },
-                              value: setting["language"],
+                              value: _languageValue,
                               style: const TextStyle(color: Colors.black, fontSize: 18),),
                           ],
                         ),
@@ -191,9 +196,46 @@ class MainUI {
                         TextButton(
                           child: Text(appLocalizations.translate('MainUI_btnApply')),
                           onPressed: () {
+                            switch(_languageValue) {
+                              case "english":
+                              case "영어":
+                                setting["language"] = "english";
+                                break;
+                              case "korean":
+                              case "한국어":
+                                setting["language"] = "korean";
+                                break;
+                            }
+                            switch(_themeValue) {
+                              case "default":
+                              case "기본":
+                                setting["theme"] = "default";
+                                break;
+                              case "warm":
+                              case "따뜻한":
+                                setting["theme"] = "warm";
+                                break;
+                              case "cool":
+                              case "시원한":
+                                setting["theme"] = "cool";
+                                break;
+                              case "earth":
+                              case "자연":
+                                setting["theme"] = "earth";
+                                break;
+                              case "pastel":
+                              case "파스텔":
+                                setting["theme"] = "pastel";
+                                break;
+                              case "vibrant":
+                              case "생동감있는":
+                                setting["theme"] = "vibrant";
+                                break;
+                            }
                             enterSceneState.changeLanguage(context, languageToCode(setting["language"]!));
                             //https://stackoverflow.com/questions/66932705/how-do-i-resolve-id-does-not-exist-error
                             UserInfo.setSettingAll(setting);
+                            loadSetting();
                             onUpdate();
                             Navigator.of(context).pop();
                           },
@@ -227,7 +269,6 @@ class MainUI {
         rtValue = "ko";
         break;
     }
-
     return rtValue;
   }
 
@@ -263,6 +304,50 @@ class MainUI {
     //main en
     puzzleType = ["square", "triangle"];
     puzzleSize = ["small"];
+
+    _theme = [
+      appLocalizations.translate('MainUI_menuSetting_theme01'),
+      appLocalizations.translate('MainUI_menuSetting_theme02'),
+      appLocalizations.translate('MainUI_menuSetting_theme03'),
+      appLocalizations.translate('MainUI_menuSetting_theme04'),
+      appLocalizations.translate('MainUI_menuSetting_theme05'),
+      appLocalizations.translate('MainUI_menuSetting_theme06')
+    ];
+
+    switch (setting["theme"]) {
+      case "default":
+        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme01');
+        break;
+      case "warm":
+        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme02');
+        break;
+      case "cool":
+        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme03');
+        break;
+      case "earth":
+        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme04');
+        break;
+      case "pastel":
+        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme05');
+        break;
+      case "vibrant":
+        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme06');
+        break;
+    }
+
+    _language = [
+      appLocalizations.translate('language_en'),
+      appLocalizations.translate('language_ko')
+    ];
+
+    switch(setting["language"]) {
+      case "english":
+        _languageValue = appLocalizations.translate('language_en');
+        break;
+      case "korean":
+        _languageValue = appLocalizations.translate('language_ko');
+        break;
+    }
   }
 
   //about puzzle difficulty
