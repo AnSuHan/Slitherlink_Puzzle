@@ -10,7 +10,8 @@ class UserInfo {
   static Set<String> continuePuzzle = {};
   static Map<String, String> setting = {
     "theme" : "default",
-    "language" : "english"
+    "language" : "english",
+    "button_alignment" : "right"
   };
   static List<String> language = ["english", "korean"];
   static List<String> _language = ["english", "korean"];

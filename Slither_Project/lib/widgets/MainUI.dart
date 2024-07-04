@@ -31,6 +31,8 @@ class MainUI {
   String _themeValue = "default";
   List<String> _language = [];
   String _languageValue = "english";
+  List<String> _btnAlignment = [];
+  String _btnAlignmentValue = "right";
 
   final VoidCallback onUpdate;
   //for supporting multilingual
@@ -187,6 +189,25 @@ class MainUI {
                               style: const TextStyle(color: Colors.black, fontSize: 18),),
                           ],
                         ),
+                        const SizedBox(height: 10),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(appLocalizations.translate('MainUI_menuSetting_btnAlignment')),
+                            DropdownButton(items: _btnAlignment.map((String item) {
+                              return DropdownMenuItem<String>(
+                                value: item,
+                                child: Text(item),
+                              );
+                            }).toList(),
+                              onChanged: (value) {
+                                _btnAlignmentValue = value.toString();
+                                onUpdate();
+                              },
+                              value: _btnAlignmentValue,
+                              style: const TextStyle(color: Colors.black, fontSize: 18),),
+                          ],
+                        ),
                       ],
                     ),
                     const SizedBox(height: 20),
@@ -230,6 +251,16 @@ class MainUI {
                               case "vibrant":
                               case "생동감있는":
                                 setting["theme"] = "vibrant";
+                                break;
+                            }
+                            switch(_btnAlignmentValue) {
+                              case "left":
+                              case "왼쪽":
+                                setting["button_alignment"] = "left";
+                                break;
+                              case "right":
+                              case "오른쪽":
+                                setting["button_alignment"] = "right";
                                 break;
                             }
                             enterSceneState.changeLanguage(context, languageToCode(setting["language"]!));
@@ -346,6 +377,20 @@ class MainUI {
         break;
       case "korean":
         _languageValue = appLocalizations.translate('language_ko');
+        break;
+    }
+
+    _btnAlignment = [
+      appLocalizations.translate('left'),
+      appLocalizations.translate('right')
+    ];
+
+    switch(setting["button_alignment"]) {
+      case "left":
+        _btnAlignmentValue = appLocalizations.translate('left');
+        break;
+      case "right":
+        _btnAlignmentValue = appLocalizations.translate('right');
         break;
     }
   }

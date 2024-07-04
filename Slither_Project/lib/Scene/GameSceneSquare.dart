@@ -101,24 +101,52 @@ class GameStateSquare extends State<GameSceneSquare> {
               },
               child: AbsorbPointer(
                 absorbing: isComplete,
-                child: Container(
-                  color: settingColor["background"],
-                  child: InteractiveViewer(
-                    boundaryMargin: EdgeInsets.symmetric(
-                      horizontal: screenSize.width * 0.4,
-                      vertical: screenSize.height * 0.4,
-                    ),
-                    constrained: false,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 20),
-                      child: Column(
-                        //provider와 ChangeNotifier를 통해 접근
-                        children: _provider.getSquareField(),
+                child: Stack(
+                  children: [
+                    Container(
+                      color: settingColor["background"],
+                      child: InteractiveViewer(
+                        boundaryMargin: EdgeInsets.symmetric(
+                          horizontal: screenSize.width * 0.4,
+                          vertical: screenSize.height * 0.4,
+                        ),
+                        constrained: false,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 20),
+                          child: Column(
+                            //provider와 ChangeNotifier를 통해 접근
+                            children: _provider.getSquareField(),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
+                    Positioned(
+                      width: 70,
+                      height: 70,
+                      left: 20, //margin
+                      bottom: 110,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // 버튼이 눌렸을 때 실행할 동작
+                        },
+                        child: const Icon(Icons.undo),
+                      ),
+                    ),
+                    Positioned(
+                      width: 70,
+                      height: 70,
+                      left: 20, //margin
+                      bottom: 20,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // 버튼이 눌렸을 때 실행할 동작
+                        },
+                        child: const Icon(Icons.redo),
+                      ),
+                    ),
+                  ],
+                )
               ),
             ),
           );
