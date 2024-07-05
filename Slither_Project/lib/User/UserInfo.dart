@@ -10,7 +10,8 @@ class UserInfo {
   static Set<String> continuePuzzle = {};
   static Map<String, String> setting = {
     "theme" : "default",
-    "language" : "english"
+    "language" : "english",
+    "button_alignment" : "right"
   };
   static List<String> language = ["english", "korean"];
   static List<String> _language = ["english", "korean"];
@@ -81,5 +82,10 @@ class UserInfo {
     if(language.contains(lang)) {
       setting["language"] = lang;
     }
+  }
+
+  ///true : left, false : right
+  static bool getButtonAlignment() {
+    return setting["button_alignment"]!.compareTo("left") == 0 ? true : false;
   }
 }

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../ThemeColor.dart';
+import '../User/UserInfo.dart';
 import '../provider/SquareProvider.dart';
 import '../widgets/GameUI.dart';
 
@@ -101,24 +102,54 @@ class GameStateSquare extends State<GameSceneSquare> {
               },
               child: AbsorbPointer(
                 absorbing: isComplete,
-                child: Container(
-                  color: settingColor["background"],
-                  child: InteractiveViewer(
-                    boundaryMargin: EdgeInsets.symmetric(
-                      horizontal: screenSize.width * 0.4,
-                      vertical: screenSize.height * 0.4,
-                    ),
-                    constrained: false,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 20),
-                      child: Column(
-                        //provider와 ChangeNotifier를 통해 접근
-                        children: _provider.getSquareField(),
+                child: Stack(
+                  children: [
+                    Container(
+                      color: settingColor["background"],
+                      child: InteractiveViewer(
+                        boundaryMargin: EdgeInsets.symmetric(
+                          horizontal: screenSize.width * 0.4,
+                          vertical: screenSize.height * 0.4,
+                        ),
+                        constrained: false,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 20, vertical: 20),
+                          child: Column(
+                            //provider와 ChangeNotifier를 통해 접근
+                            children: _provider.getSquareField(),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
+                    Positioned(
+                      width: 70,
+                      height: 70,
+                      left: UserInfo.getButtonAlignment() ? 20
+                          : ui.getScreenSize().width - 90, //margin
+                      bottom: 110,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          await _provider.undo();
+                        },
+                        child: const Icon(Icons.undo),
+                      ),
+                    ),
+                    Positioned(
+                      width: 70,
+                      height: 70,
+                      left: UserInfo.getButtonAlignment() ? 20
+                          : ui.getScreenSize().width - 90, //margin
+                      bottom: 20,
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          await _provider.redo();
+                        },
+                        child: const Icon(Icons.redo),
+                      ),
+                    ),
+                  ],
+                )
               ),
             ),
           );

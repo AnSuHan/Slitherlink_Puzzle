@@ -88,7 +88,7 @@ class SquareBoxStateProvider extends State<SquareBox> {
                   width: 50,
                   color: setupColor(widget.up),
                   child: GestureDetector(
-                    onTap: () {
+                    onTap: () async {
                       lastClick = "up";
 
                       setState(() {
@@ -106,7 +106,7 @@ class SquareBoxStateProvider extends State<SquareBox> {
                         widget.up = up;
                       });
 
-                      Provider.of<SquareProvider>(context, listen: false)
+                      await Provider.of<SquareProvider>(context, listen: false)
                           .updateSquareBox(row, column, up: up);
                     },
                     child: Stack(
@@ -146,7 +146,7 @@ class SquareBoxStateProvider extends State<SquareBox> {
                   width: 10,
                   color: setupColor(widget.left),
                   child: GestureDetector(
-                    onTap: () {
+                    onTap: () async {
                       lastClick = "left";
 
                       setState(() {
@@ -164,7 +164,7 @@ class SquareBoxStateProvider extends State<SquareBox> {
                         widget.left = left;
                       });
 
-                      Provider.of<SquareProvider>(context, listen: false)
+                      await Provider.of<SquareProvider>(context, listen: false)
                           .updateSquareBox(row, column, left: left);
                     },
                     child: Stack(
@@ -198,7 +198,7 @@ class SquareBoxStateProvider extends State<SquareBox> {
                   width: 10,
                   color: setupColor(widget.right),
                   child: GestureDetector(
-                    onTap: () {
+                    onTap: () async {
                       lastClick = "right";
 
                       setState(() {
@@ -216,7 +216,7 @@ class SquareBoxStateProvider extends State<SquareBox> {
                         widget.right = right;
                       });
 
-                      Provider.of<SquareProvider>(context, listen: false)
+                      await Provider.of<SquareProvider>(context, listen: false)
                           .updateSquareBox(row, column, right: right);
                     },
                     child: Stack(
@@ -260,7 +260,7 @@ class SquareBoxStateProvider extends State<SquareBox> {
                   width: 50,
                   color: setupColor(widget.down),
                   child: GestureDetector(
-                    onTap: () {
+                    onTap: () async {
                       lastClick = "down";
 
                       setState(() {
@@ -278,7 +278,7 @@ class SquareBoxStateProvider extends State<SquareBox> {
                         widget.down = down;
                       });
 
-                      Provider.of<SquareProvider>(context, listen: false)
+                      await Provider.of<SquareProvider>(context, listen: false)
                           .updateSquareBox(row, column, down: down);
                     },
                     child: Stack(

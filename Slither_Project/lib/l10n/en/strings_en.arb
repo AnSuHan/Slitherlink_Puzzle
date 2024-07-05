@@ -18,6 +18,9 @@
   "MainUI_menuSetting_theme05": "pastel",
   "MainUI_menuSetting_theme06": "vibrant",
   "MainUI_menuSetting_language": "Language",
+  "MainUI_menuSetting_btnAlignment": "button Alignment",
   "language_en" : "english",
-  "language_ko" : "korean"
+  "language_ko" : "korean",
+  "left" : "left",
+  "right" : "right"
 }

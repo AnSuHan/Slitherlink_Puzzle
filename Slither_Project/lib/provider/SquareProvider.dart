@@ -59,25 +59,8 @@ class SquareProvider with ChangeNotifier {
     setLineColor(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
   }
 
-  void refreshSubmit() async {
+  Future<void> refreshSubmit() async {
     submit = await readSquare.readSubmit(puzzle);
-
-    /*
-    String temp = "";
-    for(int i = 0 ; i < submit.length ; i++) {
-      for(int j = 0 ; j < submit[i].length ; j++) {
-        temp += "${submit[i][j]} ";
-        if(j % 5 == 4 && j > 0 && j < submit[i].length - 1) {
-          temp += " _ ";
-        }
-      }
-      if(i > 10) {
-        break;
-      }
-      //print("row $i : $temp");
-      temp = "";
-    }
-     */
     notifyListeners();
   }
 
@@ -416,6 +399,74 @@ class SquareProvider with ChangeNotifier {
 
   ///**********************************************************************************
   ///**********************************************************************************
+  ///****************************** about undo & redo ******************************
+  ///**********************************************************************************
+  ///**********************************************************************************
+  List<List<List<int>>> doSubmit = [];
+  int doPointer = -1;   //now position
+  int doIndex = -1;     //max Index
+
+  Future<void> setDo() async {
+    List<List<int>> clonedSubmit = List.generate(submit.length, (i) => List.from(submit[i]));
+
+    //when clicking square after click undo
+    if(doPointer < doIndex) {
+      doSubmit = doSubmit.sublist(0, doPointer + 1);
+      doSubmit.add(clonedSubmit);
+      doIndex = doSubmit.length - 1;
+      doPointer = doIndex;
+    }
+    else {
+      doSubmit.add(clonedSubmit);
+      doIndex++;
+      doPointer++;
+    }
+  }
+
+  Future<void> undo() async {
+    if(doPointer >= 0) {
+      doPointer--;
+      if(doPointer >= 0) {
+        submit = doSubmit[doPointer];
+      }
+      else if(doPointer == -1) {
+        for(int i = 0 ; i < submit.length ; i++) {
+          for(int j = 0 ; j < submit[i].length ; j++) {
+            submit[i][j] = 0;
+          }
+        }
+      }
+
+      await readSquare.writeSubmit(puzzle, submit);
+      refreshSubmit();
+      notifyListeners();
+    }
+  }
+
+  Future<void> redo() async {
+    if(doPointer < doIndex) {
+      doPointer++;
+      submit = doSubmit[doPointer];
+
+      await readSquare.writeSubmit(puzzle, submit);
+      refreshSubmit();
+      notifyListeners();
+    }
+  }
+
+  void printSubmit() {
+    String temp = "";
+    for(int i = 0 ; i < submit.length ; i++) {
+      for(int j = 0 ; j < submit[i].length ; j++) {
+        temp += "${submit[i][j]} ";
+      }
+      print("row $i $temp");
+      temp = "";
+    }
+  }
+
+  ///**********************************************************************************
+  ///**********************************************************************************
   ///****************************** about load label ******************************
   ///**********************************************************************************
   ///**********************************************************************************
@@ -432,7 +483,7 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   ///**********************************************************************************
   ///update `puzzle` variable
-  void updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) {
+  Future<void> updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) async {
     Set<int> nearColor = {};
     int lineValue = 0; //new line's value
 
@@ -505,8 +556,9 @@ class SquareProvider with ChangeNotifier {
         }
         //print("set $row, $column, $lineValue");
 
-        refreshSubmit();
+        await refreshSubmit();
         notifyListeners();
+        await setDo();
         return;
       }
 
@@ -542,9 +594,9 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
-
-    refreshSubmit();
+    await refreshSubmit();
     notifyListeners();
+    await setDo();
   }
 
   ///SquareBoxProvider List's index
