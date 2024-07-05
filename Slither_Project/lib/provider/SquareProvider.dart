@@ -59,10 +59,10 @@ class SquareProvider with ChangeNotifier {
     setLineColor(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
   }
 
-  void refreshSubmit() async {
+  Future<void> refreshSubmit() async {
     submit = await readSquare.readSubmit(puzzle);
 
-    /*
+    print("refresh Submit");
     String temp = "";
     for(int i = 0 ; i < submit.length ; i++) {
       for(int j = 0 ; j < submit[i].length ; j++) {
@@ -74,10 +74,10 @@ class SquareProvider with ChangeNotifier {
       if(i > 10) {
         break;
       }
-      //print("row $i : $temp");
+      print("row $i : $temp");
       temp = "";
     }
-     */
+
     notifyListeners();
   }
 
@@ -416,6 +416,112 @@ class SquareProvider with ChangeNotifier {
 
   ///**********************************************************************************
   ///**********************************************************************************
+  ///****************************** about undo & redo ******************************
+  ///**********************************************************************************
+  ///**********************************************************************************
+  List<List<List<int>>> doSubmit = [];
+  int doPointer = -1;   //now position
+  int doIndex = -1;     //max Index
+
+  Future<void> setDo() async {
+    print("front of setDo");
+    String temp = "";
+    for(int i = 0 ; i < submit.length ; i++) {
+      for(int j = 0 ; j < submit[i].length ; j++) {
+        temp += "${submit[i][j]} ";
+      }
+      if(i > 10) {
+        break;
+      }
+      print("row $i $temp");
+      temp = "";
+    }
+
+    List<List<int>> clonedSubmit = List.generate(submit.length, (i) => List.from(submit[i]));
+
+    //when clicking square after click undo
+    if(doPointer < doIndex) {
+      doSubmit = doSubmit.sublist(0, doPointer + 1);
+      doSubmit.add(clonedSubmit);
+      doIndex = doSubmit.length - 1;
+      doPointer = doIndex;
+    }
+    else {
+      doSubmit.add(clonedSubmit);
+      doIndex++;
+      doPointer++;
+    }
+    print("");
+
+    //refreshSubmit();
+    /*
+    print("setDo $doIndex, $doPointer\t${doSubmit.length}");
+    for(int i = 0 ; i < doSubmit.length ; i++) {
+      print("time $i");
+      for(int j = 0 ; j < doSubmit[i].length ; j++) {
+        String temp = "";
+        for(int k = 0 ; k < doSubmit[i][j].length ; k++) {
+          temp += "${doSubmit[i][j][k]} ";
+          if(k > 0 && k % 5 == 0) {
+            temp += " _ ";
+          }
+        }
+        print("row $j : $temp");
+        if(j >= 10) {
+          break;
+        }
+      }
+    }
+     */
+  }
+
+  Future<void> undo() async {
+    if(doPointer >= 0) {
+      if(doPointer > 0) {
+        submit = doSubmit[doPointer];
+      }
+      else if(doPointer == 0) {
+        for(int i = 0 ; i < submit.length ; i++) {
+          for(int j = 0 ; j < submit[i].length ; j++) {
+            submit[i][j] = 0;
+          }
+        }
+      }
+
+      doPointer--;
+      print("undo $doIndex $doPointer");
+      await readSquare.writeSubmit(puzzle, submit);
+      refreshSubmit();
+      notifyListeners();
+    }
+  }
+
+  Future<void> redo() async {
+    if(doPointer < doIndex) {
+      doPointer++;
+      submit = doSubmit[doPointer];
+
+      print("redo $doIndex $doPointer");
+
+      await readSquare.writeSubmit(puzzle, submit);
+      refreshSubmit();
+      notifyListeners();
+    }
+  }
+
+  void printSubmit() {
+    String temp = "";
+    for(int i = 0 ; i < submit.length ; i++) {
+      for(int j = 0 ; j < submit[i].length ; j++) {
+        temp += "${submit[i][j]} ";
+      }
+      print("row $i $temp");
+      temp = "";
+    }
+  }
+
+  ///**********************************************************************************
+  ///**********************************************************************************
   ///****************************** about load label ******************************
   ///**********************************************************************************
   ///**********************************************************************************
@@ -432,7 +538,7 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   ///**********************************************************************************
   ///update `puzzle` variable
-  void updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) {
+  Future<void> updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) async {
     Set<int> nearColor = {};
     int lineValue = 0; //new line's value
 
@@ -505,8 +611,9 @@ class SquareProvider with ChangeNotifier {
         }
         //print("set $row, $column, $lineValue");
 
-        refreshSubmit();
+        await refreshSubmit();
         notifyListeners();
+        await setDo();
         return;
       }
 
@@ -542,9 +649,9 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
-
-    refreshSubmit();
+    await refreshSubmit();
     notifyListeners();
+    await setDo();
   }
 
   ///SquareBoxProvider List's index

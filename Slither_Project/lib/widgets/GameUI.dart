@@ -254,6 +254,10 @@ class GameUI {
     screenSize = size;
   }
 
+  Size getScreenSize() {
+    return screenSize;
+  }
+
   void initLabel() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     List<String> labelColor = ["Red", "Green", "Blue"];

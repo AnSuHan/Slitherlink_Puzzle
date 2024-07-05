@@ -83,4 +83,9 @@ class UserInfo {
       setting["language"] = lang;
     }
   }
+
+  ///true : left, false : right
+  static bool getButtonAlignment() {
+    return setting["button_alignment"]!.compareTo("left") == 0 ? true : false;
+  }
 }

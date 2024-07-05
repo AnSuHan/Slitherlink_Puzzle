@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../ThemeColor.dart';
+import '../User/UserInfo.dart';
 import '../provider/SquareProvider.dart';
 import '../widgets/GameUI.dart';
 
@@ -124,11 +125,12 @@ class GameStateSquare extends State<GameSceneSquare> {
                     Positioned(
                       width: 70,
                       height: 70,
-                      left: 20, //margin
+                      left: UserInfo.getButtonAlignment() ? 20
+                          : ui.getScreenSize().width - 90, //margin
                       bottom: 110,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // 버튼이 눌렸을 때 실행할 동작
+                        onPressed: () async {
+                          await _provider.undo();
                         },
                         child: const Icon(Icons.undo),
                       ),
@@ -136,11 +138,12 @@ class GameStateSquare extends State<GameSceneSquare> {
                     Positioned(
                       width: 70,
                       height: 70,
-                      left: 20, //margin
+                      left: UserInfo.getButtonAlignment() ? 20
+                          : ui.getScreenSize().width - 90, //margin
                       bottom: 20,
                       child: ElevatedButton(
-                        onPressed: () {
-                          // 버튼이 눌렸을 때 실행할 동작
+                        onPressed: () async {
+                          await _provider.redo();
                         },
                         child: const Icon(Icons.redo),
                       ),
