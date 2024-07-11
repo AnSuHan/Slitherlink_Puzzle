@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "421943540928",
+    "project_id": "flutterslitherlink",
+    "storage_bucket": "flutterslitherlink.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:421943540928:android:70460ca5c81871aefac125",
+        "android_client_info": {
+          "package_name": "slitherlink.com.puzzle.glorygem.slitherlink_project"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "421943540928-5n8pmaks1igdsfqh3call266mbq7ud8f.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "slitherlink.com.puzzle.glorygem.slitherlink_project",
+            "certificate_hash": "a7ac6cbd5427616b0298e20605a21338a175f8d0"
+          }
+        },
+        {
+          "client_id": "421943540928-jt1iioiafe6guthu3tm854h6b6qc5i26.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3WZevAbuwELuJgRML5-DkZYLTHhHGeNs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "421943540928-jt1iioiafe6guthu3tm854h6b6qc5i26.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "421943540928-9elt3sj46587inae4n94m04g2v7m7djr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "slitherlink.com.puzzle.glorygem.slitherlinkProject"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
