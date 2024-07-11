@@ -6,6 +6,7 @@ import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
+import '../User/Authentication.dart';
 import '../User/UserInfo.dart';
 import '../l10n/app_localizations.dart';
 
@@ -34,6 +35,8 @@ class MainUI {
   List<String> _btnAlignment = [];
   String _btnAlignmentValue = "right";
 
+  late Authentication auth;
+
   final VoidCallback onUpdate;
   //for supporting multilingual
   final AppLocalizations appLocalizations;
@@ -48,6 +51,7 @@ class MainUI {
   void loadSetting() {
     //hard copy
     setting = Map.from(UserInfo.getSettingAll());
+    auth = Authentication();
     applyLanguageCode();
   }
 
@@ -77,56 +81,276 @@ class MainUI {
 
     switch(result) {
       case "account":
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Container(
-                width: 300, // 원하는 너비로 설정
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      appLocalizations.translate('MainUI_menuAccount'),
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
+      //login progress
+        if(!UserInfo.authState) {
+          final TextEditingController _emailInput = TextEditingController();
+          final TextEditingController _passwordInput = TextEditingController();
+          int errType = 0;
+
+          showDialog(
+              context: context,
+              builder: (BuildContext context) {
+                return Dialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    const SizedBox(height: 20),
-                    Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(appLocalizations.translate('MainUI_menuAccount')),
-                            Text(UserInfo.progress.toString()),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          child: Text(appLocalizations.translate('MainUI_btnClose')),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
+                    child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          double containerWidth = screenSize.width < 450
+                              ? screenSize.width * 0.6
+                              : screenSize.width * 0.4;
+                          double labelWidth = containerWidth * 0.2;
+                          return Container(
+                              width: containerWidth,
+                              padding: const EdgeInsets.all(20),
+                              child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      appLocalizations.translate('MainUI_login'),
+                                      style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 20),
+                                    Column(
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            SizedBox(
+                                              width: labelWidth,
+                                              child: Text(
+                                                appLocalizations.translate('email'),
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: TextField(
+                                                controller: _emailInput,
+                                                decoration: const InputDecoration(
+                                                  border: OutlineInputBorder(),
+                                                  labelText: "example@example.com",
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            SizedBox(
+                                              width: labelWidth,
+                                              child: Text(
+                                                appLocalizations.translate('password'),
+                                                style: const TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            Expanded(
+                                              child: TextField(
+                                                controller: _passwordInput,
+                                                decoration: const InputDecoration(
+                                                  border: OutlineInputBorder(),
+                                                  labelText: "password",
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 10),
+                                        //error message
+                                        Text(
+                                          errType == 0 ? "" :
+                                          errType == 11 ? appLocalizations.translate('errMsg_Sign04') :
+                                          errType == 10 ? appLocalizations.translate('errMsg_Sign01') :
+                                          errType == 13 ? appLocalizations.translate('errMsg_Sign02') :
+                                          errType == 400 ? appLocalizations.translate('errMsg_Sign03') :
+                                          errType == 1 ? appLocalizations.translate('errMsg_Sign05') :
+                                          errType == 14 ? appLocalizations.translate('errMsg_Sign06') :
+                                          "",
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.red,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        SizedBox(
+                                          width: containerWidth * 0.6,
+                                          child: ElevatedButton(
+                                            onPressed: () async {
+                                              auth.setScreenSize(screenSize);
+                                              errType = await auth.signInEmail(context, _emailInput.text, _passwordInput.text);
+                                              onUpdate();
+                                              print("errType : $errType");
+                                              if(errType == 0) {
+                                                // ignore: use_build_context_synchronously
+                                                Navigator.of(context).pop();
+                                              }
+                                            },
+                                            child: Text(
+                                              appLocalizations.translate('sign_in'),
+                                              style: const TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          children: [
+                                            SizedBox(
+                                              width: containerWidth * 0.3,
+                                              child: ElevatedButton(
+                                                onPressed: () async {
+                                                  auth.setScreenSize(screenSize);
+                                                  errType = await auth.signUpEmail(context, _emailInput.text, _passwordInput.text);
+                                                  onUpdate();
+                                                  print("errType : $errType");
+                                                  if(errType == 0) {
+                                                    // ignore: use_build_context_synchronously
+                                                    Navigator.of(context).pop();
+                                                  }
+                                                },
+                                                child: Text(
+                                                  appLocalizations.translate('sign_up'),
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              width: containerWidth * 0.1,
+                                            ),
+                                            SizedBox(
+                                              width: containerWidth * 0.3,
+                                              child: ElevatedButton(
+                                                onPressed: () async {
+                                                  auth.setScreenSize(screenSize);
+                                                  errType = await auth.resetPasswordEmail(context, _emailInput.text);
+                                                  onUpdate();
+                                                  print("errType : $errType");
+                                                  if(errType == 0) {
+                                                    Navigator.of(context).pop();
+                                                  }
+                                                },
+                                                child: Text(
+                                                  appLocalizations.translate('reset_password'),
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  textAlign: TextAlign.center,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ]
+                              )
+                          );
+                        }
+                    )
+                );
+              }
+          );
+        }
+        else {
+          int errType = 0;
+
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              return Dialog(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
                 ),
-              ),
-            );
-          },
-        );
+                child: Container(
+                  width: 300, // 원하는 너비로 설정
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        appLocalizations.translate('MainUI_menuAccount'),
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(appLocalizations.translate('MainUI_menuAccount')),
+                              Text(UserInfo.progress.toString()),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            child: Text(appLocalizations.translate('sign_out')),
+                            onPressed: () async {
+                              auth.setScreenSize(screenSize);
+                              errType = await auth.signOutEmail(context);
+                              if(errType == 0) {
+                                // ignore: use_build_context_synchronously
+                                Navigator.of(context).pop();
+                              }
+                            },
+                          ),
+                          TextButton(
+                            child: Text(appLocalizations.translate('withdraw')),
+                            onPressed: () async {
+                              auth.setScreenSize(screenSize);
+                              errType = await auth.withdrawEmail(context);
+                              if(errType == 0) {
+                                // ignore: use_build_context_synchronously
+                                Navigator.of(context).pop();
+                              }
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            child: Text(appLocalizations.translate('MainUI_btnClose')),
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          );
+        }
         break;
       case "setting":
         showDialog(
@@ -411,11 +635,11 @@ class MainUI {
 
   static DropdownButton getPuzzleShape(BuildContext context, VoidCallback onUpdate) {
     return DropdownButton(items: _puzzleType
-      .map((e) => DropdownMenuItem(
-        value: e, // 선택 시 onChanged 를 통해 반환할 value
-        child: Text(e),
-      ))
-      .toList(),
+        .map((e) => DropdownMenuItem(
+      value: e, // 선택 시 onChanged 를 통해 반환할 value
+      child: Text(e),
+    ))
+        .toList(),
       onChanged: (value) async {
         await changePuzzleShape(value, onUpdate);
       },
@@ -444,11 +668,11 @@ class MainUI {
 
   static DropdownButton getPuzzleSize(BuildContext context, VoidCallback onUpdate) {
     return DropdownButton(items: _puzzleSize
-      .map((e) => DropdownMenuItem(
-        value: e, // 선택 시 onChanged 를 통해 반환할 value
-        child: Text(e),
-      ))
-      .toList(),
+        .map((e) => DropdownMenuItem(
+      value: e, // 선택 시 onChanged 를 통해 반환할 value
+      child: Text(e),
+    ))
+        .toList(),
       onChanged: (value) {
         _selectedType[1] = value;
       },
@@ -479,11 +703,11 @@ class MainUI {
     }
 
     return DropdownButton(items: progressPuzzle
-      .map((e) => DropdownMenuItem(
-        value: e, // 선택 시 onChanged 를 통해 반환할 value
-        child: Text(e),
-      ))
-      .toList(),
+        .map((e) => DropdownMenuItem(
+      value: e, // 선택 시 onChanged 를 통해 반환할 value
+      child: Text(e),
+    ))
+        .toList(),
       onChanged: (value) {
         progressPuzzle[0] = value;
         progressKey = value;
@@ -520,13 +744,13 @@ class MainUI {
   //about continue button
   ElevatedButton getContinueButton(BuildContext context) {
     return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        minimumSize: const Size(100, 50),
-      ),
-      onPressed: () {
-        changeScene(context, progressKey, isContinue: true);
-      },
-      child: Text(appLocalizations.translate('MainUI_btnContinue'), style: const TextStyle(fontSize: 24),)
+        style: ElevatedButton.styleFrom(
+          minimumSize: const Size(100, 50),
+        ),
+        onPressed: () {
+          changeScene(context, progressKey, isContinue: true);
+        },
+        child: Text(appLocalizations.translate('MainUI_btnContinue'), style: const TextStyle(fontSize: 24),)
     );
   }
 

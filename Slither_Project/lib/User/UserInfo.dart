@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 import 'package:slitherlink_project/l10n/app_localizations.dart';
 
 class UserInfo {
+  static bool authState = false;
   static Map<String, int> progress = {
     "square_small" : 0,
   };   //finish progress

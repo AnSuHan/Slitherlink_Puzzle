@@ -18,6 +18,15 @@ class Splash extends StatelessWidget {
                 child: CircularProgressIndicator(),
               ),
             );
+          } else if (snapshot.hasError) {
+            print(snapshot.error);
+            return MaterialApp(
+              home: Scaffold(
+                body: Center(
+                  child: Text('Error: ${snapshot.error}'),
+                ),
+              ),
+            );
           } else {
             return const EnterScene(); // 초기화 완료 후 EnterScene 표시
           }
@@ -27,7 +36,8 @@ class Splash extends StatelessWidget {
   }
 
   Future<void> firebase() async {
-    print("___ in firebase method ___");
+    print("___ start firebase method ___");
     await Firebase.initializeApp();
+    print("___ end firebase method ___");
   }
 }
