@@ -1,6 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
+import '../firebase_options.dart';
 import 'EnterScene.dart';
 
 class Splash extends StatelessWidget {
@@ -37,7 +38,9 @@ class Splash extends StatelessWidget {
 
   Future<void> firebase() async {
     print("___ start firebase method ___");
-    await Firebase.initializeApp();
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
     print("___ end firebase method ___");
   }
 }
