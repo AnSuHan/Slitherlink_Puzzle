@@ -2,7 +2,7 @@
     package="slitherlink.com.puzzle.glorygem.slitherlink_project">
    <application
         android:label="slitherlink_project"
-        android:name="${applicationName}"
+        android:name="slitherlink.com.puzzle.glorygem.slitherlink_project.MyApplication"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"

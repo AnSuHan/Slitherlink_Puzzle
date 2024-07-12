@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'Front/EnterScene.dart';
+import 'Front/Splash.dart';
 
-void main() {
-  //beforeRelease();
-  runApp(const EnterScene());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const Splash());
 }
 
 void beforeRelease() async {
@@ -16,5 +16,4 @@ void beforeRelease() async {
   for(var key in keys) {
     await prefs.remove(key);
   }
-
 }
