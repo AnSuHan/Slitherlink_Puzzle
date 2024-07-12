@@ -1,6 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide UserInfo;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:slitherlink_project/Front/EnterScene.dart';
 
 import '../l10n/app_localizations.dart';
 import 'UserInfo.dart';
@@ -41,6 +43,7 @@ class Authentication {
         email: email,
         password: password,
       );
+      await makeDB();
       popup(context, "sign up success");
       return 0;
     } catch (e) {
@@ -146,5 +149,21 @@ class Authentication {
     RegExp(r'^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+$', caseSensitive: false);
 
     return emailRegExp.hasMatch(input);
+  }
+
+  Future<void> makeDB() async {
+    print("start makeDB");
+    FirebaseFirestore db = FirebaseFirestore.instance;
+    User user = FirebaseAuth.instance.currentUser!;
+
+    final userData = <String, dynamic>{
+      "first": "Alan",
+      "middle": "Mathison",
+      "last": "Turing",
+      "born": 1912
+    };
+
+    await db.collection("users").doc(user.email).set(userData).then((_) =>
+        print('DocumentSnapshot added with ID: ${user.email}'));
   }
 }
