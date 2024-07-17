@@ -1,17 +1,30 @@
+// ignore_for_file: file_names
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-
 import '../firebase_options.dart';
 import 'EnterScene.dart';
 
-class Splash extends StatelessWidget {
+class Splash extends StatefulWidget {
   const Splash({Key? key}) : super(key: key);
+
+  @override
+  SplashState createState() => SplashState();
+}
+
+class SplashState extends State<Splash> {
+  late Future<void> _initializeFirebase;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeFirebase = firebase(); // Firebase 초기화 한 번만 호출
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: FutureBuilder(
-        future: firebase(), // Firebase 초기화 비동기 작업
+        future: _initializeFirebase,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
@@ -20,12 +33,9 @@ class Splash extends StatelessWidget {
               ),
             );
           } else if (snapshot.hasError) {
-            print(snapshot.error);
-            return MaterialApp(
-              home: Scaffold(
-                body: Center(
-                  child: Text('Error: ${snapshot.error}'),
-                ),
+            return Scaffold(
+              body: Center(
+                child: Text('Error: ${snapshot.error}'),
               ),
             );
           } else {
@@ -37,10 +47,8 @@ class Splash extends StatelessWidget {
   }
 
   Future<void> firebase() async {
-    print("___ start firebase method ___");
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    print("___ end firebase method ___");
   }
 }
