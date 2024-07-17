@@ -85,7 +85,8 @@ class MainUI {
         if(!UserInfo.authState) {
           final TextEditingController _emailInput = TextEditingController();
           final TextEditingController _passwordInput = TextEditingController();
-          int errType = 0;
+          int errType = -1;
+          String popupMsg = "";
 
           showDialog(
               context: context,
@@ -191,6 +192,7 @@ class MainUI {
                                               onUpdate();
                                               print("errType : $errType");
                                               if(errType == 0) {
+                                                popupMsg = "sign in success";
                                                 // ignore: use_build_context_synchronously
                                                 Navigator.of(context).pop();
                                               }
@@ -217,6 +219,7 @@ class MainUI {
                                                   onUpdate();
                                                   print("errType : $errType");
                                                   if(errType == 0) {
+                                                    popupMsg = "sign up success";
                                                     // ignore: use_build_context_synchronously
                                                     Navigator.of(context).pop();
                                                   }
@@ -242,7 +245,9 @@ class MainUI {
                                                   errType = await auth.resetPasswordEmail(context, _emailInput.text);
                                                   onUpdate();
                                                   print("errType : $errType");
-                                                  if(errType == 0) {
+                                                  if(errType == 1) {
+                                                    popupMsg = "The password reset email has been sent.";
+                                                    // ignore: use_build_context_synchronously
                                                     Navigator.of(context).pop();
                                                   }
                                                 },
@@ -267,7 +272,13 @@ class MainUI {
                     )
                 );
               }
-          );
+          ).then((_) async {
+            if(errType == 0) {
+              await Future.delayed(const Duration(milliseconds: 100));
+              // ignore: use_build_context_synchronously
+              auth.popup(context, popupMsg);
+            }
+          });
         }
         else {
           int errType = 0;
