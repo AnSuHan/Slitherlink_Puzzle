@@ -174,6 +174,6 @@ class Authentication {
     };
 
     await db.collection("users").doc(user.email).set(userData).then((_) =>
-        //print('DocumentSnapshot added with ID: ${user.email}'));
+        print('DocumentSnapshot added with ID: ${user.email}'));
   }
 }
