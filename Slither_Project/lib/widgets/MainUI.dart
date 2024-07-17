@@ -1,11 +1,9 @@
 // ignore_for_file: file_names
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
 import '../Scene/GameSceneSquare.dart';
-import '../ThemeColor.dart';
 import '../User/Authentication.dart';
 import '../User/UserInfo.dart';
 import '../l10n/app_localizations.dart';
@@ -83,8 +81,8 @@ class MainUI {
       case "account":
       //login progress
         if(!UserInfo.authState) {
-          final TextEditingController _emailInput = TextEditingController();
-          final TextEditingController _passwordInput = TextEditingController();
+          final TextEditingController emailInput = TextEditingController();
+          final TextEditingController passwordInput = TextEditingController();
           int errType = -1;
           String popupMsg = "";
 
@@ -132,7 +130,7 @@ class MainUI {
                                             ),
                                             Expanded(
                                               child: TextField(
-                                                controller: _emailInput,
+                                                controller: emailInput,
                                                 decoration: const InputDecoration(
                                                   border: OutlineInputBorder(),
                                                   labelText: "example@example.com",
@@ -156,7 +154,7 @@ class MainUI {
                                             ),
                                             Expanded(
                                               child: TextField(
-                                                controller: _passwordInput,
+                                                controller: passwordInput,
                                                 decoration: const InputDecoration(
                                                   border: OutlineInputBorder(),
                                                   labelText: "password",
@@ -188,11 +186,11 @@ class MainUI {
                                           child: ElevatedButton(
                                             onPressed: () async {
                                               auth.setScreenSize(screenSize);
-                                              errType = await auth.signInEmail(context, _emailInput.text, _passwordInput.text);
+                                              errType = await auth.signInEmail(context, emailInput.text, passwordInput.text);
                                               onUpdate();
                                               print("errType : $errType");
                                               if(errType == 0) {
-                                                popupMsg = "sign in success";
+                                                popupMsg = appLocalizations.translate('complete_sign_in');
                                                 // ignore: use_build_context_synchronously
                                                 Navigator.of(context).pop();
                                               }
@@ -215,11 +213,11 @@ class MainUI {
                                               child: ElevatedButton(
                                                 onPressed: () async {
                                                   auth.setScreenSize(screenSize);
-                                                  errType = await auth.signUpEmail(context, _emailInput.text, _passwordInput.text);
+                                                  errType = await auth.signUpEmail(context, emailInput.text, passwordInput.text);
                                                   onUpdate();
                                                   print("errType : $errType");
                                                   if(errType == 0) {
-                                                    popupMsg = "sign up success";
+                                                    popupMsg = appLocalizations.translate('complete_sign_up');
                                                     // ignore: use_build_context_synchronously
                                                     Navigator.of(context).pop();
                                                   }
@@ -242,11 +240,11 @@ class MainUI {
                                               child: ElevatedButton(
                                                 onPressed: () async {
                                                   auth.setScreenSize(screenSize);
-                                                  errType = await auth.resetPasswordEmail(context, _emailInput.text);
+                                                  errType = await auth.resetPasswordEmail(context, emailInput.text);
                                                   onUpdate();
                                                   print("errType : $errType");
                                                   if(errType == 1) {
-                                                    popupMsg = "The password reset email has been sent.";
+                                                    popupMsg = appLocalizations.translate('errMsg_Sign05');
                                                     // ignore: use_build_context_synchronously
                                                     Navigator.of(context).pop();
                                                   }
@@ -282,6 +280,7 @@ class MainUI {
         }
         else {
           int errType = 0;
+          String popupMsg = "";
 
           showDialog(
             context: context,
@@ -324,6 +323,8 @@ class MainUI {
                             onPressed: () async {
                               auth.setScreenSize(screenSize);
                               errType = await auth.signOutEmail(context);
+                              onUpdate();
+                              popupMsg = appLocalizations.translate('complete_sign_out');
                               if(errType == 0) {
                                 // ignore: use_build_context_synchronously
                                 Navigator.of(context).pop();
@@ -335,6 +336,8 @@ class MainUI {
                             onPressed: () async {
                               auth.setScreenSize(screenSize);
                               errType = await auth.withdrawEmail(context);
+                              popupMsg = appLocalizations.translate('complete_withdraw');
+                              onUpdate();
                               if(errType == 0) {
                                 // ignore: use_build_context_synchronously
                                 Navigator.of(context).pop();
@@ -360,7 +363,13 @@ class MainUI {
                 ),
               );
             },
-          );
+          ).then((_) async {
+            if(errType == 0) {
+              await Future.delayed(const Duration(milliseconds: 100));
+              // ignore: use_build_context_synchronously
+              auth.popup(context, popupMsg);
+            }
+          });
         }
         break;
       case "setting":
@@ -572,32 +581,32 @@ class MainUI {
     puzzleSize = ["small"];
 
     _theme = [
-      appLocalizations.translate('MainUI_menuSetting_theme01'),
-      appLocalizations.translate('MainUI_menuSetting_theme02'),
-      appLocalizations.translate('MainUI_menuSetting_theme03'),
-      appLocalizations.translate('MainUI_menuSetting_theme04'),
-      appLocalizations.translate('MainUI_menuSetting_theme05'),
-      appLocalizations.translate('MainUI_menuSetting_theme06')
+      appLocalizations.translate('ThemeName_01'),
+      appLocalizations.translate('ThemeName_02'),
+      appLocalizations.translate('ThemeName_03'),
+      appLocalizations.translate('ThemeName_04'),
+      appLocalizations.translate('ThemeName_05'),
+      appLocalizations.translate('ThemeName_06')
     ];
 
     switch (setting["theme"]) {
       case "default":
-        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme01');
+        _themeValue = appLocalizations.translate('ThemeName_01');
         break;
       case "warm":
-        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme02');
+        _themeValue = appLocalizations.translate('ThemeName_02');
         break;
       case "cool":
-        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme03');
+        _themeValue = appLocalizations.translate('ThemeName_03');
         break;
       case "earth":
-        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme04');
+        _themeValue = appLocalizations.translate('ThemeName_04');
         break;
       case "pastel":
-        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme05');
+        _themeValue = appLocalizations.translate('ThemeName_05');
         break;
       case "vibrant":
-        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme06');
+        _themeValue = appLocalizations.translate('ThemeName_06');
         break;
     }
 

@@ -1,6 +1,8 @@
 // ignore_for_file: file_names
+import 'package:firebase_auth/firebase_auth.dart' hide UserInfo;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import '../User/UserInfo.dart';
 import '../firebase_options.dart';
 import 'EnterScene.dart';
 
@@ -50,5 +52,9 @@ class SplashState extends State<Splash> {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+
+    if(FirebaseAuth.instance.currentUser != null) {
+      UserInfo.authState = true;
+    }
   }
 }

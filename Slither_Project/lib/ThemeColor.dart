@@ -1,5 +1,5 @@
+// ignore_for_file: file_names
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
@@ -87,12 +87,12 @@ class ThemeColor {
 
   List<String> getColorListTr(BuildContext context) {
     return [
-      AppLocalizations.of(context)!.translate('MainUI_menuSetting_theme01'),
-      AppLocalizations.of(context)!.translate('MainUI_menuSetting_theme02'),
-      AppLocalizations.of(context)!.translate('MainUI_menuSetting_theme03'),
-      AppLocalizations.of(context)!.translate('MainUI_menuSetting_theme04'),
-      AppLocalizations.of(context)!.translate('MainUI_menuSetting_theme05'),
-      AppLocalizations.of(context)!.translate('MainUI_menuSetting_theme06'),
+      AppLocalizations.of(context)!.translate('ThemeName_01'),
+      AppLocalizations.of(context)!.translate('ThemeName_02'),
+      AppLocalizations.of(context)!.translate('ThemeName_03'),
+      AppLocalizations.of(context)!.translate('ThemeName_04'),
+      AppLocalizations.of(context)!.translate('ThemeName_05'),
+      AppLocalizations.of(context)!.translate('ThemeName_06'),
     ];
   }
 
