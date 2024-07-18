@@ -11,6 +11,8 @@ import '../l10n/app_localizations.dart';
 //use "onUpdate();" for update UI
 //`underline with list` means words of localization (only use for showing)
 class MainUI {
+  bool debugDropdown = true;
+
   late Size screenSize;
   List<String> puzzleType = ["square", "triangle"];
   static List<String> _puzzleType = ["square", "triangle"];
@@ -46,13 +48,6 @@ class MainUI {
     required this.enterSceneState
   });
 
-  void loadSetting() {
-    //hard copy
-    setting = Map.from(UserInfo.getSettingAll());
-    auth = Authentication();
-    applyLanguageCode();
-  }
-
   PopupMenuButton getMainMenu(BuildContext context) {
     return PopupMenuButton(
       iconSize: 32,
@@ -72,6 +67,17 @@ class MainUI {
       ],
       icon: const Icon(Icons.menu),
     );
+  }
+
+  ///이 메소드는 dropdownButton 아이템이 변경 되었을 때 호출되지 말아야 한다
+  ///
+  ///EnterScene에서만 호출한다
+  void loadSetting() {
+    print("loadSetting");
+    //hard copy
+    setting = Map.from(UserInfo.getSettingAll());
+    auth = Authentication();
+    applyLanguageCode();
   }
 
   void handleMainMenu(BuildContext context, String result) {
@@ -400,18 +406,24 @@ class MainUI {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(appLocalizations.translate('MainUI_menuSetting_theme')),
-                            DropdownButton(items: _theme.map((String item) {
-                              return DropdownMenuItem<String>(
-                                value: item,
-                                child: Text(item),
-                              );
-                            }).toList(),
+                            DropdownButton(
+                              items: _theme.map((String item) {
+                                return DropdownMenuItem<String>(
+                                  value: item,
+                                  child: Text(item),
+                                );
+                              }).toList(),
                               onChanged: (value) {
-                                _themeValue = value.toString();
+                                _themeValue = value!;
+                                if(debugDropdown) {
+                                  // ignore: avoid_print
+                                  print("_themeValue : $_themeValue");
+                                }
                                 onUpdate();
                               },
                               value: _themeValue,
-                              style: const TextStyle(color: Colors.black, fontSize: 18),),
+                              style: const TextStyle(color: Colors.black, fontSize: 18),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 10),
@@ -426,7 +438,11 @@ class MainUI {
                               );
                             }).toList(),
                               onChanged: (value) {
-                                _languageValue = value.toString();
+                                _languageValue = value!;
+                                if(debugDropdown) {
+                                  // ignore: avoid_print
+                                  print("_languageValue : $_languageValue");
+                                }
                                 onUpdate();
                               },
                               value: _languageValue,
@@ -445,7 +461,11 @@ class MainUI {
                               );
                             }).toList(),
                               onChanged: (value) {
-                                _btnAlignmentValue = value.toString();
+                                _btnAlignmentValue = value!;
+                                if(debugDropdown) {
+                                  // ignore: avoid_print
+                                  print("_btnAlignmentValue : $_btnAlignmentValue");
+                                }
                                 onUpdate();
                               },
                               value: _btnAlignmentValue,
@@ -510,7 +530,7 @@ class MainUI {
                             enterSceneState.changeLanguage(context, languageToCode(setting["language"]!));
                             //https://stackoverflow.com/questions/66932705/how-do-i-resolve-id-does-not-exist-error
                             UserInfo.setSettingAll(setting);
-                            loadSetting();
+                            //loadSetting();
                             onUpdate();
                             Navigator.of(context).pop();
                           },

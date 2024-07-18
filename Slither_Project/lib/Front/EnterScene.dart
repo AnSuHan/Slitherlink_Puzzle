@@ -11,6 +11,7 @@ class EnterSceneState extends State<EnterScene> {
   late FocusNode _focusNode;
 
   late Size screenSize;
+  MainUI? uiNullable;
   late MainUI ui;
 
   @override
@@ -67,8 +68,11 @@ class EnterSceneState extends State<EnterScene> {
           child: Builder(
               builder: (context) {
                 screenSize = MediaQuery.of(context).size;
-                ui = MainUI(onUpdate: _updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this,);
-                ui.loadSetting();
+                if (uiNullable == null && AppLocalizations.of(context) != null) {
+                  uiNullable = MainUI(onUpdate: _updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this);
+                  ui = uiNullable!;
+                  ui.loadSetting();
+                }
                 ui.setScreenSize(screenSize);
 
                 if(screenSize.width < screenSize.height) {
