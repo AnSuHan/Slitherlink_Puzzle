@@ -84,7 +84,6 @@ class MainUI {
 
     switch(result) {
       case "account":
-        await UserInfo.init();
         //login progress
         if(!UserInfo.authState) {
           final TextEditingController emailInput = TextEditingController();
@@ -286,6 +285,7 @@ class MainUI {
           });
         }
         else {
+          await UserInfo.init();
           int errType = -1;
           String popupMsg = "";
 
