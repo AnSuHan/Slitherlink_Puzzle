@@ -18,4 +18,6 @@ samples, guidance on mobile development, and a full API reference.
 loading puzzle key (init and restart) : shape_size_progress (ex. square_small_0)
 loading submit key (continue) : shape_size_progress_continue (ex. square_small_0_continue)
 
-game label key (save and load) : shape_size_progress_color (ex. square_small_0_Red, square_small_0_Green, square_small_0_Blue) 
+game label key (save and load) : shape_size_progress_color (ex. square_small_0_Red, square_small_0_Green, square_small_0_Blue)
+
+setting key (for app setting) : setting

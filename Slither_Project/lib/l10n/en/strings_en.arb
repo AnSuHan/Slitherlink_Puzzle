@@ -41,5 +41,6 @@
   "language_en" : "english",
   "language_ko" : "korean",
   "left" : "left",
-  "right" : "right"
+  "right" : "right",
+  "progressTitle" : "progress"
 }

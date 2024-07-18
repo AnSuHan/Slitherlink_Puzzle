@@ -41,5 +41,6 @@
   "language_en" : "영어",
   "language_ko" : "한국어",
   "left" : "왼쪽",
-  "right" : "오른쪽"
+  "right" : "오른쪽",
+  "progressTitle" : "진행도"
 }

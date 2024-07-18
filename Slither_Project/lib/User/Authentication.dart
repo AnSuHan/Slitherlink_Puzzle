@@ -44,6 +44,7 @@ class Authentication {
       );
       await makeDB();
       UserInfo.authState = true;
+      await UserInfo.init();
       return 0;
     } catch (e) {
       return 400;
@@ -61,6 +62,7 @@ class Authentication {
         password: password,
       );
       UserInfo.authState = true;
+      await UserInfo.init();
       return 0;
     } catch (e) {
       return 13;
@@ -156,8 +158,8 @@ class Authentication {
     };
 
     final progress = <String, dynamic> {
-      "square": 0,
-      "triangle": 0,
+      "square_small": 0,
+      "triangle_small": 0,
     };
 
     final userData = {

@@ -1,4 +1,5 @@
 // ignore_for_file: file_names
+import 'package:firebase_auth/firebase_auth.dart' hide UserInfo;
 import 'package:flutter/material.dart';
 
 import '../Answer/Answer.dart';
@@ -46,14 +47,16 @@ class MainUI {
     required this.onUpdate,
     required this.appLocalizations,
     required this.enterSceneState
-  });
+  }) {
+    auth = Authentication();
+  }
 
   PopupMenuButton getMainMenu(BuildContext context) {
     return PopupMenuButton(
       iconSize: 32,
       key: _mainMenuKey,
-      onSelected: (value) {
-        handleMainMenu(context, value);
+      onSelected: (value) async {
+        await handleMainMenu(context, value);
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
         PopupMenuItem<String>(
@@ -69,29 +72,27 @@ class MainUI {
     );
   }
 
-  ///이 메소드는 dropdownButton 아이템이 변경 되었을 때 호출되지 말아야 한다
-  ///
-  ///EnterScene에서만 호출한다
   void loadSetting() {
     print("loadSetting");
     //hard copy
     setting = Map.from(UserInfo.getSettingAll());
-    auth = Authentication();
     applyLanguageCode();
   }
 
-  void handleMainMenu(BuildContext context, String result) {
+  Future<void> handleMainMenu(BuildContext context, String result) async {
     loadSetting();
 
     switch(result) {
       case "account":
-      //login progress
+        await UserInfo.init();
+        //login progress
         if(!UserInfo.authState) {
           final TextEditingController emailInput = TextEditingController();
           final TextEditingController passwordInput = TextEditingController();
           int errType = -1;
           String popupMsg = "";
 
+          // ignore: use_build_context_synchronously
           showDialog(
               context: context,
               builder: (BuildContext context) {
@@ -285,9 +286,10 @@ class MainUI {
           });
         }
         else {
-          int errType = 0;
+          int errType = -1;
           String popupMsg = "";
 
+          // ignore: use_build_context_synchronously
           showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -315,7 +317,16 @@ class MainUI {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(appLocalizations.translate('MainUI_menuAccount')),
-                              Text(UserInfo.progress.toString()),
+                              Text(FirebaseAuth.instance.currentUser!.email.toString()),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(appLocalizations.translate('progressTitle')),
+                              Text(UserInfo.getAllProgress()),
                             ],
                           ),
                         ],
@@ -528,9 +539,7 @@ class MainUI {
                                 break;
                             }
                             enterSceneState.changeLanguage(context, languageToCode(setting["language"]!));
-                            //https://stackoverflow.com/questions/66932705/how-do-i-resolve-id-does-not-exist-error
                             UserInfo.setSettingAll(setting);
-                            //loadSetting();
                             onUpdate();
                             Navigator.of(context).pop();
                           },
@@ -829,6 +838,7 @@ class MainUI {
 
   void setScreenSize(Size size) {
     screenSize = size;
+    auth.setScreenSize(size);
   }
 
   Size getScreenSize(Size size) {
