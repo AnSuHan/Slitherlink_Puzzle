@@ -73,7 +73,6 @@ class MainUI {
   }
 
   void loadSetting() {
-    print("loadSetting");
     //hard copy
     setting = Map.from(UserInfo.getSettingAll());
     applyLanguageCode();
@@ -198,7 +197,7 @@ class MainUI {
 
                                               setState(() {});
                                               onUpdate();
-                                              print("errType : $errType");
+                                              //print("errType : $errType");
                                               if(errType == 0) {
                                                 popupMsg = appLocalizations.translate('complete_sign_in');
                                                 // ignore: use_build_context_synchronously
@@ -224,8 +223,10 @@ class MainUI {
                                                 onPressed: () async {
                                                   auth.setScreenSize(screenSize);
                                                   errType = await auth.signUpEmail(context, emailInput.text, passwordInput.text);
+
+                                                  setState(() {});
                                                   onUpdate();
-                                                  print("errType : $errType");
+                                                  //print("errType : $errType");
                                                   if(errType == 0) {
                                                     popupMsg = appLocalizations.translate('complete_sign_up');
                                                     // ignore: use_build_context_synchronously
@@ -251,8 +252,10 @@ class MainUI {
                                                 onPressed: () async {
                                                   auth.setScreenSize(screenSize);
                                                   errType = await auth.resetPasswordEmail(context, emailInput.text);
+
+                                                  setState(() {});
                                                   onUpdate();
-                                                  print("errType : $errType");
+                                                  //print("errType : $errType");
                                                   if(errType == 1) {
                                                     popupMsg = appLocalizations.translate('errMsg_Sign05');
                                                     // ignore: use_build_context_synchronously
@@ -399,168 +402,178 @@ class MainUI {
         showDialog(
           context: context,
           builder: (BuildContext context) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Container(
-                width: 300, // 원하는 너비로 설정
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      appLocalizations.translate('MainUI_menuSetting'),
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Column(
+            return StatefulBuilder(
+              builder: (BuildContext context, StateSetter setState) {
+                return Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Container(
+                    width: 300, // 원하는 너비로 설정
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Text(
+                          appLocalizations.translate('MainUI_menuSetting'),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Column(
                           children: [
-                            Text(appLocalizations.translate('MainUI_menuSetting_theme')),
-                            DropdownButton(
-                              items: _theme.map((String item) {
-                                return DropdownMenuItem<String>(
-                                  value: item,
-                                  child: Text(item),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                _themeValue = value!;
-                                if(debugDropdown) {
-                                  // ignore: avoid_print
-                                  print("_themeValue : $_themeValue");
-                                }
-                                onUpdate();
-                              },
-                              value: _themeValue,
-                              style: const TextStyle(color: Colors.black, fontSize: 18),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(appLocalizations.translate('MainUI_menuSetting_theme')),
+                                DropdownButton(
+                                  items: _theme.map((String item) {
+                                    return DropdownMenuItem<String>(
+                                      value: item,
+                                      child: Text(item),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _themeValue = value!;
+                                    });
+                                    if(debugDropdown) {
+                                      // ignore: avoid_print
+                                      print("_themeValue : $_themeValue");
+                                    }
+                                    onUpdate();
+                                  },
+                                  value: _themeValue,
+                                  style: const TextStyle(color: Colors.black, fontSize: 18),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(appLocalizations.translate('MainUI_menuSetting_language')),
+                                DropdownButton(items: _language.map((String item) {
+                                  return DropdownMenuItem<String>(
+                                    value: item,
+                                    child: Text(item),
+                                  );
+                                }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _languageValue = value!;
+                                    });
+                                    if(debugDropdown) {
+                                      // ignore: avoid_print
+                                      print("_languageValue : $_languageValue");
+                                    }
+                                    onUpdate();
+                                  },
+                                  value: _languageValue,
+                                  style: const TextStyle(color: Colors.black, fontSize: 18),),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(appLocalizations.translate('MainUI_menuSetting_btnAlignment')),
+                                DropdownButton(items: _btnAlignment.map((String item) {
+                                  return DropdownMenuItem<String>(
+                                    value: item,
+                                    child: Text(item),
+                                  );
+                                }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _btnAlignmentValue = value!;
+                                    });
+                                    if(debugDropdown) {
+                                      // ignore: avoid_print
+                                      print("_btnAlignmentValue : $_btnAlignmentValue");
+                                    }
+                                    onUpdate();
+                                  },
+                                  value: _btnAlignmentValue,
+                                  style: const TextStyle(color: Colors.black, fontSize: 18),),
+                              ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 20),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Text(appLocalizations.translate('MainUI_menuSetting_language')),
-                            DropdownButton(items: _language.map((String item) {
-                              return DropdownMenuItem<String>(
-                                value: item,
-                                child: Text(item),
-                              );
-                            }).toList(),
-                              onChanged: (value) {
-                                _languageValue = value!;
-                                if(debugDropdown) {
-                                  // ignore: avoid_print
-                                  print("_languageValue : $_languageValue");
+                            TextButton(
+                              child: Text(appLocalizations.translate('MainUI_btnApply')),
+                              onPressed: () {
+                                switch(_languageValue) {
+                                  case "english":
+                                  case "영어":
+                                    setting["language"] = "english";
+                                    break;
+                                  case "korean":
+                                  case "한국어":
+                                    setting["language"] = "korean";
+                                    break;
                                 }
-                                onUpdate();
-                              },
-                              value: _languageValue,
-                              style: const TextStyle(color: Colors.black, fontSize: 18),),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(appLocalizations.translate('MainUI_menuSetting_btnAlignment')),
-                            DropdownButton(items: _btnAlignment.map((String item) {
-                              return DropdownMenuItem<String>(
-                                value: item,
-                                child: Text(item),
-                              );
-                            }).toList(),
-                              onChanged: (value) {
-                                _btnAlignmentValue = value!;
-                                if(debugDropdown) {
-                                  // ignore: avoid_print
-                                  print("_btnAlignmentValue : $_btnAlignmentValue");
+                                switch(_themeValue) {
+                                  case "default":
+                                  case "기본":
+                                    setting["theme"] = "default";
+                                    break;
+                                  case "warm":
+                                  case "따뜻한":
+                                    setting["theme"] = "warm";
+                                    break;
+                                  case "cool":
+                                  case "시원한":
+                                    setting["theme"] = "cool";
+                                    break;
+                                  case "earth":
+                                  case "자연":
+                                    setting["theme"] = "earth";
+                                    break;
+                                  case "pastel":
+                                  case "파스텔":
+                                    setting["theme"] = "pastel";
+                                    break;
+                                  case "vibrant":
+                                  case "생동감있는":
+                                    setting["theme"] = "vibrant";
+                                    break;
                                 }
+                                switch(_btnAlignmentValue) {
+                                  case "left":
+                                  case "왼쪽":
+                                    setting["button_alignment"] = "left";
+                                    break;
+                                  case "right":
+                                  case "오른쪽":
+                                    setting["button_alignment"] = "right";
+                                    break;
+                                }
+                                enterSceneState.changeLanguage(context, languageToCode(setting["language"]!));
+                                UserInfo.setSettingAll(setting);
                                 onUpdate();
+                                Navigator.of(context).pop();
                               },
-                              value: _btnAlignmentValue,
-                              style: const TextStyle(color: Colors.black, fontSize: 18),),
+                            ),
+                            TextButton(
+                              child: Text(appLocalizations.translate('MainUI_btnClose')),
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
+                            ),
                           ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          child: Text(appLocalizations.translate('MainUI_btnApply')),
-                          onPressed: () {
-                            switch(_languageValue) {
-                              case "english":
-                              case "영어":
-                                setting["language"] = "english";
-                                break;
-                              case "korean":
-                              case "한국어":
-                                setting["language"] = "korean";
-                                break;
-                            }
-                            switch(_themeValue) {
-                              case "default":
-                              case "기본":
-                                setting["theme"] = "default";
-                                break;
-                              case "warm":
-                              case "따뜻한":
-                                setting["theme"] = "warm";
-                                break;
-                              case "cool":
-                              case "시원한":
-                                setting["theme"] = "cool";
-                                break;
-                              case "earth":
-                              case "자연":
-                                setting["theme"] = "earth";
-                                break;
-                              case "pastel":
-                              case "파스텔":
-                                setting["theme"] = "pastel";
-                                break;
-                              case "vibrant":
-                              case "생동감있는":
-                                setting["theme"] = "vibrant";
-                                break;
-                            }
-                            switch(_btnAlignmentValue) {
-                              case "left":
-                              case "왼쪽":
-                                setting["button_alignment"] = "left";
-                                break;
-                              case "right":
-                              case "오른쪽":
-                                setting["button_alignment"] = "right";
-                                break;
-                            }
-                            enterSceneState.changeLanguage(context, languageToCode(setting["language"]!));
-                            UserInfo.setSettingAll(setting);
-                            onUpdate();
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                        TextButton(
-                          child: Text(appLocalizations.translate('MainUI_btnClose')),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              }
             );
           },
         );
