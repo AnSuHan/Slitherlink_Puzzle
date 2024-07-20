@@ -93,9 +93,11 @@ class MainUI {
 
           // ignore: use_build_context_synchronously
           showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return Dialog(
+            context: context,
+            builder: (BuildContext context) {
+              return StatefulBuilder(
+                builder: (BuildContext context, StateSetter setState) {
+                  return Dialog(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -193,6 +195,8 @@ class MainUI {
                                             onPressed: () async {
                                               auth.setScreenSize(screenSize);
                                               errType = await auth.signInEmail(context, emailInput.text, passwordInput.text);
+
+                                              setState(() {});
                                               onUpdate();
                                               print("errType : $errType");
                                               if(errType == 0) {
@@ -273,9 +277,11 @@ class MainUI {
                               )
                           );
                         }
-                    )
-                );
-              }
+                      )
+                  );
+                }
+              );
+            }
           ).then((_) async {
             if(errType == 0) {
               await Future.delayed(const Duration(milliseconds: 100));

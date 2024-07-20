@@ -1,6 +1,6 @@
 // ignore_for_file: file_names
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart%20';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/widgets.dart';
 import 'package:slitherlink_project/l10n/app_localizations.dart';
 
@@ -22,7 +22,6 @@ class UserInfo {
 
   ///load data from firestore
   static Future<void> init() async {
-    print("get progress from server");
 
     FirebaseFirestore db = FirebaseFirestore.instance;
     User user = FirebaseAuth.instance.currentUser!;
@@ -42,11 +41,8 @@ class UserInfo {
         // Return the extracted values
         progress["square_small"] = squareSmall;
         progress["triangle_small"] = triangleSmall;
-        print("squareSmall : $squareSmall, triangleSmall : $triangleSmall");
-        print("in init :\tsquareSmall : ${progress["square_small"]}, triangleSmall : ${progress["triangle_small"]}");
       }
       else {
-        print("in else1");
         // Return default values if the document doesn't exist or the progress data is not found
         progress = {
           "square_small": 0,
@@ -55,7 +51,6 @@ class UserInfo {
       }
     }
     else {
-      print("in else2");
       // Return default values if the document doesn't exist or the progress data is not found
       progress = {
         "square_small": 0,
@@ -75,7 +70,6 @@ class UserInfo {
   }
 
   static String getAllProgress() {
-    print("in getAll :\tsquareSmall : ${progress["square_small"]}, triangleSmall : ${progress["triangle_small"]}");
     StringBuffer buffer = StringBuffer();
     progress.forEach((key, value) {
       buffer.write('$key : $value\n');
