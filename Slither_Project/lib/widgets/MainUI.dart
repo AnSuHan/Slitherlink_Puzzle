@@ -1,6 +1,7 @@
 // ignore_for_file: file_names
 import 'package:firebase_auth/firebase_auth.dart' hide UserInfo;
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
@@ -12,7 +13,7 @@ import '../l10n/app_localizations.dart';
 //use "onUpdate();" for update UI
 //`underline with list` means words of localization (only use for showing)
 class MainUI {
-  bool debugDropdown = true;
+  bool debugDropdown = false;
 
   late Size screenSize;
   List<String> puzzleType = ["square", "triangle"];
@@ -40,7 +41,7 @@ class MainUI {
 
   final VoidCallback onUpdate;
   //for supporting multilingual
-  final AppLocalizations appLocalizations;
+  AppLocalizations appLocalizations;
   final EnterSceneState enterSceneState;
 
   MainUI({
@@ -49,6 +50,10 @@ class MainUI {
     required this.enterSceneState
   }) {
     auth = Authentication();
+  }
+
+  void setAppLocalizations(AppLocalizations appLocalizations) {
+    this.appLocalizations = appLocalizations;
   }
 
   PopupMenuButton getMainMenu(BuildContext context) {
@@ -555,7 +560,7 @@ class MainUI {
                                     setting["button_alignment"] = "right";
                                     break;
                                 }
-                                enterSceneState.changeLanguage(context, languageToCode(setting["language"]!));
+                                enterSceneState.changeLanguage(languageToCode(setting["language"]!));
                                 UserInfo.setSettingAll(setting);
                                 onUpdate();
                                 Navigator.of(context).pop();

@@ -1,13 +1,15 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 
+import '../User/UserInfo.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/MainUI.dart';
 
 class EnterSceneState extends State<EnterScene> {
-  Locale _locale = const Locale('en');
+  late Locale _locale;
   late FocusNode _focusNode;
 
   late Size screenSize;
@@ -20,6 +22,18 @@ class EnterSceneState extends State<EnterScene> {
     _focusNode = FocusNode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
+    });
+    setState(() {
+      switch(UserInfo.getLanguage()) {
+        case "english":
+          _locale = const Locale('en');
+          Intl.defaultLocale = "en";
+          break;
+        case "korean":
+          _locale = const Locale('ko');
+          Intl.defaultLocale = "ko";
+          break;
+      }
     });
   }
 
@@ -35,12 +49,20 @@ class EnterSceneState extends State<EnterScene> {
 
   //AppLocalizations.of(context)!.translate('helloWorld')
   ///language Code is "en", "ko"
-  void changeLanguage(BuildContext context, String languageCode) {
+  void changeLanguage(String languageCode) {
     setState(() {
       _locale = Locale(languageCode);
+      Intl.defaultLocale = languageCode;
+
+      switch(languageCode) {
+        case "en":
+          UserInfo.setLanguage("english");
+          break;
+        case "ko":
+          UserInfo.setLanguage("korean");
+          break;
+      }
     });
-    Intl.defaultLocale = languageCode;
-    _updateUI();
   }
 
   @override
@@ -63,6 +85,9 @@ class EnterSceneState extends State<EnterScene> {
               if (event.logicalKey == LogicalKeyboardKey.keyR) {
                 _updateUI();
               }
+              else if (event.logicalKey == LogicalKeyboardKey.keyW) {
+                changeLanguage(_locale.languageCode == "en" ? "ko" : "en");
+              }
             }
           },
           child: Builder(
@@ -74,6 +99,7 @@ class EnterSceneState extends State<EnterScene> {
                   ui.loadSetting();
                 }
                 ui.setScreenSize(screenSize);
+                ui.setAppLocalizations(AppLocalizations.of(context)!);
 
                 if(screenSize.width < screenSize.height) {
                   return portrait(context);
