@@ -59,6 +59,10 @@ class MainUI {
     this.appLocalizations = appLocalizations;
   }
 
+  void updateUI() {
+    onUpdate();
+  }
+
   ///check language per 1sec
   Stream<void> checkLanguage() async* {
     prevLanguage = "en";
@@ -469,7 +473,6 @@ class MainUI {
                                       // ignore: avoid_print
                                       print("_themeValue : $_themeValue");
                                     }
-                                    onUpdate();
                                   },
                                   value: _themeValue,
                                   style: const TextStyle(color: Colors.black, fontSize: 18),
@@ -495,7 +498,6 @@ class MainUI {
                                       // ignore: avoid_print
                                       print("_languageValue : $_languageValue");
                                     }
-                                    onUpdate();
                                   },
                                   value: _languageValue,
                                   style: const TextStyle(color: Colors.black, fontSize: 18),),
@@ -520,7 +522,6 @@ class MainUI {
                                       // ignore: avoid_print
                                       print("_btnAlignmentValue : $_btnAlignmentValue");
                                     }
-                                    onUpdate();
                                   },
                                   value: _btnAlignmentValue,
                                   style: const TextStyle(color: Colors.black, fontSize: 18),),
@@ -581,7 +582,9 @@ class MainUI {
                                     setting["button_alignment"] = "right";
                                     break;
                                 }
+                                //theme, language, button alignment
                                 UserInfo.setSettingAll(setting);
+                                //only for language
                                 enterSceneState.changeLanguage(languageToCode(setting["language"]!));
                                 onUpdate();
 

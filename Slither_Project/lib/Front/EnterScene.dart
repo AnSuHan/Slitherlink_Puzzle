@@ -62,6 +62,7 @@ class EnterSceneState extends State<EnterScene> {
           UserInfo.setLanguage("korean");
           break;
       }
+      ui.updateUI();
     });
   }
 
@@ -121,7 +122,10 @@ class EnterSceneState extends State<EnterScene> {
                   }
                 }
                 else if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Scaffold(
+                    backgroundColor: Colors.blueGrey,
+                    body: Center(child: CircularProgressIndicator()),
+                  );
                 }
                 else {
                   return Center(child: Text('Error: ${snapshot.error}'));
