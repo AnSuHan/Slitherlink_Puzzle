@@ -76,7 +76,6 @@ class MainUI {
         enterSceneState.updateUI();
         onUpdate();
       }
-      print("lang : $lang, userinfo : ${UserInfo.getLanguage()}");
       yield null;
     }
   }
@@ -719,6 +718,7 @@ class MainUI {
 
   //about puzzle difficulty
   Widget getPuzzleType(BuildContext context, VoidCallback onUpdate) {
+    applyLanguageCode();
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -732,7 +732,6 @@ class MainUI {
   }
 
   DropdownButton getPuzzleShape(BuildContext context, VoidCallback onUpdate) {
-    print("_puzzleType : ${_puzzleType[0]}");
     return DropdownButton(items: _puzzleType
         .map((e) => DropdownMenuItem(
       value: e, // 선택 시 onChanged 를 통해 반환할 value
