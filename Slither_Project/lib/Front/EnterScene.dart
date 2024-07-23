@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+// ignore_for_file: file_names
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -43,7 +43,7 @@ class EnterSceneState extends State<EnterScene> {
     super.dispose();
   }
 
-  void _updateUI() {
+  void updateUI() {
     setState(() {});
   }
 
@@ -83,32 +83,48 @@ class EnterSceneState extends State<EnterScene> {
           onKey: (RawKeyEvent event) {
             if (event is RawKeyDownEvent) {
               if (event.logicalKey == LogicalKeyboardKey.keyR) {
-                _updateUI();
+                updateUI();
               }
               else if (event.logicalKey == LogicalKeyboardKey.keyW) {
                 changeLanguage(_locale.languageCode == "en" ? "ko" : "en");
               }
             }
           },
-          child: Builder(
-              builder: (context) {
-                screenSize = MediaQuery.of(context).size;
-                if (uiNullable == null && AppLocalizations.of(context) != null) {
-                  uiNullable = MainUI(onUpdate: _updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this);
+          child: FutureBuilder<void>(
+              future: () async {
+                //first execution
+                if(uiNullable == null) {
+                  return;
+                }
+              }(),
+              builder: (context, snapshot) {
+                if(uiNullable == null && AppLocalizations.of(context) != null) {
+                  uiNullable = MainUI(onUpdate: updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this);
                   ui = uiNullable!;
                   ui.loadSetting();
                 }
-                ui.setScreenSize(screenSize);
-                ui.setAppLocalizations(AppLocalizations.of(context)!);
 
-                if(screenSize.width < screenSize.height) {
-                  return portrait(context);
-                } else {
-                  if (screenSize.height > 600) {
-                    return landscape(context);
+                if(snapshot.connectionState == ConnectionState.done) {
+                  screenSize = MediaQuery.of(context).size;
+
+                  ui.setScreenSize(screenSize);
+                  ui.setAppLocalizations(AppLocalizations.of(context)!);
+
+                  if(screenSize.width < screenSize.height) {
+                    return portrait(context);
                   } else {
-                    return landscapeSmall(context);
+                    if (screenSize.height > 600) {
+                      return landscape(context);
+                    } else {
+                      return landscapeSmall(context);
+                    }
                   }
+                }
+                else if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                else {
+                  return Center(child: Text('Error: ${snapshot.error}'));
                 }
               }
           ),
@@ -159,7 +175,7 @@ class EnterSceneState extends State<EnterScene> {
                       child: ui.getStartButton(context),
                     ),
                     Center(
-                      child: MainUI.getPuzzleType(context, _updateUI),
+                      child: ui.getPuzzleType(context, updateUI),
                     ),
                   ],
                 ),
@@ -218,7 +234,7 @@ class EnterSceneState extends State<EnterScene> {
                       padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.05)),
                       child: ui.getStartButton(context),
                     ),
-                    MainUI.getPuzzleType(context, _updateUI),
+                    ui.getPuzzleType(context, updateUI),
                   ],
                 ),
               ),
@@ -279,7 +295,7 @@ class EnterSceneState extends State<EnterScene> {
                           padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.05)),
                           child: ui.getStartButton(context),
                         ),
-                        MainUI.getPuzzleType(context, _updateUI),
+                        ui.getPuzzleType(context, updateUI),
                       ],
                     ),
                     //continue puzzle

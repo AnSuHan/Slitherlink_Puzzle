@@ -1,7 +1,6 @@
 // ignore_for_file: file_names
 import 'package:firebase_auth/firebase_auth.dart' hide UserInfo;
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
@@ -37,6 +36,8 @@ class MainUI {
   List<String> _btnAlignment = [];
   String _btnAlignmentValue = "right";
 
+  String prevLanguage = "";
+
   late Authentication auth;
 
   final VoidCallback onUpdate;
@@ -50,10 +51,30 @@ class MainUI {
     required this.enterSceneState
   }) {
     auth = Authentication();
+    //subscription of stream
+    checkLanguage().listen((event) {});
   }
 
   void setAppLocalizations(AppLocalizations appLocalizations) {
     this.appLocalizations = appLocalizations;
+  }
+
+  ///check language per 1sec
+  Stream<void> checkLanguage() async* {
+    prevLanguage = "en";
+    while(true) {
+      await Future.delayed(const Duration(seconds: 1));
+      String lang = appLocalizations.locale.languageCode;
+      if(prevLanguage.compareTo(lang) != 0) {
+        enterSceneState.changeLanguage(lang);
+
+        prevLanguage = lang;
+        enterSceneState.updateUI();
+        onUpdate();
+      }
+      print("lang : $lang, userinfo : ${UserInfo.getLanguage()}");
+      yield null;
+    }
   }
 
   PopupMenuButton getMainMenu(BuildContext context) {
@@ -560,9 +581,10 @@ class MainUI {
                                     setting["button_alignment"] = "right";
                                     break;
                                 }
-                                enterSceneState.changeLanguage(languageToCode(setting["language"]!));
                                 UserInfo.setSettingAll(setting);
+                                enterSceneState.changeLanguage(languageToCode(setting["language"]!));
                                 onUpdate();
+
                                 Navigator.of(context).pop();
                               },
                             ),
@@ -693,7 +715,7 @@ class MainUI {
   }
 
   //about puzzle difficulty
-  static Widget getPuzzleType(BuildContext context, VoidCallback onUpdate) {
+  Widget getPuzzleType(BuildContext context, VoidCallback onUpdate) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -706,7 +728,8 @@ class MainUI {
     );
   }
 
-  static DropdownButton getPuzzleShape(BuildContext context, VoidCallback onUpdate) {
+  DropdownButton getPuzzleShape(BuildContext context, VoidCallback onUpdate) {
+    print("_puzzleType : ${_puzzleType[0]}");
     return DropdownButton(items: _puzzleType
         .map((e) => DropdownMenuItem(
       value: e, // 선택 시 onChanged 를 통해 반환할 value
@@ -722,7 +745,7 @@ class MainUI {
     );
   }
 
-  static Future<void> changePuzzleShape(dynamic value, VoidCallback onUpdate) async {
+  Future<void> changePuzzleShape(dynamic value, VoidCallback onUpdate) async {
     _selectedType[0] = value;
     //en
     switch(value) {
@@ -739,7 +762,7 @@ class MainUI {
     onUpdate();
   }
 
-  static DropdownButton getPuzzleSize(BuildContext context, VoidCallback onUpdate) {
+  DropdownButton getPuzzleSize(BuildContext context, VoidCallback onUpdate) {
     return DropdownButton(items: _puzzleSize
         .map((e) => DropdownMenuItem(
       value: e, // 선택 시 onChanged 를 통해 반환할 value

@@ -40,43 +40,83 @@ class ThemeColor {
   };
 
   Map<String, Color> warm = {
-    'appBar': const Color(0xFFFF6F61),
-    'appIcon': const Color(0xFFE94E3F),
-    'background': const Color(0xFFFFF0E3),
-    'box': const Color(0xFFFFD700),
-    'number': const Color(0xFFD2691E),
+    'appBar': const Color(0xFFFF5722),
+    'appIcon': const Color(0xFFFFFFFF),
+    'background': const Color(0xFFFFEBE5),
+    'box': const Color(0xFFFFCCBC),
+    'number': const Color(0xFFBF360C),
   };
 
   Map<String, Color> cool = {
-    'appBar': const Color(0xFF4682B4),
-    'appIcon': const Color(0xFF5F9EA0),
-    'background': const Color(0xFFE0FFFF),
-    'box': const Color(0xFFAFEEEE),
-    'number': const Color(0xFF20B2AA),
+    'appBar': const Color(0xFF2196F3),
+    'appIcon': const Color(0xFFFFFFFF),
+    'background': const Color(0xFFE3F2FD),
+    'box': const Color(0xFFBBDEFB),
+    'number': const Color(0xFF0D47A1),
   };
 
   Map<String, Color> earth = {
-    'appBar': const Color(0xFF8B4513),
-    'appIcon': const Color(0xFFA0522D),
-    'background': const Color(0xFFF5F5DC),
-    'box': const Color(0xFFDEB887),
-    'number': const Color(0xFF8B0000),
+    'appBar': const Color(0xFF795548),
+    'appIcon': const Color(0xFFFFFFFF),
+    'background': const Color(0xFFD7CCC8),
+    'box': const Color(0xFFBCAAA4),
+    'number': const Color(0xFF3E2723),
   };
 
   Map<String, Color> pastel = {
-    'appBar': const Color(0xFFFFB6C1),
-    'appIcon': const Color(0xFFFF69B4),
-    'background': const Color(0xFFFFFACD),
-    'box': const Color(0xFFE6E6FA),
-    'number': const Color(0xFFB0E0E6),
+    'appBar': const Color(0xFFB39DDB),
+    'appIcon': const Color(0xFFFFFFFF),
+    'background': const Color(0xFFEDE7F6),
+    'box': const Color(0xFFD1C4E9),
+    'number': const Color(0xFF512DA8),
   };
 
   Map<String, Color> vibrant = {
-    'appBar': const Color(0xFFFF4500),
-    'appIcon': const Color(0xFFFF6347),
-    'background': const Color(0xFFFFFFE0),
-    'box': const Color(0xFF32CD32),
-    'number': const Color(0xFFFFD700),
+    'appBar': const Color(0xFFFF4081),
+    'appIcon': const Color(0xFFFFFFFF),
+    'background': const Color(0xFFF8BBD0),
+    'box': const Color(0xFFF48FB1),
+    'number': const Color(0xFFC2185B),
+  };
+
+  Map<String, Color> nature = {
+    'appBar': const Color(0xFF4CAF50),
+    'appIcon': const Color(0xFFFFFFFF),
+    'background': const Color(0xFFE8F5E9),
+    'box': const Color(0xFFC8E6C9),
+    'number': const Color(0xFF1B5E20),
+  };
+
+  Map<String, Color> sunset = {
+    'appBar': const Color(0xFFFF7043),
+    'appIcon': const Color(0xFFFFFFFF),
+    'background': const Color(0xFFFFE0B2),
+    'box': const Color(0xFFFFCC80),
+    'number': const Color(0xFFE65100),
+  };
+
+  Map<String, Color> ocean = {
+    'appBar': const Color(0xFF0288D1),
+    'appIcon': const Color(0xFFFFFFFF),
+    'background': const Color(0xFFE1F5FE),
+    'box': const Color(0xFF81D4FA),
+    'number': const Color(0xFF01579B),
+  };
+
+  Map<String, Color> forest = {
+    'appBar': const Color(0xFF388E3C),
+    'appIcon': const Color(0xFFFFFFFF),
+    'background': const Color(0xFFE8F5E9),
+    'box': const Color(0xFFA5D6A7),
+    'number': const Color(0xFF2E7D32),
+  };
+
+  Map<String, Color> lavender = {
+    'appBar': const Color(0xFFFF4081),
+    'appIcon': const Color(0xFFFFFFFF),
+    'background': const Color(0xFFF8BBD0),
+    'box': const Color(0xFFF48FB1),
+    'number': const Color(0xFFC2185B),
   };
 
   ThemeColor();
