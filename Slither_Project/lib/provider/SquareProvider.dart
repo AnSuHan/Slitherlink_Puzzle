@@ -460,6 +460,7 @@ class SquareProvider with ChangeNotifier {
       for(int j = 0 ; j < submit[i].length ; j++) {
         temp += "${submit[i][j]} ";
       }
+      // ignore: avoid_print
       print("row $i $temp");
       temp = "";
     }
@@ -540,7 +541,7 @@ class SquareProvider with ChangeNotifier {
       List<dynamic> oldList = [];
 
       //새로 입력된 라인의 색만 처리하면 되는 경우
-      //새로운 라인 주변에 0이 아닌 색이 1개만 있는 경우 getOldColorList를 호출할 필요가 없음
+      //새로운 라인 주변에 0이 아닌 색이 1개만 있는 경우 getOldColorList 호출할 필요가 없음
       if(nearColor.length == 1) {
         if (down != null) {
           puzzle[row][column].down = lineValue;

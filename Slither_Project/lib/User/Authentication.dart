@@ -168,6 +168,7 @@ class Authentication {
     };
 
     await db.collection("users").doc(user.email).set(userData).then((_) =>
+        // ignore: avoid_print
         print('DocumentSnapshot added with ID: ${user.email}'));
   }
 }

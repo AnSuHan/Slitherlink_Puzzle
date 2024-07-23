@@ -1,8 +1,6 @@
 // ignore_for_file: file_names
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/widgets.dart';
-import 'package:slitherlink_project/l10n/app_localizations.dart';
 
 class UserInfo {
   static bool authState = false;
@@ -18,7 +16,6 @@ class UserInfo {
     "button_alignment" : "right"
   };
   static List<String> language = ["english", "korean"];
-  static List<String> _language = ["english", "korean"];
 
   ///load data from firestore
   static Future<void> init() async {
@@ -114,15 +111,6 @@ class UserInfo {
     if(setting.containsKey(key)) {
       setting[key] = value;
     }
-  }
-
-  static List<String> getSupportLanguage(BuildContext context) {
-    _language = [
-      AppLocalizations.of(context)!.translate("language_english_en"),
-      AppLocalizations.of(context)!.translate("language_english_kr")
-    ];
-
-    return language;
   }
 
   static String getLanguage() {
