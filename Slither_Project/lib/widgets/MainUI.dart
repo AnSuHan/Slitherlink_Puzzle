@@ -1,11 +1,10 @@
 // ignore_for_file: file_names
+import 'package:firebase_auth/firebase_auth.dart' hide UserInfo;
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 
 import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
 import '../Scene/GameSceneSquare.dart';
-import '../ThemeColor.dart';
 import '../User/Authentication.dart';
 import '../User/UserInfo.dart';
 import '../l10n/app_localizations.dart';
@@ -13,6 +12,8 @@ import '../l10n/app_localizations.dart';
 //use "onUpdate();" for update UI
 //`underline with list` means words of localization (only use for showing)
 class MainUI {
+  bool debugDropdown = false;
+
   late Size screenSize;
   List<String> puzzleType = ["square", "triangle"];
   static List<String> _puzzleType = ["square", "triangle"];
@@ -35,32 +36,56 @@ class MainUI {
   List<String> _btnAlignment = [];
   String _btnAlignmentValue = "right";
 
+  String prevLanguage = "";
+
   late Authentication auth;
 
   final VoidCallback onUpdate;
   //for supporting multilingual
-  final AppLocalizations appLocalizations;
+  AppLocalizations appLocalizations;
   final EnterSceneState enterSceneState;
 
   MainUI({
     required this.onUpdate,
     required this.appLocalizations,
     required this.enterSceneState
-  });
-
-  void loadSetting() {
-    //hard copy
-    setting = Map.from(UserInfo.getSettingAll());
+  }) {
     auth = Authentication();
-    applyLanguageCode();
+    //subscription of stream
+    checkLanguage().listen((event) {});
+  }
+
+  void setAppLocalizations(AppLocalizations appLocalizations) {
+    this.appLocalizations = appLocalizations;
+  }
+
+  void updateUI() {
+    onUpdate();
+  }
+
+  ///check language per 1sec
+  Stream<void> checkLanguage() async* {
+    prevLanguage = "en";
+    while(true) {
+      await Future.delayed(const Duration(seconds: 1));
+      String lang = appLocalizations.locale.languageCode;
+      if(prevLanguage.compareTo(lang) != 0) {
+        enterSceneState.changeLanguage(lang);
+
+        prevLanguage = lang;
+        enterSceneState.updateUI();
+        onUpdate();
+      }
+      yield null;
+    }
   }
 
   PopupMenuButton getMainMenu(BuildContext context) {
     return PopupMenuButton(
       iconSize: 32,
       key: _mainMenuKey,
-      onSelected: (value) {
-        handleMainMenu(context, value);
+      onSelected: (value) async {
+        await handleMainMenu(context, value);
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
         PopupMenuItem<String>(
@@ -76,21 +101,31 @@ class MainUI {
     );
   }
 
-  void handleMainMenu(BuildContext context, String result) {
+  void loadSetting() {
+    //hard copy
+    setting = Map.from(UserInfo.getSettingAll());
+    applyLanguageCode();
+  }
+
+  Future<void> handleMainMenu(BuildContext context, String result) async {
     loadSetting();
 
     switch(result) {
       case "account":
-      //login progress
+        //login progress
         if(!UserInfo.authState) {
-          final TextEditingController _emailInput = TextEditingController();
-          final TextEditingController _passwordInput = TextEditingController();
-          int errType = 0;
+          final TextEditingController emailInput = TextEditingController();
+          final TextEditingController passwordInput = TextEditingController();
+          int errType = -1;
+          String popupMsg = "";
 
+          // ignore: use_build_context_synchronously
           showDialog(
-              context: context,
-              builder: (BuildContext context) {
-                return Dialog(
+            context: context,
+            builder: (BuildContext context) {
+              return StatefulBuilder(
+                builder: (BuildContext context, StateSetter setState) {
+                  return Dialog(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
@@ -131,7 +166,7 @@ class MainUI {
                                             ),
                                             Expanded(
                                               child: TextField(
-                                                controller: _emailInput,
+                                                controller: emailInput,
                                                 decoration: const InputDecoration(
                                                   border: OutlineInputBorder(),
                                                   labelText: "example@example.com",
@@ -155,7 +190,7 @@ class MainUI {
                                             ),
                                             Expanded(
                                               child: TextField(
-                                                controller: _passwordInput,
+                                                controller: passwordInput,
                                                 decoration: const InputDecoration(
                                                   border: OutlineInputBorder(),
                                                   labelText: "password",
@@ -187,10 +222,13 @@ class MainUI {
                                           child: ElevatedButton(
                                             onPressed: () async {
                                               auth.setScreenSize(screenSize);
-                                              errType = await auth.signInEmail(context, _emailInput.text, _passwordInput.text);
+                                              errType = await auth.signInEmail(context, emailInput.text, passwordInput.text);
+
+                                              setState(() {});
                                               onUpdate();
-                                              print("errType : $errType");
+                                              //print("errType : $errType");
                                               if(errType == 0) {
+                                                popupMsg = appLocalizations.translate('complete_sign_in');
                                                 // ignore: use_build_context_synchronously
                                                 Navigator.of(context).pop();
                                               }
@@ -213,10 +251,13 @@ class MainUI {
                                               child: ElevatedButton(
                                                 onPressed: () async {
                                                   auth.setScreenSize(screenSize);
-                                                  errType = await auth.signUpEmail(context, _emailInput.text, _passwordInput.text);
+                                                  errType = await auth.signUpEmail(context, emailInput.text, passwordInput.text);
+
+                                                  setState(() {});
                                                   onUpdate();
-                                                  print("errType : $errType");
+                                                  //print("errType : $errType");
                                                   if(errType == 0) {
+                                                    popupMsg = appLocalizations.translate('complete_sign_up');
                                                     // ignore: use_build_context_synchronously
                                                     Navigator.of(context).pop();
                                                   }
@@ -239,10 +280,14 @@ class MainUI {
                                               child: ElevatedButton(
                                                 onPressed: () async {
                                                   auth.setScreenSize(screenSize);
-                                                  errType = await auth.resetPasswordEmail(context, _emailInput.text);
+                                                  errType = await auth.resetPasswordEmail(context, emailInput.text);
+
+                                                  setState(() {});
                                                   onUpdate();
-                                                  print("errType : $errType");
-                                                  if(errType == 0) {
+                                                  //print("errType : $errType");
+                                                  if(errType == 1) {
+                                                    popupMsg = appLocalizations.translate('errMsg_Sign05');
+                                                    // ignore: use_build_context_synchronously
                                                     Navigator.of(context).pop();
                                                   }
                                                 },
@@ -264,14 +309,25 @@ class MainUI {
                               )
                           );
                         }
-                    )
-                );
-              }
-          );
+                      )
+                  );
+                }
+              );
+            }
+          ).then((_) async {
+            if(errType == 0) {
+              await Future.delayed(const Duration(milliseconds: 100));
+              // ignore: use_build_context_synchronously
+              auth.popup(context, popupMsg);
+            }
+          });
         }
         else {
-          int errType = 0;
+          await UserInfo.init();
+          int errType = -1;
+          String popupMsg = "";
 
+          // ignore: use_build_context_synchronously
           showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -299,7 +355,16 @@ class MainUI {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Text(appLocalizations.translate('MainUI_menuAccount')),
-                              Text(UserInfo.progress.toString()),
+                              Text(FirebaseAuth.instance.currentUser!.email.toString()),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(appLocalizations.translate('progressTitle')),
+                              Text(UserInfo.getAllProgress()),
                             ],
                           ),
                         ],
@@ -313,6 +378,8 @@ class MainUI {
                             onPressed: () async {
                               auth.setScreenSize(screenSize);
                               errType = await auth.signOutEmail(context);
+                              onUpdate();
+                              popupMsg = appLocalizations.translate('complete_sign_out');
                               if(errType == 0) {
                                 // ignore: use_build_context_synchronously
                                 Navigator.of(context).pop();
@@ -324,6 +391,8 @@ class MainUI {
                             onPressed: () async {
                               auth.setScreenSize(screenSize);
                               errType = await auth.withdrawEmail(context);
+                              popupMsg = appLocalizations.translate('complete_withdraw');
+                              onUpdate();
                               if(errType == 0) {
                                 // ignore: use_build_context_synchronously
                                 Navigator.of(context).pop();
@@ -349,163 +418,191 @@ class MainUI {
                 ),
               );
             },
-          );
+          ).then((_) async {
+            if(errType == 0) {
+              await Future.delayed(const Duration(milliseconds: 100));
+              // ignore: use_build_context_synchronously
+              auth.popup(context, popupMsg);
+            }
+          });
         }
         break;
       case "setting":
         showDialog(
           context: context,
           builder: (BuildContext context) {
-            return Dialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Container(
-                width: 300, // 원하는 너비로 설정
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      appLocalizations.translate('MainUI_menuSetting'),
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Column(
+            return StatefulBuilder(
+              builder: (BuildContext context, StateSetter setState) {
+                return Dialog(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Container(
+                    width: 300, // 원하는 너비로 설정
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        Text(
+                          appLocalizations.translate('MainUI_menuSetting'),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Column(
                           children: [
-                            Text(appLocalizations.translate('MainUI_menuSetting_theme')),
-                            DropdownButton(items: _theme.map((String item) {
-                              return DropdownMenuItem<String>(
-                                value: item,
-                                child: Text(item),
-                              );
-                            }).toList(),
-                              onChanged: (value) {
-                                _themeValue = value.toString();
-                                onUpdate();
-                              },
-                              value: _themeValue,
-                              style: const TextStyle(color: Colors.black, fontSize: 18),),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(appLocalizations.translate('MainUI_menuSetting_theme')),
+                                DropdownButton(
+                                  items: _theme.map((String item) {
+                                    return DropdownMenuItem<String>(
+                                      value: item,
+                                      child: Text(item),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _themeValue = value!;
+                                    });
+                                    if(debugDropdown) {
+                                      // ignore: avoid_print
+                                      print("_themeValue : $_themeValue");
+                                    }
+                                  },
+                                  value: _themeValue,
+                                  style: const TextStyle(color: Colors.black, fontSize: 18),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(appLocalizations.translate('MainUI_menuSetting_language')),
+                                DropdownButton(items: _language.map((String item) {
+                                  return DropdownMenuItem<String>(
+                                    value: item,
+                                    child: Text(item),
+                                  );
+                                }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _languageValue = value!;
+                                    });
+                                    if(debugDropdown) {
+                                      // ignore: avoid_print
+                                      print("_languageValue : $_languageValue");
+                                    }
+                                  },
+                                  value: _languageValue,
+                                  style: const TextStyle(color: Colors.black, fontSize: 18),),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(appLocalizations.translate('MainUI_menuSetting_btnAlignment')),
+                                DropdownButton(items: _btnAlignment.map((String item) {
+                                  return DropdownMenuItem<String>(
+                                    value: item,
+                                    child: Text(item),
+                                  );
+                                }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _btnAlignmentValue = value!;
+                                    });
+                                    if(debugDropdown) {
+                                      // ignore: avoid_print
+                                      print("_btnAlignmentValue : $_btnAlignmentValue");
+                                    }
+                                  },
+                                  value: _btnAlignmentValue,
+                                  style: const TextStyle(color: Colors.black, fontSize: 18),),
+                              ],
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 20),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          mainAxisAlignment: MainAxisAlignment.end,
                           children: [
-                            Text(appLocalizations.translate('MainUI_menuSetting_language')),
-                            DropdownButton(items: _language.map((String item) {
-                              return DropdownMenuItem<String>(
-                                value: item,
-                                child: Text(item),
-                              );
-                            }).toList(),
-                              onChanged: (value) {
-                                _languageValue = value.toString();
+                            TextButton(
+                              child: Text(appLocalizations.translate('MainUI_btnApply')),
+                              onPressed: () {
+                                switch(_languageValue) {
+                                  case "english":
+                                  case "영어":
+                                    setting["language"] = "english";
+                                    break;
+                                  case "korean":
+                                  case "한국어":
+                                    setting["language"] = "korean";
+                                    break;
+                                }
+                                switch(_themeValue) {
+                                  case "default":
+                                  case "기본":
+                                    setting["theme"] = "default";
+                                    break;
+                                  case "warm":
+                                  case "따뜻한":
+                                    setting["theme"] = "warm";
+                                    break;
+                                  case "cool":
+                                  case "시원한":
+                                    setting["theme"] = "cool";
+                                    break;
+                                  case "earth":
+                                  case "자연":
+                                    setting["theme"] = "earth";
+                                    break;
+                                  case "pastel":
+                                  case "파스텔":
+                                    setting["theme"] = "pastel";
+                                    break;
+                                  case "vibrant":
+                                  case "생동감있는":
+                                    setting["theme"] = "vibrant";
+                                    break;
+                                }
+                                switch(_btnAlignmentValue) {
+                                  case "left":
+                                  case "왼쪽":
+                                    setting["button_alignment"] = "left";
+                                    break;
+                                  case "right":
+                                  case "오른쪽":
+                                    setting["button_alignment"] = "right";
+                                    break;
+                                }
+                                //theme, language, button alignment
+                                UserInfo.setSettingAll(setting);
+                                //only for language
+                                enterSceneState.changeLanguage(languageToCode(setting["language"]!));
                                 onUpdate();
+
+                                Navigator.of(context).pop();
                               },
-                              value: _languageValue,
-                              style: const TextStyle(color: Colors.black, fontSize: 18),),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(appLocalizations.translate('MainUI_menuSetting_btnAlignment')),
-                            DropdownButton(items: _btnAlignment.map((String item) {
-                              return DropdownMenuItem<String>(
-                                value: item,
-                                child: Text(item),
-                              );
-                            }).toList(),
-                              onChanged: (value) {
-                                _btnAlignmentValue = value.toString();
-                                onUpdate();
+                            ),
+                            TextButton(
+                              child: Text(appLocalizations.translate('MainUI_btnClose')),
+                              onPressed: () {
+                                Navigator.of(context).pop();
                               },
-                              value: _btnAlignmentValue,
-                              style: const TextStyle(color: Colors.black, fontSize: 18),),
+                            ),
                           ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        TextButton(
-                          child: Text(appLocalizations.translate('MainUI_btnApply')),
-                          onPressed: () {
-                            switch(_languageValue) {
-                              case "english":
-                              case "영어":
-                                setting["language"] = "english";
-                                break;
-                              case "korean":
-                              case "한국어":
-                                setting["language"] = "korean";
-                                break;
-                            }
-                            switch(_themeValue) {
-                              case "default":
-                              case "기본":
-                                setting["theme"] = "default";
-                                break;
-                              case "warm":
-                              case "따뜻한":
-                                setting["theme"] = "warm";
-                                break;
-                              case "cool":
-                              case "시원한":
-                                setting["theme"] = "cool";
-                                break;
-                              case "earth":
-                              case "자연":
-                                setting["theme"] = "earth";
-                                break;
-                              case "pastel":
-                              case "파스텔":
-                                setting["theme"] = "pastel";
-                                break;
-                              case "vibrant":
-                              case "생동감있는":
-                                setting["theme"] = "vibrant";
-                                break;
-                            }
-                            switch(_btnAlignmentValue) {
-                              case "left":
-                              case "왼쪽":
-                                setting["button_alignment"] = "left";
-                                break;
-                              case "right":
-                              case "오른쪽":
-                                setting["button_alignment"] = "right";
-                                break;
-                            }
-                            enterSceneState.changeLanguage(context, languageToCode(setting["language"]!));
-                            //https://stackoverflow.com/questions/66932705/how-do-i-resolve-id-does-not-exist-error
-                            UserInfo.setSettingAll(setting);
-                            loadSetting();
-                            onUpdate();
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                        TextButton(
-                          child: Text(appLocalizations.translate('MainUI_btnClose')),
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
+                  ),
+                );
+              }
             );
           },
         );
@@ -561,32 +658,32 @@ class MainUI {
     puzzleSize = ["small"];
 
     _theme = [
-      appLocalizations.translate('MainUI_menuSetting_theme01'),
-      appLocalizations.translate('MainUI_menuSetting_theme02'),
-      appLocalizations.translate('MainUI_menuSetting_theme03'),
-      appLocalizations.translate('MainUI_menuSetting_theme04'),
-      appLocalizations.translate('MainUI_menuSetting_theme05'),
-      appLocalizations.translate('MainUI_menuSetting_theme06')
+      appLocalizations.translate('ThemeName_01'),
+      appLocalizations.translate('ThemeName_02'),
+      appLocalizations.translate('ThemeName_03'),
+      appLocalizations.translate('ThemeName_04'),
+      appLocalizations.translate('ThemeName_05'),
+      appLocalizations.translate('ThemeName_06')
     ];
 
     switch (setting["theme"]) {
       case "default":
-        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme01');
+        _themeValue = appLocalizations.translate('ThemeName_01');
         break;
       case "warm":
-        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme02');
+        _themeValue = appLocalizations.translate('ThemeName_02');
         break;
       case "cool":
-        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme03');
+        _themeValue = appLocalizations.translate('ThemeName_03');
         break;
       case "earth":
-        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme04');
+        _themeValue = appLocalizations.translate('ThemeName_04');
         break;
       case "pastel":
-        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme05');
+        _themeValue = appLocalizations.translate('ThemeName_05');
         break;
       case "vibrant":
-        _themeValue = appLocalizations.translate('MainUI_menuSetting_theme06');
+        _themeValue = appLocalizations.translate('ThemeName_06');
         break;
     }
 
@@ -620,7 +717,8 @@ class MainUI {
   }
 
   //about puzzle difficulty
-  static Widget getPuzzleType(BuildContext context, VoidCallback onUpdate) {
+  Widget getPuzzleType(BuildContext context, VoidCallback onUpdate) {
+    applyLanguageCode();
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -633,7 +731,7 @@ class MainUI {
     );
   }
 
-  static DropdownButton getPuzzleShape(BuildContext context, VoidCallback onUpdate) {
+  DropdownButton getPuzzleShape(BuildContext context, VoidCallback onUpdate) {
     return DropdownButton(items: _puzzleType
         .map((e) => DropdownMenuItem(
       value: e, // 선택 시 onChanged 를 통해 반환할 value
@@ -649,7 +747,7 @@ class MainUI {
     );
   }
 
-  static Future<void> changePuzzleShape(dynamic value, VoidCallback onUpdate) async {
+  Future<void> changePuzzleShape(dynamic value, VoidCallback onUpdate) async {
     _selectedType[0] = value;
     //en
     switch(value) {
@@ -666,7 +764,7 @@ class MainUI {
     onUpdate();
   }
 
-  static DropdownButton getPuzzleSize(BuildContext context, VoidCallback onUpdate) {
+  DropdownButton getPuzzleSize(BuildContext context, VoidCallback onUpdate) {
     return DropdownButton(items: _puzzleSize
         .map((e) => DropdownMenuItem(
       value: e, // 선택 시 onChanged 를 통해 반환할 value
@@ -789,6 +887,7 @@ class MainUI {
 
   void setScreenSize(Size size) {
     screenSize = size;
+    auth.setScreenSize(size);
   }
 
   Size getScreenSize(Size size) {

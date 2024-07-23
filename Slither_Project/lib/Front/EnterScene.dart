@@ -1,16 +1,19 @@
+// ignore_for_file: file_names
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 
+import '../User/UserInfo.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/MainUI.dart';
 
 class EnterSceneState extends State<EnterScene> {
-  Locale _locale = const Locale('en');
+  late Locale _locale;
   late FocusNode _focusNode;
 
   late Size screenSize;
+  MainUI? uiNullable;
   late MainUI ui;
 
   @override
@@ -20,6 +23,18 @@ class EnterSceneState extends State<EnterScene> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
     });
+    setState(() {
+      switch(UserInfo.getLanguage()) {
+        case "english":
+          _locale = const Locale('en');
+          Intl.defaultLocale = "en";
+          break;
+        case "korean":
+          _locale = const Locale('ko');
+          Intl.defaultLocale = "ko";
+          break;
+      }
+    });
   }
 
   @override
@@ -28,18 +43,27 @@ class EnterSceneState extends State<EnterScene> {
     super.dispose();
   }
 
-  void _updateUI() {
+  void updateUI() {
     setState(() {});
   }
 
   //AppLocalizations.of(context)!.translate('helloWorld')
   ///language Code is "en", "ko"
-  void changeLanguage(BuildContext context, String languageCode) {
+  void changeLanguage(String languageCode) {
     setState(() {
       _locale = Locale(languageCode);
+      Intl.defaultLocale = languageCode;
+
+      switch(languageCode) {
+        case "en":
+          UserInfo.setLanguage("english");
+          break;
+        case "ko":
+          UserInfo.setLanguage("korean");
+          break;
+      }
+      ui.updateUI();
     });
-    Intl.defaultLocale = languageCode;
-    _updateUI();
   }
 
   @override
@@ -60,25 +84,51 @@ class EnterSceneState extends State<EnterScene> {
           onKey: (RawKeyEvent event) {
             if (event is RawKeyDownEvent) {
               if (event.logicalKey == LogicalKeyboardKey.keyR) {
-                _updateUI();
+                updateUI();
+              }
+              else if (event.logicalKey == LogicalKeyboardKey.keyW) {
+                changeLanguage(_locale.languageCode == "en" ? "ko" : "en");
               }
             }
           },
-          child: Builder(
-              builder: (context) {
-                screenSize = MediaQuery.of(context).size;
-                ui = MainUI(onUpdate: _updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this,);
-                ui.loadSetting();
-                ui.setScreenSize(screenSize);
+          child: FutureBuilder<void>(
+              future: () async {
+                //first execution
+                if(uiNullable == null) {
+                  return;
+                }
+              }(),
+              builder: (context, snapshot) {
+                if(uiNullable == null && AppLocalizations.of(context) != null) {
+                  uiNullable = MainUI(onUpdate: updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this);
+                  ui = uiNullable!;
+                  ui.loadSetting();
+                }
 
-                if(screenSize.width < screenSize.height) {
-                  return portrait(context);
-                } else {
-                  if (screenSize.height > 600) {
-                    return landscape(context);
+                if(snapshot.connectionState == ConnectionState.done) {
+                  screenSize = MediaQuery.of(context).size;
+
+                  ui.setScreenSize(screenSize);
+                  ui.setAppLocalizations(AppLocalizations.of(context)!);
+
+                  if(screenSize.width < screenSize.height) {
+                    return portrait(context);
                   } else {
-                    return landscapeSmall(context);
+                    if (screenSize.height > 600) {
+                      return landscape(context);
+                    } else {
+                      return landscapeSmall(context);
+                    }
                   }
+                }
+                else if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    backgroundColor: Colors.blueGrey,
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
+                else {
+                  return Center(child: Text('Error: ${snapshot.error}'));
                 }
               }
           ),
@@ -129,7 +179,7 @@ class EnterSceneState extends State<EnterScene> {
                       child: ui.getStartButton(context),
                     ),
                     Center(
-                      child: MainUI.getPuzzleType(context, _updateUI),
+                      child: ui.getPuzzleType(context, updateUI),
                     ),
                   ],
                 ),
@@ -188,7 +238,7 @@ class EnterSceneState extends State<EnterScene> {
                       padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.05)),
                       child: ui.getStartButton(context),
                     ),
-                    MainUI.getPuzzleType(context, _updateUI),
+                    ui.getPuzzleType(context, updateUI),
                   ],
                 ),
               ),
@@ -249,7 +299,7 @@ class EnterSceneState extends State<EnterScene> {
                           padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.05)),
                           child: ui.getStartButton(context),
                         ),
-                        MainUI.getPuzzleType(context, _updateUI),
+                        ui.getPuzzleType(context, updateUI),
                       ],
                     ),
                     //continue puzzle
