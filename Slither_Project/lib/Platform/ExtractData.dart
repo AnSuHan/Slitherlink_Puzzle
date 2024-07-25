@@ -1,9 +1,6 @@
-import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb; // 웹 플랫폼 확인을 위해 추가
 import 'package:path_provider/path_provider.dart';
-
-import 'ExtractDataWeb.dart' if (dart.library.html) 'ExtractDataWeb.dart';
 
 class ExtractData {
   // JSON 데이터를 파일로 저장하는 메소드
@@ -11,7 +8,7 @@ class ExtractData {
     try {
       // 웹 플랫폼 확인
       if (kIsWeb) {
-        ExtractDataWeb().saveDataToWeb(data, fileName);
+        print("kIsWeb in ExtractData");
         return;
       }
 
