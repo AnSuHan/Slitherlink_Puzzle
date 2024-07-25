@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
+import '../Platform/ExtractData.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
 import '../widgets/SquareBox.dart';
@@ -395,6 +396,32 @@ class SquareProvider with ChangeNotifier {
 
   List<List<SquareBox>> getPuzzle() {
     return puzzle;
+  }
+
+  ///**********************************************************************************
+  ///**********************************************************************************
+  ///************************* about extract puzzle data ******************************
+  ///**********************************************************************************
+  ///**********************************************************************************
+  Future<void> extractData() async {
+    submit = await readSquare.readSubmit(puzzle);
+
+    String temp = "[";
+    for(int i = 0 ; i < submit.length ; i++) {
+      temp += "[";
+      for(int j = 0 ; j < submit[i].length ; j++) {
+        temp += submit[i][j].toString();
+
+        if(j < submit[i].length - 1) {
+          temp += ", ";
+        }
+      }
+      temp += "],\n";
+    }
+
+    temp = "${temp.substring(0, temp.length - 2)}]";
+
+    ExtractData().saveStringToFile(temp, "filename");
   }
 
   ///**********************************************************************************

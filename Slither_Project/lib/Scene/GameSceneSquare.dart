@@ -22,6 +22,8 @@ class GameSceneSquare extends StatefulWidget {
 }
 
 class GameStateSquare extends State<GameSceneSquare> {
+  ///ONLY-DEBUG : for extracting data with button
+  bool extractData = true;
   //GameSceneStateSquareProvider({this.isContinue = false, this.loadKey = ""});
   //provider for using setState in other class
   late SquareProvider _provider;
@@ -148,6 +150,20 @@ class GameStateSquare extends State<GameSceneSquare> {
                         child: const Icon(Icons.redo),
                       ),
                     ),
+                    if(extractData)
+                      Positioned(
+                        width: 70,
+                        height: 70,
+                        left: UserInfo.getButtonAlignment() ? 20
+                            : ui.getScreenSize().width - 90, //margin
+                        bottom: 200,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await _provider.extractData();
+                          },
+                          child: const Icon(Icons.upload_rounded),
+                        ),
+                      ),
                   ],
                 )
               ),
