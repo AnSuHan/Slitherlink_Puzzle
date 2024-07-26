@@ -120,7 +120,19 @@ class GameStateSquare extends State<GameSceneSquare> {
                               horizontal: 20, vertical: 20),
                           child: Column(
                             //provider와 ChangeNotifier를 통해 접근
-                            children: _provider.getSquareField(),
+                            children: _provider.getSquareField().isNotEmpty
+                                ? _provider.getSquareField()
+                                : [
+                                  SizedBox(
+                                    width: screenSize.width,
+                                    height: screenSize.height,
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      crossAxisAlignment: CrossAxisAlignment.center,
+                                      children: const [CircularProgressIndicator()],
+                                    ),
+                                  ),
+                            ],
                           ),
                         ),
                       ),
