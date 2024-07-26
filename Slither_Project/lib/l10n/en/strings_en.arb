@@ -47,5 +47,11 @@
   "appbar_mode01" : "fixed",
   "appbar_mode02" : "toggle",
   "restart" : "restart",
-  "hint" : "hint"
+  "hint" : "hint",
+  "save" : "save as",
+  "load" : "load as",
+  "clear" : "clear",
+  "red": "red",
+  "blue": "blue",
+  "green": "green"
 }

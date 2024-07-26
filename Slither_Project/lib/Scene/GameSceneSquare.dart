@@ -1,6 +1,7 @@
 // ignore_for_file: file_names
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:slitherlink_project/l10n/app_localizations.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../ThemeColor.dart';
@@ -47,6 +48,7 @@ class GameStateSquare extends State<GameSceneSquare> {
   late Size screenSize;
   late String appbarMode;
   bool showAppbar = true;
+  GameUI? uiNullable;
   late GameUI ui;
   Map<String, Color> settingColor = ThemeColor().getColor();
 
@@ -60,7 +62,6 @@ class GameStateSquare extends State<GameSceneSquare> {
     super.initState();
     _provider = SquareProvider(isContinue: isContinue, context: context);
     readSquare = ReadSquare(squareProvider: _provider, context: context);
-    ui = GameUI(squareProvider: _provider, context: context);
     loadPuzzle();
   }
 
@@ -89,6 +90,11 @@ class GameStateSquare extends State<GameSceneSquare> {
 
   @override
   Widget build(BuildContext context) {
+    if(uiNullable == null) {
+      uiNullable = GameUI(squareProvider: _provider, context: context, appLocalizations: AppLocalizations.of(context)!);
+      ui = uiNullable!;
+    }
+
     return ChangeNotifierProvider( // ChangeNotifierProvider 사용
       create: (context) => _provider, //ChangeNotifier class
       child: Consumer<SquareProvider>(

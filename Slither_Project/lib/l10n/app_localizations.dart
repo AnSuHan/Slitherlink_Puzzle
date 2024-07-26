@@ -24,6 +24,19 @@ class AppLocalizations {
   String translate(String key) {
     return _localizedStrings[key] ?? '$key not found';
   }
+
+  String translateComplex(String key1, String key2) {
+    if(_localizedStrings.containsKey(key1) && _localizedStrings.containsKey(key2)) {
+      if (locale.languageCode == 'ko') {
+        return '${_localizedStrings[key2]} ${_localizedStrings[key1]}';
+      } else { // en
+        return '${_localizedStrings[key1]} ${_localizedStrings[key2]}';
+      }
+    }
+    else {
+      return '$key1 or $key2 not found';
+    }
+  }
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

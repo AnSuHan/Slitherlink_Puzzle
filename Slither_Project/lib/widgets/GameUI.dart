@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
+import '../l10n/app_localizations.dart';
 import '../provider/SquareProvider.dart';
 import 'MainUI.dart';
 
@@ -12,10 +13,12 @@ class GameUI {
   late ReadSquare readSquare;
   final SquareProvider squareProvider;
   final BuildContext context;
+  AppLocalizations appLocalizations;
 
   GameUI({
     required this.squareProvider,
     required this.context,
+    required this.appLocalizations,
   }) {
     readSquare = ReadSquare(squareProvider: squareProvider, context: context);
     initLabel();
@@ -82,45 +85,57 @@ class GameUI {
                 value: 'click Label Red',
                 child: Row(
                   children: [const Icon(Icons.bookmark_sharp, color: Colors.red,),
-                    Text("${labelState[0]} as Red")],
+                    Text(
+                        labelState[0].compareTo("save") == 0
+                        ? appLocalizations.translateComplex("save", "red")
+                        : appLocalizations.translateComplex("load", "red")
+                    )],
                 ),
               ),
               PopupMenuItem<String>(
                 value: 'click Label Green',
                 child: Row(
                   children: [const Icon(Icons.bookmark_sharp, color: Colors.green,),
-                    Text("${labelState[1]} as Green")],
+                    Text(
+                        labelState[1].compareTo("save") == 0
+                        ? appLocalizations.translateComplex("save", "green")
+                        : appLocalizations.translateComplex("load", "green")
+                    )],
                 ),
               ),
               PopupMenuItem<String>(
                 value: 'click Label Blue',
                 child: Row(
                   children: [const Icon(Icons.bookmark_sharp, color: Colors.blue,),
-                    Text("${labelState[2]} as Blue")],
+                    Text(
+                        labelState[2].compareTo("save") == 0
+                        ? appLocalizations.translateComplex("save", "blue")
+                        : appLocalizations.translateComplex("load", "blue")
+                    )],
                 ),
               ),
               PopupMenuItem<String>(
                 value: 'clear Label Red',
                 enabled: labelState[0].compareTo("load") == 0,
                 child: Row(
-                  children: const [Icon(Icons.bookmark_remove, color: Colors.red,),
-                    Text('Clear Red')],
+                  children: [const Icon(Icons.bookmark_remove, color: Colors.red,),
+                    Text(appLocalizations.translateComplex("clear", "red"))],
                 ),
               ),
               PopupMenuItem<String>(
                 value: 'clear Label Green',
                 enabled: labelState[1].compareTo("load") == 0,
                 child: Row(
-                  children: const [Icon(Icons.bookmark_remove, color: Colors.green,),
-                    Text('Clear Green')],
+                  children: [const Icon(Icons.bookmark_remove, color: Colors.green,),
+                    Text(appLocalizations.translateComplex("clear", "green"))],
                 ),
               ),
               PopupMenuItem<String>(
                 value: 'clear Label Blue',
                 enabled: labelState[2].compareTo("load") == 0,
                 child: Row(
-                  children: const [Icon(Icons.bookmark_remove, color: Colors.blue,),
-                    Text('Clear Blue')],
+                  children: [const Icon(Icons.bookmark_remove, color: Colors.blue,),
+                    Text(appLocalizations.translateComplex("clear", "blue"))],
                 ),
               ),
             ],
@@ -137,13 +152,13 @@ class GameUI {
               controlMenu(context, result);
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'menu restart',
-                child: Text('Restart'),
+                child: Text(appLocalizations.translate('restart')),
               ),
-              const PopupMenuItem<String>(
+              PopupMenuItem<String>(
                 value: 'menu hint',
-                child: Text("hint"),
+                child: Text(appLocalizations.translate("hint")),
               ),
             ],
             icon: const Icon(Icons.menu),

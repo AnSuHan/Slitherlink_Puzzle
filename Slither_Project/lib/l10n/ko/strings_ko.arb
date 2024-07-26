@@ -47,5 +47,11 @@
   "appbar_mode01" : "고정",
   "appbar_mode02" : "토글",
   "restart" : "재시작",
-  "hint" : "힌트"
+  "hint" : "힌트",
+  "save" : "저장",
+  "load" : "불러오기",
+  "clear" : "삭제",
+  "red": "빨간색",
+  "blue": "파란색",
+  "green": "초록색"
 }
