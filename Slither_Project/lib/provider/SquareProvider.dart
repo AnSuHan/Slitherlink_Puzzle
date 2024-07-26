@@ -14,9 +14,13 @@ import '../widgets/SquareBox.dart';
 
 class SquareProvider with ChangeNotifier {
   late ReadSquare readSquare;
+  late BuildContext context;
 
-  SquareProvider({this.isContinue = false}) {
-    readSquare = ReadSquare(squareProvider: this);
+  SquareProvider({
+    this.isContinue = false,
+    required this.context,
+  }) {
+    readSquare = ReadSquare(squareProvider: this, context: context);
   }
 
   ThemeColor themeColor = ThemeColor();
@@ -35,7 +39,6 @@ class SquareProvider with ChangeNotifier {
     squareField = await buildSquarePuzzleAnswer(answer, isContinue: isContinue);
     readSquare.setPuzzle(puzzle);
     notifyListeners();
-    setLineColor(2, 4, "down", 3);
   }
 
   void restart() async {

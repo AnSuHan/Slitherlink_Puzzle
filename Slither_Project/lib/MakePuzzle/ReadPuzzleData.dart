@@ -1,5 +1,6 @@
 // ignore_for_file: file_names
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:slitherlink_project/User/UserInfo.dart';
 
@@ -7,9 +8,17 @@ import '../Answer/Answer.dart';
 
 //handle data with SharedPreferences (NOT ACCESS to GameSceneStateSquare class)
 class ReadPuzzleData {
+  final BuildContext context;
+
+  ReadPuzzleData({
+    required this.context,
+  }) {
+    answer = Answer(context: context);
+  }
+
   List<List<bool>> prefData = [];
   UserInfo info = UserInfo();
-  Answer answer = Answer();
+  late Answer answer;
 
   Future<void> writeData(List<List<bool>> data, String fileName) async {
     // Convert List<List<bool>> to List<List<int>> for JSON serialization
@@ -31,12 +40,12 @@ class ReadPuzzleData {
     if(tokens[0].compareTo("square") == 0) {
       if(tokens[1].compareTo("small") == 0) {
         int index = int.parse(tokens[2]);
-        return answer.getSquare(index + 1);
+        return await answer.getSquare(index);
       }
     }
 
     //init
-    return answer.getSquare(UserInfo.getProgress("square_small"));
+    return await answer.getSquare(UserInfo.getProgress("square_small"));
   }
 
   void printData(List<List<int>> intData) {

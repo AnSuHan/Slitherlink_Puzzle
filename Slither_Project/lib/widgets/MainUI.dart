@@ -827,11 +827,11 @@ class MainUI {
       style: ElevatedButton.styleFrom(
         minimumSize: const Size(100, 50),
       ),
-      onPressed: () {
+      onPressed: () async {
         int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
         //restrict puzzle's EOF
-        if(answer.checkRemainPuzzle(context, selectedType[0], selectedType[1])) {
+        if(await answer.checkRemainPuzzle(context, selectedType[0], selectedType[1])) {
           UserInfo.addContinuePuzzle(progressKey);
           onUpdate();
           changeScene(context, progressKey);

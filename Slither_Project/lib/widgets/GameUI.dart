@@ -11,9 +11,13 @@ class GameUI {
   late Size screenSize;
   late ReadSquare readSquare;
   final SquareProvider squareProvider;
+  final BuildContext context;
 
-  GameUI(this.squareProvider) {
-    readSquare = ReadSquare(squareProvider: squareProvider);
+  GameUI({
+    required this.squareProvider,
+    required this.context,
+  }) {
+    readSquare = ReadSquare(squareProvider: squareProvider, context: context);
     initLabel();
   }
 

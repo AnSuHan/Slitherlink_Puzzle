@@ -8,11 +8,13 @@ import 'package:flutter/services.dart';
 import '../User/UserInfo.dart';
 
 class Answer {
+  bool isFinishInit = false;
+
   Answer({
     BuildContext? context
   }) {
     initPuzzleAll().then((_) {
-      print("finish init : ${squareSmallAnswer.length}");
+      isFinishInit = true;
     });
   }
 
@@ -242,7 +244,7 @@ class Answer {
   }
 
   ///parameter is always EN
-  bool checkRemainPuzzle(BuildContext context, String shape, String size) {
+  Future<bool> checkRemainPuzzle(BuildContext context, String shape, String size) async {
     bool rtValue = false;
     String key = "";
 
@@ -252,15 +254,22 @@ class Answer {
         rtValue = true;
       }
     }
-    print("rtValue $rtValue, squareSmallAnswer : ${squareSmallAnswer.length}");
 
     return rtValue;
   }
 
-  List<List<bool>> getSquare(int index) {
+  Future<List<List<bool>>> getSquare(int index) async {
+    await _waitForInitialization();
+
     if(index < squareSmallAnswer.length) {
       return squareSmallAnswer[index];
     }
     return [];
+  }
+
+  Future<void> _waitForInitialization() async {
+    while (!isFinishInit) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
   }
 }

@@ -31,9 +31,9 @@ class GameStateSquare extends State<GameSceneSquare> {
 
   GameStateSquare({this.isContinue = false, this.loadKey = ""}) {
     // SquareProviderProvider 객체 초기화
-    _provider = SquareProvider(isContinue: isContinue);
+    //_provider = SquareProvider(isContinue: isContinue, context: context);
     // ReadSquare 객체 초기화
-    readSquare = ReadSquare(squareProvider: _provider);
+    //readSquare = ReadSquare(squareProvider: _provider, context: context);
   }
 
   //check complete puzzle;
@@ -56,8 +56,9 @@ class GameStateSquare extends State<GameSceneSquare> {
 
     //print("GameSceneStateSquareProvider is start, isContinue : ${widget.isContinue}");
     super.initState();
-    _provider = SquareProvider(isContinue: isContinue);
-    ui = GameUI(_provider);
+    _provider = SquareProvider(isContinue: isContinue, context: context);
+    readSquare = ReadSquare(squareProvider: _provider, context: context);
+    ui = GameUI(squareProvider: _provider, context: context);
     loadPuzzle();
   }
 
