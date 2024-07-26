@@ -39,20 +39,24 @@ class MainUI {
   String prevLanguage = "";
 
   late Authentication auth;
+  late Answer answer;
 
   final VoidCallback onUpdate;
   //for supporting multilingual
   AppLocalizations appLocalizations;
   final EnterSceneState enterSceneState;
+  final BuildContext context;
 
   MainUI({
     required this.onUpdate,
     required this.appLocalizations,
-    required this.enterSceneState
+    required this.enterSceneState,
+    required this.context,
   }) {
     auth = Authentication();
     //subscription of stream
     checkLanguage().listen((event) {});
+    answer = Answer(context: context);
   }
 
   void setAppLocalizations(AppLocalizations appLocalizations) {
@@ -827,7 +831,7 @@ class MainUI {
         int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
         //restrict puzzle's EOF
-        if(Answer(context: context).checkRemainPuzzle(context, selectedType[0], selectedType[1])) {
+        if(answer.checkRemainPuzzle(context, selectedType[0], selectedType[1])) {
           UserInfo.addContinuePuzzle(progressKey);
           onUpdate();
           changeScene(context, progressKey);

@@ -1,13 +1,61 @@
 import 'dart:collection';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 import '../User/UserInfo.dart';
 
 class Answer {
   Answer({
     BuildContext? context
-  });
+  }) {
+    initPuzzleAll().then((_) {
+      print("finish init : ${squareSmallAnswer.length}");
+    });
+  }
+
+  List<List<List<bool>>> squareSmallAnswer = [];
+
+  Future<void> initPuzzleAll() async {
+    List<String> type = ["square"];
+    List<String> size = ["small"];
+
+    for(int i = 0 ; i < type.length ; i++) {
+      for(int j = 0 ; j < size.length ; j++) {
+        await initPuzzle(type[i], size[i]);
+      }
+    }
+  }
+
+  Future<void> initPuzzle(String type, String size) async {
+    String filename = "lib/Answer/";
+    switch(type) {
+      case "square":
+        switch(size) {
+          case "small":
+            filename += "Square_small.json";
+            break;
+        }
+        break;
+    }
+
+    final file = File(filename);
+    String jsonString = await rootBundle.loadString(filename);
+    Map<String, dynamic> jsonData = jsonDecode(jsonString);
+
+    jsonData.forEach((key, value) {
+      if (!key.endsWith("_test")) {
+        // 데이터 변환: 1 -> true, 0 -> false
+        List<List<bool>> convertedList = (value as List)
+            .map((list) => (list as List)
+            .map((item) => item == 1 ? true : false).toList()).toList();
+        squareSmallAnswer.add(convertedList);
+      }
+    });
+
+  }
 
   List<List<List<bool>>> squareAnswer = [
     //show edge test
@@ -200,17 +248,18 @@ class Answer {
 
     if(shape.compareTo("square") == 0 && size.compareTo("small") == 0) {
       key = "square_small";
-      if(squareAnswer.length - 1 > UserInfo.getProgress(key)) {
+      if(squareSmallAnswer.length - 1 > UserInfo.getProgress(key)) {
         rtValue = true;
       }
     }
+    print("rtValue $rtValue, squareSmallAnswer : ${squareSmallAnswer.length}");
 
     return rtValue;
   }
 
   List<List<bool>> getSquare(int index) {
-    if(index < squareAnswer.length) {
-      return squareAnswer[index];
+    if(index < squareSmallAnswer.length) {
+      return squareSmallAnswer[index];
     }
     return [];
   }

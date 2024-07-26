@@ -100,7 +100,7 @@ class EnterSceneState extends State<EnterScene> {
               }(),
               builder: (context, snapshot) {
                 if(uiNullable == null && AppLocalizations.of(context) != null) {
-                  uiNullable = MainUI(onUpdate: updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this);
+                  uiNullable = MainUI(onUpdate: updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this, context: context);
                   ui = uiNullable!;
                   ui.loadSetting();
                 }

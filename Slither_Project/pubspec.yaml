@@ -74,6 +74,7 @@ flutter:
     - assets/images/
     - lib/l10n/en/strings_en.arb
     - lib/l10n/ko/strings_ko.arb
+    - lib/Answer/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

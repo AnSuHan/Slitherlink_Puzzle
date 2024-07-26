@@ -7,7 +7,7 @@ import '../MakePuzzle/ReadSquare.dart';
 import '../Platform/ExtractData.dart'
   if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
 //안드로이드 빌드 시 삭제 필수
-//import '../Platform/ExtractDataWeb.dart';
+import '../Platform/ExtractDataWeb.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
 import '../widgets/SquareBox.dart';
@@ -429,13 +429,13 @@ class SquareProvider with ChangeNotifier {
       //웹 플랫폼
       //안드로이드 빌드 시, 웹 전용 저장 함수 주석 처리 필수
       // + import '../Platform/ExtractDataWeb.dart'; 부분도 주석 처리 필수
-      //ExtractDataWeb().saveStringToFileInWeb(temp, "filename.txt");
+      ExtractDataWeb().saveStringToFileInWeb(temp, "filename.txt");
     } else {
       //모든 플랫폼
       //웹 빌드 시, 다른 플랫폼 용 함수 주석 처리 필수
       //안드로이드로 생성된 파일은 PC에서만 확인 가능하다
       //경로 : 스마트폰\내장 저장공간\Android\data\slitherlink.com.puzzle.glorygem.slitherlink_project\files
-      ExtractData().saveStringToFile(temp, "filename.txt");
+      //ExtractData().saveStringToFile(temp, "filename.txt");
     }
   }
 
