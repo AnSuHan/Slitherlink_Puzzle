@@ -18,7 +18,8 @@
   "ThemeName_05": "pastel",
   "ThemeName_06": "vibrant",
   "MainUI_menuSetting_language": "Language",
-  "MainUI_menuSetting_btnAlignment": "button Alignment",
+  "MainUI_menuSetting_btnAlignment": "Button Alignment",
+  "MainUI_menuSetting_appbar": "Appbar Mode",
   "MainUI_login": "login",
   "errMsg_Sign01": "email and password should not be empty",
   "errMsg_Sign02": "email or password is wrong",
@@ -42,5 +43,9 @@
   "language_ko" : "korean",
   "left" : "left",
   "right" : "right",
-  "progressTitle" : "progress"
+  "progressTitle" : "progress",
+  "appbar_mode01" : "fixed",
+  "appbar_mode02" : "toggle",
+  "restart" : "restart",
+  "hint" : "hint"
 }

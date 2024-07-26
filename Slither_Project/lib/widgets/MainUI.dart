@@ -33,6 +33,8 @@ class MainUI {
   String _themeValue = "default";
   List<String> _language = [];
   String _languageValue = "english";
+  List<String> _appbar = [];
+  String _appbarValue = "fixed";
   List<String> _btnAlignment = [];
   String _btnAlignmentValue = "right";
 
@@ -510,6 +512,30 @@ class MainUI {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
+                                Text(appLocalizations.translate('MainUI_menuSetting_appbar')),
+                                DropdownButton(items: _appbar.map((String item) {
+                                  return DropdownMenuItem<String>(
+                                    value: item,
+                                    child: Text(item),
+                                  );
+                                }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _appbarValue = value!;
+                                    });
+                                    if(debugDropdown) {
+                                      // ignore: avoid_print
+                                      print("_appbarValue : $_appbarValue");
+                                    }
+                                  },
+                                  value: _appbarValue,
+                                  style: const TextStyle(color: Colors.black, fontSize: 18),),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
                                 Text(appLocalizations.translate('MainUI_menuSetting_btnAlignment')),
                                 DropdownButton(items: _btnAlignment.map((String item) {
                                   return DropdownMenuItem<String>(
@@ -573,6 +599,16 @@ class MainUI {
                                   case "vibrant":
                                   case "생동감있는":
                                     setting["theme"] = "vibrant";
+                                    break;
+                                }
+                                switch(_appbarValue) {
+                                  case "fixed":
+                                  case "고정":
+                                    setting["appbar_mode"] = "fixed";
+                                    break;
+                                  case "toggle":
+                                  case "토글":
+                                    setting["appbar_mode"] = "toggle";
                                     break;
                                 }
                                 switch(_btnAlignmentValue) {
@@ -702,6 +738,20 @@ class MainUI {
         break;
       case "korean":
         _languageValue = appLocalizations.translate('language_ko');
+        break;
+    }
+
+    _appbar = [
+      appLocalizations.translate('appbar_mode01'),
+      appLocalizations.translate('appbar_mode02')
+    ];
+
+    switch(setting["appbar_mode"]) {
+      case "fixed":
+        _appbarValue = appLocalizations.translate('appbar_mode01');
+        break;
+      case "toggle":
+        _appbarValue = appLocalizations.translate('appbar_mode02');
         break;
     }
 

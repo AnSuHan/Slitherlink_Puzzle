@@ -45,7 +45,8 @@ class GameStateSquare extends State<GameSceneSquare> {
 
   //UI
   late Size screenSize;
-  bool showAppbar = false;
+  late String appbarMode;
+  bool showAppbar = true;
   late GameUI ui;
   Map<String, Color> settingColor = ThemeColor().getColor();
 
@@ -53,6 +54,7 @@ class GameStateSquare extends State<GameSceneSquare> {
   @override
   void initState() {
     isContinue = widget.isContinue;
+    appbarMode = UserInfo.getAppbarMode();
 
     //print("GameSceneStateSquareProvider is start, isContinue : ${widget.isContinue}");
     super.initState();
@@ -100,7 +102,9 @@ class GameStateSquare extends State<GameSceneSquare> {
             body: GestureDetector(
               onTap: () {
                 setState(() {
-                  showAppbar = !showAppbar;
+                  if(appbarMode.compareTo("fixed") != 0) {
+                    showAppbar = !showAppbar;
+                  }
                 });
               },
               child: AbsorbPointer(

@@ -13,6 +13,7 @@ class UserInfo {
   static Map<String, String> setting = {
     "theme" : "default",
     "language" : "english",
+    "appbar_mode" : "fixed", //fixed | toggle
     "button_alignment" : "right"
   };
   static List<String> language = ["english", "korean"];
@@ -126,5 +127,15 @@ class UserInfo {
   ///true : left, false : right
   static bool getButtonAlignment() {
     return setting["button_alignment"]!.compareTo("left") == 0 ? true : false;
+  }
+
+  static String getAppbarMode() {
+    return setting["appbar_mode"]!;
+  }
+
+  static void setAppbarMode(String mode) {
+    if(setting.containsKey("appbar_mode")) {
+      setting["appbar_mode"] = mode;
+    }
   }
 }
