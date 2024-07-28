@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class UserInfo {
+  static bool isDebug = true;
+
   static bool authState = false;
   static Map<String, int> progress = {
     "square_small" : 0,

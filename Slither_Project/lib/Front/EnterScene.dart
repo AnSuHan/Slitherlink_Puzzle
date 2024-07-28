@@ -9,16 +9,30 @@ import '../l10n/app_localizations.dart';
 import '../widgets/MainUI.dart';
 
 class EnterSceneState extends State<EnterScene> {
-  late Locale _locale;
+  ///ONLY-DEBUG variables
   late FocusNode _focusNode;
+  bool useKeyInput = false;
+  ///ONLY-DEBUG variables
+
+  late Locale _locale;
 
   late Size screenSize;
   MainUI? uiNullable;
   late MainUI ui;
 
+  void debugSetting() {
+    if(UserInfo.isDebug) {
+      useKeyInput = true;
+    }
+    else {
+      useKeyInput = false;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    debugSetting();
     _focusNode = FocusNode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
@@ -82,6 +96,9 @@ class EnterSceneState extends State<EnterScene> {
         home: RawKeyboardListener(
           focusNode: _focusNode,
           onKey: (RawKeyEvent event) {
+            if(!useKeyInput) {
+              return;
+            }
             if (event is RawKeyDownEvent) {
               if (event.logicalKey == LogicalKeyboardKey.keyR) {
                 updateUI();

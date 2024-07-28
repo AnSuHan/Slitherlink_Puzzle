@@ -1,5 +1,6 @@
 // ignore_for_file: file_names
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:slitherlink_project/l10n/app_localizations.dart';
 
@@ -23,19 +24,17 @@ class GameSceneSquare extends StatefulWidget {
 }
 
 class GameStateSquare extends State<GameSceneSquare> {
-  ///ONLY-DEBUG : for extracting data with button
-  bool extractData = true;
-  //GameSceneStateSquareProvider({this.isContinue = false, this.loadKey = ""});
+  ///ONLY-DEBUG variables
+  bool extractData = false;
+  final FocusNode _focusNode = FocusNode();
+  bool useKeyInput = false;
+  ///ONLY-DEBUG variables
+
   //provider for using setState in other class
   late SquareProvider _provider;
   late ReadSquare readSquare;
 
-  GameStateSquare({this.isContinue = false, this.loadKey = ""}) {
-    // SquareProviderProvider 객체 초기화
-    //_provider = SquareProvider(isContinue: isContinue, context: context);
-    // ReadSquare 객체 초기화
-    //readSquare = ReadSquare(squareProvider: _provider, context: context);
-  }
+  GameStateSquare({this.isContinue = false, this.loadKey = ""});
 
   //check complete puzzle;
   bool isComplete = false;
@@ -52,11 +51,24 @@ class GameStateSquare extends State<GameSceneSquare> {
   late GameUI ui;
   Map<String, Color> settingColor = ThemeColor().getColor();
 
+  void debugSetting() {
+    if(UserInfo.isDebug) {
+      extractData = true;
+      useKeyInput = true;
+    }
+    else {
+      extractData = false;
+      useKeyInput = false;
+    }
+  }
 
   @override
   void initState() {
+    debugSetting();
+
     isContinue = widget.isContinue;
     appbarMode = UserInfo.getAppbarMode();
+    _focusNode.requestFocus();
 
     //print("GameSceneStateSquareProvider is start, isContinue : ${widget.isContinue}");
     super.initState();
@@ -105,90 +117,106 @@ class GameStateSquare extends State<GameSceneSquare> {
 
           return Scaffold(
             appBar: !showAppbar ? null : ui.getGameAppBar(context, settingColor["appBar"]!, settingColor["appIcon"]!),
-            body: GestureDetector(
-              onTap: () {
-                setState(() {
-                  if(appbarMode.compareTo("fixed") != 0) {
-                    showAppbar = !showAppbar;
+            body: RawKeyboardListener(
+              focusNode: _focusNode,
+              onKey: (RawKeyEvent event) {
+                if(!useKeyInput) {
+                  return;
+                }
+                if (event is RawKeyDownEvent) {
+                  //apply answer to field
+                  if (event.logicalKey == LogicalKeyboardKey.keyA) {
+                    setState(() {
+                      _provider.loadLabel(answer);
+                    });
                   }
-                });
+                }
               },
-              child: AbsorbPointer(
-                absorbing: isComplete,
-                child: Stack(
-                  children: [
-                    Container(
-                      color: settingColor["background"],
-                      child: InteractiveViewer(
-                        boundaryMargin: EdgeInsets.symmetric(
-                          horizontal: screenSize.width * 0.4,
-                          vertical: screenSize.height * 0.4,
-                        ),
-                        constrained: false,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 20),
-                          child: Column(
-                            //provider와 ChangeNotifier를 통해 접근
-                            children: _provider.getSquareField().isNotEmpty
-                                ? _provider.getSquareField()
-                                : [
-                                  SizedBox(
-                                    width: screenSize.width,
-                                    height: screenSize.height,
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      crossAxisAlignment: CrossAxisAlignment.center,
-                                      children: const [CircularProgressIndicator()],
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if(appbarMode.compareTo("fixed") != 0) {
+                      showAppbar = !showAppbar;
+                    }
+                  });
+                },
+                child: AbsorbPointer(
+                  absorbing: isComplete,
+                  child: Stack(
+                    children: [
+                      Container(
+                        color: settingColor["background"],
+                        child: InteractiveViewer(
+                          boundaryMargin: EdgeInsets.symmetric(
+                            horizontal: screenSize.width * 0.4,
+                            vertical: screenSize.height * 0.4,
+                          ),
+                          constrained: false,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 20),
+                            child: Column(
+                              //provider와 ChangeNotifier를 통해 접근
+                              children: _provider.getSquareField().isNotEmpty
+                                  ? _provider.getSquareField()
+                                  : [
+                                    SizedBox(
+                                      width: screenSize.width,
+                                      height: screenSize.height,
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: const [CircularProgressIndicator()],
+                                      ),
                                     ),
-                                  ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      width: 70,
-                      height: 70,
-                      left: UserInfo.getButtonAlignment() ? 20
-                          : ui.getScreenSize().width - 90, //margin
-                      bottom: 110,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          await _provider.undo();
-                        },
-                        child: const Icon(Icons.undo),
-                      ),
-                    ),
-                    Positioned(
-                      width: 70,
-                      height: 70,
-                      left: UserInfo.getButtonAlignment() ? 20
-                          : ui.getScreenSize().width - 90, //margin
-                      bottom: 20,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          await _provider.redo();
-                        },
-                        child: const Icon(Icons.redo),
-                      ),
-                    ),
-                    if(extractData)
                       Positioned(
                         width: 70,
                         height: 70,
                         left: UserInfo.getButtonAlignment() ? 20
                             : ui.getScreenSize().width - 90, //margin
-                        bottom: 200,
+                        bottom: 110,
                         child: ElevatedButton(
                           onPressed: () async {
-                            await _provider.extractData();
+                            await _provider.undo();
                           },
-                          child: const Icon(Icons.upload_rounded),
+                          child: const Icon(Icons.undo),
                         ),
                       ),
-                  ],
-                )
+                      Positioned(
+                        width: 70,
+                        height: 70,
+                        left: UserInfo.getButtonAlignment() ? 20
+                            : ui.getScreenSize().width - 90, //margin
+                        bottom: 20,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await _provider.redo();
+                          },
+                          child: const Icon(Icons.redo),
+                        ),
+                      ),
+                      if(extractData)
+                        Positioned(
+                          width: 70,
+                          height: 70,
+                          left: UserInfo.getButtonAlignment() ? 20
+                              : ui.getScreenSize().width - 90, //margin
+                          bottom: 200,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await _provider.extractData();
+                            },
+                            child: const Icon(Icons.upload_rounded),
+                          ),
+                        ),
+                    ],
+                  )
+                ),
               ),
             ),
           );

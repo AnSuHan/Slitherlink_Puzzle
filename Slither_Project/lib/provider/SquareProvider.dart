@@ -517,8 +517,8 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   ///**********************************************************************************
   void loadLabel(List<List<int>> submit) {
-    this.submit = submit;
-    applyUIWithAnswer(puzzle, submit);
+    this.submit = submit.map((innerList) => List<int>.from(innerList)).toList();;
+    applyUIWithAnswer(puzzle, this.submit);
     notifyListeners();
   }
 
