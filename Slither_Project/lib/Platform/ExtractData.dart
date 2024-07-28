@@ -8,6 +8,7 @@ class ExtractData {
     try {
       // 웹 플랫폼 확인
       if (kIsWeb) {
+        // ignore: avoid_print
         print("kIsWeb in ExtractData");
         return;
       }
@@ -29,16 +30,32 @@ class ExtractData {
       }
 
       // 파일 경로 생성
-      final String filePath = '${directory.path}/$fileName';
+      String filePath = '${directory.path}/$fileName';
+      // 중복 이름 처리
+      File file = File(filePath);
+      int index = 1;
 
-      // 파일 객체 생성
-      final File file = File(filePath);
+      while (await file.exists()) {
+        final extensionIndex = fileName.lastIndexOf('.');
+        if (extensionIndex == -1) {
+          filePath = '${directory.path}/$fileName-$index';
+        } else {
+          final name = fileName.substring(0, extensionIndex);
+          final extension = fileName.substring(extensionIndex);
+          filePath = '${directory.path}/$name-$index$extension';
+        }
+        // 파일 객체 생성
+        file = File(filePath);
+        index++;
+      }
 
       // 파일에 데이터 쓰기
       await file.writeAsString(data);
 
+      // ignore: avoid_print
       print('파일 저장 성공: $filePath');
     } catch (e) {
+      // ignore: avoid_print
       print('파일 저장 실패: $e');
     }
   }
