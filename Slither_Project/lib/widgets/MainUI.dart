@@ -564,7 +564,7 @@ class MainUI {
                           children: [
                             TextButton(
                               child: Text(appLocalizations.translate('MainUI_btnApply')),
-                              onPressed: () {
+                              onPressed: () async {
                                 switch(_languageValue) {
                                   case "english":
                                   case "영어":
@@ -622,11 +622,12 @@ class MainUI {
                                     break;
                                 }
                                 //theme, language, button alignment
-                                UserInfo.setSettingAll(setting);
+                                await UserInfo.setSettingAll(setting);
                                 //only for language
                                 enterSceneState.changeLanguage(languageToCode(setting["language"]!));
                                 onUpdate();
 
+                                // ignore: use_build_context_synchronously
                                 Navigator.of(context).pop();
                               },
                             ),

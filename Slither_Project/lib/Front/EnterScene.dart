@@ -92,7 +92,6 @@ class EnterSceneState extends State<EnterScene> {
 
   @override
   Widget build(BuildContext context) {
-    print("build");
     return MaterialApp(  // Replace YourWidget with your actual widget
         locale: _locale,
         localizationsDelegates: const [
