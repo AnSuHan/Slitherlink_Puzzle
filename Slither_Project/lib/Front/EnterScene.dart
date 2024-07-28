@@ -1,4 +1,6 @@
 // ignore_for_file: file_names
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -19,6 +21,7 @@ class EnterSceneState extends State<EnterScene> {
   late Size screenSize;
   MainUI? uiNullable;
   late MainUI ui;
+  Timer? _timer;
 
   void debugSetting() {
     if(UserInfo.isDebug) {
@@ -47,6 +50,13 @@ class EnterSceneState extends State<EnterScene> {
           _locale = const Locale('ko');
           Intl.defaultLocale = "ko";
           break;
+      }
+    });
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if(UserInfo.updateContinueWidget) {
+        UserInfo.updateContinueWidget = false;
+        setState(() {});
       }
     });
   }
@@ -82,6 +92,7 @@ class EnterSceneState extends State<EnterScene> {
 
   @override
   Widget build(BuildContext context) {
+    print("build");
     return MaterialApp(  // Replace YourWidget with your actual widget
         locale: _locale,
         localizationsDelegates: const [

@@ -75,7 +75,7 @@ class GameStateSquare extends State<GameSceneSquare> {
 
     //print("GameSceneStateSquareProvider is start, isContinue : ${widget.isContinue}");
     super.initState();
-    _provider = SquareProvider(isContinue: isContinue, context: context, gameStateSquare: this);
+    _provider = SquareProvider(isContinue: isContinue, context: context, gameStateSquare: this, loadKey: widget.loadKey);
     readSquare = ReadSquare(squareProvider: _provider, context: context);
     loadPuzzle();
 

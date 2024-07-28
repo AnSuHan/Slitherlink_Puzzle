@@ -19,6 +19,7 @@ class UserInfo {
     "button_alignment" : "right"
   };
   static List<String> language = ["english", "korean"];
+  static bool updateContinueWidget = false;
 
   ///load data from firestore
   static Future<void> init() async {
@@ -75,6 +76,12 @@ class UserInfo {
       buffer.write('$key : $value\n');
     });
     return buffer.toString().trim();
+  }
+
+  static void clearPuzzle(String key) {
+    print("in clearPuzzle : $key");
+    continuePuzzle.remove(key);
+    updateContinueWidget = true;
   }
 
   /// save at start in EnterScene.dart & pop at GameSceneStateSquare.dart when complete

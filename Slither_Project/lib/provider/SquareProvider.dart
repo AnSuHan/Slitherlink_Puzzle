@@ -10,11 +10,13 @@ import '../Platform/ExtractData.dart'
 import '../Platform/ExtractDataWeb.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
+import '../User/UserInfo.dart';
 import '../widgets/SquareBox.dart';
 
 class SquareProvider with ChangeNotifier {
   late ReadSquare readSquare;
   late BuildContext context;
+  final String loadKey;
 
   final GameStateSquare gameStateSquare;
   bool shutdown = false;  //showdialog에서 ok를 눌러 GameSceneSquare을 닫아야 하는 경우
@@ -23,6 +25,7 @@ class SquareProvider with ChangeNotifier {
     this.isContinue = false,
     required this.context,
     required this.gameStateSquare,
+    required this.loadKey,
   }) {
     readSquare = ReadSquare(squareProvider: this, context: context);
   }
@@ -292,6 +295,7 @@ class SquareProvider with ChangeNotifier {
 
   void showComplete(BuildContext context) {
     gameStateSquare.isComplete = true;
+    UserInfo.clearPuzzle(loadKey);
     // Show AlertDialog if isComplete is true
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showDialog(
