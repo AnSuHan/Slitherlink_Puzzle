@@ -1,4 +1,6 @@
 // ignore_for_file: file_names
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -33,6 +35,7 @@ class GameStateSquare extends State<GameSceneSquare> {
   //provider for using setState in other class
   late SquareProvider _provider;
   late ReadSquare readSquare;
+  Timer? _shutdownTimer;
 
   GameStateSquare({this.isContinue = false, this.loadKey = ""});
 
@@ -72,9 +75,25 @@ class GameStateSquare extends State<GameSceneSquare> {
 
     //print("GameSceneStateSquareProvider is start, isContinue : ${widget.isContinue}");
     super.initState();
-    _provider = SquareProvider(isContinue: isContinue, context: context);
+    _provider = SquareProvider(isContinue: isContinue, context: context, gameStateSquare: this);
     readSquare = ReadSquare(squareProvider: _provider, context: context);
     loadPuzzle();
+
+    _shutdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      //print("_provider.shutdown : ${_provider.shutdown}, mounted : $mounted, canPop : ${Navigator.canPop(context)}");
+      if (_provider.shutdown && mounted && Navigator.canPop(context)) {
+        setState(() {
+          Navigator.of(context).pop();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // 타이머 취소
+    _shutdownTimer?.cancel();
+    super.dispose();
   }
 
   void loadPuzzle() async {
@@ -128,6 +147,10 @@ class GameStateSquare extends State<GameSceneSquare> {
                   if (event.logicalKey == LogicalKeyboardKey.keyA) {
                     setState(() {
                       _provider.loadLabel(answer);
+                    });
+                  } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
+                    setState(() {
+                      _provider.showComplete(context);
                     });
                   }
                 }
