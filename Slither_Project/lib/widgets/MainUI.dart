@@ -33,26 +33,32 @@ class MainUI {
   String _themeValue = "default";
   List<String> _language = [];
   String _languageValue = "english";
+  List<String> _appbar = [];
+  String _appbarValue = "fixed";
   List<String> _btnAlignment = [];
   String _btnAlignmentValue = "right";
 
   String prevLanguage = "";
 
   late Authentication auth;
+  late Answer answer;
 
   final VoidCallback onUpdate;
   //for supporting multilingual
   AppLocalizations appLocalizations;
   final EnterSceneState enterSceneState;
+  final BuildContext context;
 
   MainUI({
     required this.onUpdate,
     required this.appLocalizations,
-    required this.enterSceneState
+    required this.enterSceneState,
+    required this.context,
   }) {
     auth = Authentication();
     //subscription of stream
     checkLanguage().listen((event) {});
+    answer = Answer(context: context);
   }
 
   void setAppLocalizations(AppLocalizations appLocalizations) {
@@ -506,6 +512,30 @@ class MainUI {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
+                                Text(appLocalizations.translate('MainUI_menuSetting_appbar')),
+                                DropdownButton(items: _appbar.map((String item) {
+                                  return DropdownMenuItem<String>(
+                                    value: item,
+                                    child: Text(item),
+                                  );
+                                }).toList(),
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _appbarValue = value!;
+                                    });
+                                    if(debugDropdown) {
+                                      // ignore: avoid_print
+                                      print("_appbarValue : $_appbarValue");
+                                    }
+                                  },
+                                  value: _appbarValue,
+                                  style: const TextStyle(color: Colors.black, fontSize: 18),),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
                                 Text(appLocalizations.translate('MainUI_menuSetting_btnAlignment')),
                                 DropdownButton(items: _btnAlignment.map((String item) {
                                   return DropdownMenuItem<String>(
@@ -534,7 +564,7 @@ class MainUI {
                           children: [
                             TextButton(
                               child: Text(appLocalizations.translate('MainUI_btnApply')),
-                              onPressed: () {
+                              onPressed: () async {
                                 switch(_languageValue) {
                                   case "english":
                                   case "영어":
@@ -571,6 +601,16 @@ class MainUI {
                                     setting["theme"] = "vibrant";
                                     break;
                                 }
+                                switch(_appbarValue) {
+                                  case "fixed":
+                                  case "고정":
+                                    setting["appbar_mode"] = "fixed";
+                                    break;
+                                  case "toggle":
+                                  case "토글":
+                                    setting["appbar_mode"] = "toggle";
+                                    break;
+                                }
                                 switch(_btnAlignmentValue) {
                                   case "left":
                                   case "왼쪽":
@@ -582,11 +622,12 @@ class MainUI {
                                     break;
                                 }
                                 //theme, language, button alignment
-                                UserInfo.setSettingAll(setting);
+                                await UserInfo.setSettingAll(setting);
                                 //only for language
                                 enterSceneState.changeLanguage(languageToCode(setting["language"]!));
                                 onUpdate();
 
+                                // ignore: use_build_context_synchronously
                                 Navigator.of(context).pop();
                               },
                             ),
@@ -701,6 +742,20 @@ class MainUI {
         break;
     }
 
+    _appbar = [
+      appLocalizations.translate('appbar_mode01'),
+      appLocalizations.translate('appbar_mode02')
+    ];
+
+    switch(setting["appbar_mode"]) {
+      case "fixed":
+        _appbarValue = appLocalizations.translate('appbar_mode01');
+        break;
+      case "toggle":
+        _appbarValue = appLocalizations.translate('appbar_mode02');
+        break;
+    }
+
     _btnAlignment = [
       appLocalizations.translate('left'),
       appLocalizations.translate('right')
@@ -799,6 +854,10 @@ class MainUI {
     if(progressKey.isEmpty) {
       progressKey = progressPuzzle[0];
     }
+    //when complete puzzle in continue
+    if(!progressPuzzle.contains(progressKey)) {
+      progressKey = progressPuzzle[0];
+    }
 
     return DropdownButton(items: progressPuzzle
         .map((e) => DropdownMenuItem(
@@ -823,11 +882,11 @@ class MainUI {
       style: ElevatedButton.styleFrom(
         minimumSize: const Size(100, 50),
       ),
-      onPressed: () {
+      onPressed: () async {
         int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
         //restrict puzzle's EOF
-        if(Answer(context: context).checkRemainPuzzle(context, selectedType[0], selectedType[1])) {
+        if(await answer.checkRemainPuzzle(context, selectedType[0], selectedType[1])) {
           UserInfo.addContinuePuzzle(progressKey);
           onUpdate();
           changeScene(context, progressKey);

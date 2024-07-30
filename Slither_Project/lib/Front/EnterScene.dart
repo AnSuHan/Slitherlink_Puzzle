@@ -1,4 +1,6 @@
 // ignore_for_file: file_names
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -9,16 +11,31 @@ import '../l10n/app_localizations.dart';
 import '../widgets/MainUI.dart';
 
 class EnterSceneState extends State<EnterScene> {
-  late Locale _locale;
+  ///ONLY-DEBUG variables
   late FocusNode _focusNode;
+  bool useKeyInput = false;
+  ///ONLY-DEBUG variables
+
+  late Locale _locale;
 
   late Size screenSize;
   MainUI? uiNullable;
   late MainUI ui;
+  Timer? _timer;
+
+  void debugSetting() {
+    if(UserInfo.isDebug) {
+      useKeyInput = true;
+    }
+    else {
+      useKeyInput = false;
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    debugSetting();
     _focusNode = FocusNode();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _focusNode.requestFocus();
@@ -33,6 +50,13 @@ class EnterSceneState extends State<EnterScene> {
           _locale = const Locale('ko');
           Intl.defaultLocale = "ko";
           break;
+      }
+    });
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if(UserInfo.updateContinueWidget) {
+        UserInfo.updateContinueWidget = false;
+        setState(() {});
       }
     });
   }
@@ -82,6 +106,9 @@ class EnterSceneState extends State<EnterScene> {
         home: RawKeyboardListener(
           focusNode: _focusNode,
           onKey: (RawKeyEvent event) {
+            if(!useKeyInput) {
+              return;
+            }
             if (event is RawKeyDownEvent) {
               if (event.logicalKey == LogicalKeyboardKey.keyR) {
                 updateUI();
@@ -99,13 +126,13 @@ class EnterSceneState extends State<EnterScene> {
                 }
               }(),
               builder: (context, snapshot) {
-                if(uiNullable == null && AppLocalizations.of(context) != null) {
-                  uiNullable = MainUI(onUpdate: updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this);
-                  ui = uiNullable!;
-                  ui.loadSetting();
-                }
-
                 if(snapshot.connectionState == ConnectionState.done) {
+                  if(uiNullable == null && AppLocalizations.of(context) != null) {
+                    uiNullable = MainUI(onUpdate: updateUI, appLocalizations: AppLocalizations.of(context)!, enterSceneState: this, context: context);
+                    ui = uiNullable!;
+                    ui.loadSetting();
+                  }
+
                   screenSize = MediaQuery.of(context).size;
 
                   ui.setScreenSize(screenSize);

@@ -1,6 +1,10 @@
 // ignore_for_file: file_names
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:slitherlink_project/l10n/app_localizations.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../ThemeColor.dart';
@@ -22,17 +26,18 @@ class GameSceneSquare extends StatefulWidget {
 }
 
 class GameStateSquare extends State<GameSceneSquare> {
-  //GameSceneStateSquareProvider({this.isContinue = false, this.loadKey = ""});
+  ///ONLY-DEBUG variables
+  bool extractData = false;
+  final FocusNode _focusNode = FocusNode();
+  bool useKeyInput = false;
+  ///ONLY-DEBUG variables
+
   //provider for using setState in other class
   late SquareProvider _provider;
   late ReadSquare readSquare;
+  Timer? _shutdownTimer;
 
-  GameStateSquare({this.isContinue = false, this.loadKey = ""}) {
-    // SquareProviderProvider 객체 초기화
-    _provider = SquareProvider(isContinue: isContinue);
-    // ReadSquare 객체 초기화
-    readSquare = ReadSquare(squareProvider: _provider);
-  }
+  GameStateSquare({this.isContinue = false, this.loadKey = ""});
 
   //check complete puzzle;
   bool isComplete = false;
@@ -43,20 +48,52 @@ class GameStateSquare extends State<GameSceneSquare> {
 
   //UI
   late Size screenSize;
-  bool showAppbar = false;
+  late String appbarMode;
+  bool showAppbar = true;
+  GameUI? uiNullable;
   late GameUI ui;
   Map<String, Color> settingColor = ThemeColor().getColor();
 
+  void debugSetting() {
+    if(UserInfo.isDebug) {
+      extractData = true;
+      useKeyInput = true;
+    }
+    else {
+      extractData = false;
+      useKeyInput = false;
+    }
+  }
 
   @override
   void initState() {
+    debugSetting();
+
     isContinue = widget.isContinue;
+    appbarMode = UserInfo.getAppbarMode();
+    _focusNode.requestFocus();
 
     //print("GameSceneStateSquareProvider is start, isContinue : ${widget.isContinue}");
     super.initState();
-    _provider = SquareProvider(isContinue: isContinue);
-    ui = GameUI(_provider);
+    _provider = SquareProvider(isContinue: isContinue, context: context, gameStateSquare: this, loadKey: widget.loadKey);
+    readSquare = ReadSquare(squareProvider: _provider, context: context);
     loadPuzzle();
+
+    _shutdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      //print("_provider.shutdown : ${_provider.shutdown}, mounted : $mounted, canPop : ${Navigator.canPop(context)}");
+      if (_provider.shutdown && mounted && Navigator.canPop(context)) {
+        setState(() {
+          Navigator.of(context).pop();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // 타이머 취소
+    _shutdownTimer?.cancel();
+    super.dispose();
   }
 
   void loadPuzzle() async {
@@ -84,6 +121,11 @@ class GameStateSquare extends State<GameSceneSquare> {
 
   @override
   Widget build(BuildContext context) {
+    if(uiNullable == null) {
+      uiNullable = GameUI(squareProvider: _provider, context: context, appLocalizations: AppLocalizations.of(context)!);
+      ui = uiNullable!;
+    }
+
     return ChangeNotifierProvider( // ChangeNotifierProvider 사용
       create: (context) => _provider, //ChangeNotifier class
       child: Consumer<SquareProvider>(
@@ -94,62 +136,110 @@ class GameStateSquare extends State<GameSceneSquare> {
 
           return Scaffold(
             appBar: !showAppbar ? null : ui.getGameAppBar(context, settingColor["appBar"]!, settingColor["appIcon"]!),
-            body: GestureDetector(
-              onTap: () {
-                setState(() {
-                  showAppbar = !showAppbar;
-                });
+            body: RawKeyboardListener(
+              focusNode: _focusNode,
+              onKey: (RawKeyEvent event) {
+                if(!useKeyInput) {
+                  return;
+                }
+                if (event is RawKeyDownEvent) {
+                  //apply answer to field
+                  if (event.logicalKey == LogicalKeyboardKey.keyA) {
+                    setState(() {
+                      _provider.loadLabel(answer);
+                    });
+                  } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
+                    setState(() {
+                      _provider.showComplete(context);
+                    });
+                  }
+                }
               },
-              child: AbsorbPointer(
-                absorbing: isComplete,
-                child: Stack(
-                  children: [
-                    Container(
-                      color: settingColor["background"],
-                      child: InteractiveViewer(
-                        boundaryMargin: EdgeInsets.symmetric(
-                          horizontal: screenSize.width * 0.4,
-                          vertical: screenSize.height * 0.4,
-                        ),
-                        constrained: false,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 20),
-                          child: Column(
-                            //provider와 ChangeNotifier를 통해 접근
-                            children: _provider.getSquareField(),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    if(appbarMode.compareTo("fixed") != 0) {
+                      showAppbar = !showAppbar;
+                    }
+                  });
+                },
+                child: AbsorbPointer(
+                  absorbing: isComplete,
+                  child: Stack(
+                    children: [
+                      Container(
+                        color: settingColor["background"],
+                        child: InteractiveViewer(
+                          boundaryMargin: EdgeInsets.symmetric(
+                            horizontal: screenSize.width * 0.4,
+                            vertical: screenSize.height * 0.4,
+                          ),
+                          constrained: false,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 20),
+                            child: Column(
+                              //provider와 ChangeNotifier를 통해 접근
+                              children: _provider.getSquareField().isNotEmpty
+                                  ? _provider.getSquareField()
+                                  : [
+                                    SizedBox(
+                                      width: screenSize.width,
+                                      height: screenSize.height,
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: const [CircularProgressIndicator()],
+                                      ),
+                                    ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      width: 70,
-                      height: 70,
-                      left: UserInfo.getButtonAlignment() ? 20
-                          : ui.getScreenSize().width - 90, //margin
-                      bottom: 110,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          await _provider.undo();
-                        },
-                        child: const Icon(Icons.undo),
+                      Positioned(
+                        width: 70,
+                        height: 70,
+                        left: UserInfo.getButtonAlignment() ? 20
+                            : ui.getScreenSize().width - 90, //margin
+                        bottom: 110,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await _provider.undo();
+                          },
+                          child: const Icon(Icons.undo),
+                        ),
                       ),
-                    ),
-                    Positioned(
-                      width: 70,
-                      height: 70,
-                      left: UserInfo.getButtonAlignment() ? 20
-                          : ui.getScreenSize().width - 90, //margin
-                      bottom: 20,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          await _provider.redo();
-                        },
-                        child: const Icon(Icons.redo),
+                      Positioned(
+                        width: 70,
+                        height: 70,
+                        left: UserInfo.getButtonAlignment() ? 20
+                            : ui.getScreenSize().width - 90, //margin
+                        bottom: 20,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            await _provider.redo();
+                          },
+                          child: const Icon(Icons.redo),
+                        ),
                       ),
-                    ),
-                  ],
-                )
+                      if(extractData)
+                        Positioned(
+                          width: 70,
+                          height: 70,
+                          left: UserInfo.getButtonAlignment() ? 20
+                              : ui.getScreenSize().width - 90, //margin
+                          bottom: 200,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await _provider.extractData();
+                            },
+                            child: const Icon(Icons.upload_rounded),
+                          ),
+                        ),
+                    ],
+                  )
+                ),
               ),
             ),
           );

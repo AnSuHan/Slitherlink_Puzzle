@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../provider/SquareProvider.dart';
@@ -13,11 +14,15 @@ class ReadSquare {
   late ReadPuzzleData read;
   late List<List<int>> lineData;
   final SquareProvider squareProvider;
+  final BuildContext context;
 
-  ReadSquare({required this.squareProvider}) {
+  ReadSquare({
+    required this.squareProvider,
+    required this.context,
+  }) {
     puzzle = []; // 초기화
     lineData = [];
-    read = ReadPuzzleData();
+    read = ReadPuzzleData(context: context);
   }
 
   void setPuzzle(List<List<SquareBox>> puzzle) {
@@ -40,7 +45,7 @@ class ReadSquare {
     try {
       read;
     } catch (e) {
-      read = ReadPuzzleData();
+      read = ReadPuzzleData(context: context);
     }
 
     //get answer data

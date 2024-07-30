@@ -1,17 +1,33 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../MakePuzzle/ReadSquare.dart';
+import '../Platform/ExtractData.dart'
+  if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
+//안드로이드 빌드 시 삭제 필수
+//import '../Platform/ExtractDataWeb.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
+import '../User/UserInfo.dart';
 import '../widgets/SquareBox.dart';
 
 class SquareProvider with ChangeNotifier {
   late ReadSquare readSquare;
+  late BuildContext context;
+  final String loadKey;
 
-  SquareProvider({this.isContinue = false}) {
-    readSquare = ReadSquare(squareProvider: this);
+  final GameStateSquare gameStateSquare;
+  bool shutdown = false;  //showdialog에서 ok를 눌러 GameSceneSquare을 닫아야 하는 경우
+
+  SquareProvider({
+    this.isContinue = false,
+    required this.context,
+    required this.gameStateSquare,
+    required this.loadKey,
+  }) {
+    readSquare = ReadSquare(squareProvider: this, context: context);
   }
 
   ThemeColor themeColor = ThemeColor();
@@ -30,7 +46,6 @@ class SquareProvider with ChangeNotifier {
     squareField = await buildSquarePuzzleAnswer(answer, isContinue: isContinue);
     readSquare.setPuzzle(puzzle);
     notifyListeners();
-    setLineColor(2, 4, "down", 3);
   }
 
   void restart() async {
@@ -61,6 +76,8 @@ class SquareProvider with ChangeNotifier {
 
   Future<void> refreshSubmit() async {
     submit = await readSquare.readSubmit(puzzle);
+    // ignore: use_build_context_synchronously
+    checkCompletePuzzle(context);
     notifyListeners();
   }
 
@@ -85,6 +102,7 @@ class SquareProvider with ChangeNotifier {
   }
 
   void checkCompletePuzzle(BuildContext context) {
+    //showComplete(context);
     //refresh submit
     for(int i = 0 ; i < puzzle.length ; i++) {
       for(int j = 0 ; j < puzzle[i].length ; j++) {
@@ -276,10 +294,13 @@ class SquareProvider with ChangeNotifier {
   }
 
   void showComplete(BuildContext context) {
+    gameStateSquare.isComplete = true;
+    UserInfo.clearPuzzle(loadKey);
     // Show AlertDialog if isComplete is true
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showDialog(
         context: context,
+        barrierDismissible: false,
         builder: (BuildContext context) {
           return AlertDialog(
             title: const Text('Game Completed'),
@@ -288,7 +309,10 @@ class SquareProvider with ChangeNotifier {
               TextButton(
                 onPressed: () {
                   Navigator.of(context).pop();  //close popup
-                  Navigator.of(context).pop();  //close GameScene
+                  shutdown = true;
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    Navigator.of(context).popUntil((route) => route.isFirst);
+                  });
                 },
                 child: const Text('OK'),
               ),
@@ -399,6 +423,46 @@ class SquareProvider with ChangeNotifier {
 
   ///**********************************************************************************
   ///**********************************************************************************
+  ///************************* about extract puzzle data ******************************
+  ///**********************************************************************************
+  ///**********************************************************************************
+  Future<void> extractData() async {
+    submit = await readSquare.readSubmit(puzzle);
+
+    String temp = "[";
+    for(int i = 0 ; i < submit.length ; i++) {
+      temp += "[";
+      for(int j = 0 ; j < submit[i].length ; j++) {
+        temp += submit[i][j].toString();
+
+        if(j < submit[i].length - 1) {
+          temp += ", ";
+        }
+      }
+      temp += "],\n";
+    }
+
+    temp = "${temp.substring(0, temp.length - 2)}]";
+    ExtractData().saveStringToFile(temp, "filename.txt");
+
+    /*
+    if(kIsWeb) {
+      //웹 플랫폼
+      //안드로이드 빌드 시, 웹 전용 저장 함수 주석 처리 필수
+      // + import '../Platform/ExtractDataWeb.dart'; 부분도 주석 처리 필수
+      //ExtractDataWeb().saveStringToFileInWeb(temp, "filename.txt");
+    } else {
+      //모든 플랫폼
+      //웹 빌드 시, 다른 플랫폼 용 함수 주석 처리 필수
+      //안드로이드로 생성된 파일은 PC에서만 확인 가능하다
+      //경로 : 스마트폰\내장 저장공간\Android\data\slitherlink.com.puzzle.glorygem.slitherlink_project\files
+      ExtractData().saveStringToFile(temp, "filename.txt");
+    }
+     */
+  }
+
+  ///**********************************************************************************
+  ///**********************************************************************************
   ///****************************** about undo & redo ******************************
   ///**********************************************************************************
   ///**********************************************************************************
@@ -472,8 +536,8 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   ///**********************************************************************************
   void loadLabel(List<List<int>> submit) {
-    this.submit = submit;
-    applyUIWithAnswer(puzzle, submit);
+    this.submit = submit.map((innerList) => List<int>.from(innerList)).toList();
+    applyUIWithAnswer(puzzle, this.submit);
     notifyListeners();
   }
 

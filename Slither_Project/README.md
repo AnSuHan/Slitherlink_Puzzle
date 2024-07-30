@@ -21,3 +21,5 @@ loading submit key (continue) : shape_size_progress_continue (ex. square_small_0
 game label key (save and load) : shape_size_progress_color (ex. square_small_0_Red, square_small_0_Green, square_small_0_Blue)
 
 setting key (for app setting) : setting
+
+Square_small.json : item's length should be 1410 (like test form) 

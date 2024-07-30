@@ -14,19 +14,19 @@ class Splash extends StatefulWidget {
 }
 
 class SplashState extends State<Splash> {
-  late Future<void> _initializeFirebase;
+  late Future<void> _initializeSetting;
 
   @override
   void initState() {
     super.initState();
-    _initializeFirebase = firebase(); // Firebase 초기화 한 번만 호출
+    _initializeSetting = loading(); // Firebase 초기화 한 번만 호출
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: FutureBuilder(
-        future: _initializeFirebase,
+        future: _initializeSetting,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
@@ -48,6 +48,11 @@ class SplashState extends State<Splash> {
     );
   }
 
+  Future<void> loading() async {
+    await firebase();
+    await setUserInfo();
+  }
+
   Future<void> firebase() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -56,5 +61,9 @@ class SplashState extends State<Splash> {
     if(FirebaseAuth.instance.currentUser != null) {
       UserInfo.authState = true;
     }
+  }
+
+  Future<void> setUserInfo() async {
+    await UserInfo.init();
   }
 }

@@ -1,206 +1,215 @@
-import 'dart:collection';
+// ignore_for_file: file_names
+import 'dart:convert';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 import '../User/UserInfo.dart';
 
 class Answer {
+  bool isFinishInit = false;
+
   Answer({
     BuildContext? context
-  });
-
-  List<List<List<bool>>> squareAnswer = [
-    //show edge test
-    [
-      List.filled(20, true), List.filled(21, true), List.filled(20, true), List.filled(21, true), List.filled(20, true),
-      List.filled(21, true), List.filled(20, true), List.filled(21, true), List.filled(20, true), List.filled(21, true),
-      List.filled(20, true), List.filled(21, true), List.filled(20, true), List.filled(21, true), List.filled(20, true),
-      List.filled(21, true), List.filled(20, true), List.filled(21, true), List.filled(20, true), List.filled(21, true),
-      List.filled(20, true)
-    ],
-    //square_small_0
-    [
-      [false, false, true, false, true, true, true, true, true, false, false, true, false, true, true, true, true, false, false, true],
-      [false, false, true, true, true, false, false, false, false, true, false, true, true, true, false, false, false, true, false, true, true],
-      [false, true, false, false, true, true, false, true, false, true, true, false, false, true, false, true, true, false, true, false],
-      [false, true, false, true, false, false, true, true, true, false, false, false, true, false, true, true, false, false, true, false, true],
-      [false, true, false, true, true, false, true, false, false, true, true, false, true, true, false, false, true, true, false, true],
-      [false, false, true, false, false, true, false, false, true, true, false, true, false, false, false, true, true, false, false, true, false],
-      [true, true, false, true, false, true, true, true, false, true, false, true, true, false, false, false, true, true, false, true],
-      [true, false, false, true, true, false, false, false, false, false, true, false, false, true, false, true, false, false, true, false, true],
-      [true, false, true, false, false, true, true, false, true, true, false, true, false, true, false, true, false, false, false, true],
-      [false, true, true, false, true, true, false, true, true, false, false, true, true, false, true, false, true, false, true, true, false],
-      [true, false, false, false, true, false, false, false, false, true, false, false, false, false, true, false, true, true, false, false],
-      [true, false, true, false, false, false, false, true, true, true, true, true, true, false, false, true, false, false, false, true, false],
-      [false, false, false, true, true, false, true, false, false, false, false, false, false, true, true, false, false, true, true, false],
-      [true, false, true, true, false, true, true, false, true, true, true, true, true, true, false, false, false, true, false, false, false],
-      [true, false, true, false, false, false, false, false, false, false, true, false, false, false, false, true, false, true, true, false],
-      [false, true, false, false, false, true, true, false, true, true, false, false, true, true, false, true, true, false, false, true, false],
-      [false, false, true, false, true, false, true, false, true, false, true, true, false, false, false, false, true, true, false, true],
-      [false, true, true, true, true, false, false, true, false, false, true, false, false, true, false, true, false, false, true, false, true],
-      [false, false, false, true, false, true, true, false, true, false, true, false, false, true, false, true, true, false, false, true],
-      [false, true, true, false, false, true, false, false, true, true, false, true, false, false, true, false, false, true, true, true, false],
-      [false, true, false, false, false, true, true, true, false, true, true, false, false, false, true, true, true, false, true, false]
-    ],
-    //square_small_1
-    [
-      [false, true, true, true, true, false, false, true, true, false, false, true, true, true, false, false, true, true, true, false],
-      [false, true, false, false, false, true, false, true, false, true, false, true, false, false, true, false, true, false, false, true, false],
-      [true, false, true, true, false, true, false, false, true, false, false, false, true, true, false, false, false, true, true, false],
-      [true, false, true, false, true, false, true, true, true, false, false, true, true, false, false, false, true, true, false, false, false],
-      [true, false, false, false, true, false, true, false, true, false, true, false, true, true, true, true, false, true, false, true],
-      [false, true, true, false, false, true, false, false, false, true, true, false, false, false, false, false, false, false, true, true, true],
-      [true, false, true, true, false, false, true, false, false, false, false, true, true, true, false, true, true, false, true, false],
-      [true, false, false, false, true, true, true, true, false, true, true, true, false, false, true, true, false, true, false, false, true],
-      [true, false, false, false, false, true, false, true, false, true, false, true, true, false, true, false, true, false, false, true],
-      [false, true, false, false, true, false, false, false, true, false, false, false, false, true, false, false, true, false, false, true, false],
-      [false, true, true, false, true, true, true, false, true, true, true, false, true, false, true, false, false, true, false, false],
-      [false, false, false, true, false, false, false, true, false, false, false, true, true, false, true, true, true, true, true, true, false],
-      [true, true, true, false, true, false, true, false, false, true, false, false, false, true, false, false, true, false, false, true],
-      [true, false, false, false, true, true, true, false, false, true, true, true, true, true, false, true, false, false, true, false, true],
-      [false, true, false, true, false, true, false, false, true, false, true, false, false, false, true, false, false, true, false, false],
-      [true, true, true, true, false, false, false, false, true, false, false, false, true, true, true, false, false, true, false, false, true],
-      [false, false, false, true, true, false, true, true, false, true, true, false, true, false, true, true, false, false, false, true],
-      [true, true, true, false, false, true, true, false, false, true, false, true, false, false, false, false, true, true, false, true, false],
-      [false, false, false, false, true, false, true, true, false, true, false, true, true, true, false, false, false, true, false, true],
-      [true, true, true, false, true, false, false, false, true, false, true, false, false, false, true, false, true, false, true, false, true],
-      [true, false, true, true, false, false, false, false, true, true, false, false, false, false, true, true, false, false, true, true]
-    ],
-    //square_small_2
-    [
-      [true, false, false, true, false, true, true, true, false, false, false, true, true, true, false, false, false, true, true, true],
-      [true, true, false, true, true, true, false, false, true, false, false, true, false, false, true, false, false, true, false, false, true],
-      [false, true, true, false, false, true, true, false, true, true, false, true, true, false, false, true, false, true, true, false],
-      [true, false, false, false, true, false, false, true, false, false, true, false, false, true, true, true, true, false, false, true, true],
-      [true, false, true, true, false, true, false, false, true, true, false, true, true, false, true, false, true, false, false, false],
-      [false, true, true, false, false, true, true, true, true, false, false, true, false, false, false, false, false, true, false, true, true],
-      [false, false, true, true, true, false, true, false, false, true, true, false, true, false, true, true, true, false, true, false],
-      [false, true, false, false, false, false, false, false, true, true, false, false, true, true, true, false, false, false, true, false, true],
-      [true, false, true, false, false, true, true, false, false, true, false, true, false, true, false, true, true, false, false, true],
-      [true, false, true, true, false, true, false, true, true, false, true, true, false, false, false, true, false, true, true, true, false],
-      [true, false, false, true, false, true, false, false, true, true, false, true, true, true, true, false, false, true, false, true],
-      [false, true, true, false, true, false, true, true, false, false, false, false, false, false, false, false, false, false, false, false, true],
-      [false, false, true, false, true, true, false, true, false, false, true, false, false, true, true, true, true, false, true, true],
-      [false, true, false, true, false, false, false, false, true, false, true, true, false, true, false, false, false, true, true, false, false],
-      [true, false, true, false, false, true, true, false, true, false, false, true, true, false, true, true, false, false, true, true],
-      [true, false, true, false, false, true, false, true, false, true, true, false, false, false, true, false, true, true, false, false, true],
-      [true, false, true, true, true, false, true, false, false, false, true, false, true, true, false, false, false, true, true, false],
-      [false, true, false, false, false, false, true, false, false, true, false, true, true, false, false, false, true, false, false, true, true],
-      [true, false, true, false, true, false, true, true, false, true, false, false, true, false, true, false, true, true, true, false],
-      [true, false, true, true, true, true, false, false, true, false, true, true, false, true, true, true, false, false, false, false, true],
-      [true, true, false, true, false, true, true, true, false, false, true, false, false, true, false, true, true, true, true, true]
-    ],
-    //square_small_3
-    [
-      [true, true, true, true, true, false, true, false, false, true, false, true, true, true, false, true, true, true, true, false],
-      [true, false, false, false, false, true, true, true, false, true, true, true, false, false, true, true, false, false, false, true, false],
-      [false, true, true, true, false, false, false, true, true, false, false, true, true, false, false, true, true, false, false, true],
-      [true, true, false, false, true, true, true, false, false, false, true, false, false, true, true, false, false, true, false, false, true],
-      [false, false, true, true, false, false, true, false, true, false, false, true, true, false, true, false, true, false, true, false],
-      [true, true, true, false, false, true, false, true, true, true, true, true, false, false, false, true, true, false, true, true],
-      [true, false, true, true, false, true, false, true, false, false, true, false, true, false, true, false, false, true, false],
-      [false, false, false, false, true, false, true, false, false, true, false, false, true, true, true, false, true, true, false, true, true],
-      [true, true, true, false, true, false, true, true, true, false, true, true, false, false, false, true, false, false, true, false],
-      [true, false, false, true, false, true, false, false, false, false, true, false, false, true, true, true, false, true, true, false, true],
-      [true, true, false, true, true, false, true, false, true, true, false, true, false, true, false, false, true, false, true, true],
-      [false, false, true, false, false, false, true, true, true, false, false, true, true, false, false, true, true, false, false, false],
-      [true, true, false, true, true, false, false, false, false, true, true, false, false, false, true, false, true, true, true, true],
-      [true, false, false, true, false, true, true, true, true, true, false, false, true, false, true, false, false, false, false, true],
-      [true, false, true, false, false, true, false, false, false, false, true, false, true, true, false, true, true, true, true, false],
-      [false, true, true, false, false, false, false, true, true, true, true, true, false, false, false, true, false, false, false, true, true],
-      [false, false, false, true, true, false, true, false, true, false, false, true, true, false, true, false, true, true, true, false],
-      [false, true, true, true, false, true, true, false, false, false, true, false, false, true, true, false, true, false, false, false, true],
-      [false, false, false, true, false, true, false, true, true, false, true, true, false, false, false, false, false, true, false, false],
-      [false, true, true, false, true, false, false, true, false, true, false, false, true, true, true, false, true, true, true, false, true],
-      [false, true, false, false, true, true, true, false, false, true, true, true, false, true, false, false, true, false, true, true]
-    ],
-    //square_small_4
-    [
-      [true, true, true, false, true, true, false, true, true, true, true, true, true, true, true, true, true, true, true, false],
-      [true, false, false, true, true, false, true, true, false, false, false, false, false, false, false, false, false, false, false, true, false],
-      [true, true, false, true, false, false, true, false, true, true, true, true, true, false, true, true, true, true, false, true],
-      [false, false, true, false, false, false, false, false, true, false, false, false, false, true, true, false, false, false, true, false, true],
-      [false, false, false, true, true, true, false, false, true, true, true, true, false, false, true, true, false, false, true, false],
-      [false, false, true, true, false, false, true, false, false, false, false, false, true, true, false, false, true, false, false, true, true],
-      [true, true, false, true, true, false, true, false, true, true, true, false, false, true, true, false, true, false, true, false],
-      [true, false, false, false, false, true, false, true, true, false, false, true, true, false, false, true, false, true, true, false, true],
-      [false, true, false, true, true, false, true, false, false, false, false, false, true, true, false, false, false, false, false, true],
-      [true, true, true, true, false, false, true, false, true, false, false, true, false, false, true, true, false, true, true, true, false],
-      [false, false, true, false, true, false, true, false, true, false, true, false, true, true, false, false, true, false, false, true],
-      [true, true, false, false, true, true, false, true, false, true, true, false, true, false, false, true, true, false, true, false, true],
-      [false, true, true, false, false, true, false, false, true, false, true, false, true, false, true, false, false, true, false, true],
-      [true, false, false, true, true, false, true, true, true, false, false, true, false, true, true, false, true, true, false, true, false],
-      [false, false, true, false, true, false, true, false, false, true, false, true, true, false, true, true, false, false, true, false],
-      [true, false, true, false, false, true, false, false, true, true, true, false, false, false, false, false, false, true, true, false, false],
-      [true, false, false, true, true, false, false, true, false, false, true, false, true, true, true, true, true, false, true, true],
-      [false, true, true, true, false, false, false, true, false, true, false, true, true, false, false, false, false, false, false, false, true],
-      [true, false, false, false, true, true, false, false, true, false, false, true, false, true, false, false, true, false, true, false],
-      [true, false, true, true, true, false, true, true, true, false, false, false, false, true, true, false, true, true, true, true, true],
-      [true, true, false, true, false, false, true, false, true, true, true, true, true, false, true, true, false, true, false, true]
-    ],
-  ];
-
-  final List<List<int>> directions = [
-    [-1, 0], [1, 0], [0, -1], [0, 1],  // up, down, left, right
-    [-1, -1], [-1, 1], [1, -1], [1, 1]  // diagonals
-  ];
-
-  bool isValid(int row, int col, List<List<bool>> matrix) {
-    return row >= 0 && row < matrix.length && col >= 0 && col < matrix[0].length;
+  }) {
+    ///hot load don't apply changes in json files
+    initPuzzleAll().then((_) {
+      isFinishInit = true;
+      if(UserInfo.isDebug) {
+        checkDuplicateAll();
+        checkCycleSquareAll();
+      }
+    });
   }
 
-  bool dfs(int row, int col, List<List<bool>> matrix, Set<String> visited, int parentRow, int parentCol) {
-    String key = '$row,$col';
-    visited.add(key);
+  List<List<List<bool>>> squareSmallAnswer = [];
 
-    for (var direction in directions) {
-      int newRow = row + direction[0];
-      int newCol = col + direction[1];
+  Future<void> initPuzzleAll() async {
+    List<String> type = ["square"];
+    List<String> size = ["small"];
 
-      // Skip the parent cell to avoid trivial cycle
-      if (newRow == parentRow && newCol == parentCol) continue;
+    for(int i = 0 ; i < type.length ; i++) {
+      for(int j = 0 ; j < size.length ; j++) {
+        await initPuzzle(type[i], size[i]);
+      }
+    }
+  }
 
-      if (isValid(newRow, newCol, matrix) && matrix[newRow][newCol]) {
-        String newKey = '$newRow,$newCol';
-        if (visited.contains(newKey)) {
-          return true;  // Cycle detected
+  Future<void> initPuzzle(String type, String size) async {
+    String filename = "lib/Answer/";
+    switch(type) {
+      case "square":
+        switch(size) {
+          case "small":
+            filename += "Square_small.json";
+            break;
         }
-        if (dfs(newRow, newCol, matrix, visited, row, col)) {
-          return true;  // Cycle detected in recursion
+        break;
+    }
+
+    String jsonString = await rootBundle.loadString(filename);
+    Map<String, dynamic> jsonData = jsonDecode(jsonString);
+
+    jsonData.forEach((key, value) {
+      if (!key.endsWith("_test")) {
+        // 데이터 변환: 1 -> true, 0 -> false
+        List<List<bool>> convertedList = (value as List)
+            .map((list) => (list as List)
+            .map((item) => item == 1 ? true : false).toList()).toList();
+        squareSmallAnswer.add(convertedList);
+      }
+    });
+  }
+
+  void checkCycleSquareAll() {
+    List<String> size = ["small"];
+    List<List<List<bool>>> squareAnswer = [];
+    List<bool> squareCycle = [];
+
+    for(int i = 0 ; i < size.length ; i++) {
+      switch(size[i]) {
+        case "small":
+          squareAnswer = squareSmallAnswer.map((list2D) => list2D.map((list1D) => List<bool>.from(list1D)).toList()).toList();
+          break;
+      }
+
+      //check cycle
+      int index;  //each puzzle
+      for(index = 0 ; index < squareAnswer.length ; index++) {
+        squareCycle.add(checkCycleSquare(squareAnswer[index]));
+      }
+      // ignore: avoid_print
+      print("check square_${size[i]} Cycle : $squareCycle");
+    }
+  }
+
+  bool checkCycleSquare(List<List<bool>> squareAnswer) {
+    // 방문 상태를 저장할 배열
+    List<List<bool>> visited = List.generate(
+        squareAnswer.length, (i) => List.generate(squareAnswer[i].length, (_) => false)
+    );
+
+    int? startRow, startCol;
+    bool found = false;
+    // DFS는 한 번만 호출 (재귀 호출 제외)
+    for (int i = 0; i < squareAnswer.length; i++) {
+      for (int j = 0; j < squareAnswer[i].length; j++) {
+        if (squareAnswer[i][j] && !visited[i][j]) {
+          startRow = i;
+          startCol = j;
+          found = true;
+          break;
         }
       }
+      if(found) {
+        break;
+      }
+    }
+
+    if (dfs(squareAnswer, visited, startRow!, startCol!, -1, -1)) {
+      return true;
     }
 
     return false;
   }
 
-  bool hasCycle(List<List<bool>> matrix) {
-    Set<String> visited = HashSet<String>();
+  bool dfs(List<List<bool>> squareAnswer, List<List<bool>> visited, int x, int y, int parentX, int parentY) {
+    //print("dfs : $x, $y | $parentX, $parentY");
+    int rows = squareAnswer.length;
 
-    for (int row = 0; row < matrix.length; row++) {
-      for (int col = 0; col < matrix[0].length; col++) {
-        if (matrix[row][col]) {
-          String key = '$row,$col';
-          if (!visited.contains(key)) {
-            if (dfs(row, col, matrix, visited, -1, -1)) {
-              return true;
-            }
+    // 방향 벡터 (상, 하, 좌, 우)
+    List<List<int>> evenDirections = [
+      [-1, 0], // 상1
+      [-1, 1], // 상2
+      [1, 0],  // 하1
+      [1, 1],  // 하2
+      [0, -1], // 좌
+      [0, 1]   // 우
+    ];
+
+    List<List<int>> oddDirections = [
+      [-2, 0],  // 상
+      [2, 0],   // 하
+      [-1, -1], // 좌1
+      [1, -1],  // 좌2
+      [-1, 0],  // 우1
+      [1, 0],   // 우2
+    ];
+
+    visited[x][y] = true;
+
+    //방문한 라인을 제거하면 direction은 반드시 하나로 정해진다
+    for (var direction in x % 2 == 0 ? evenDirections : oddDirections) {
+      int newX = x + direction[0];
+      int newY = y + direction[1];
+
+      // 경계를 넘어가거나 현재 위치와 같은 위치로 이동하지 않도록 체크
+      if (newX < 0 || newX >= rows || newY < 0 || newY >= (newX < squareAnswer.length ? squareAnswer[newX].length : 0)) {
+        continue;
+      }
+
+      if (squareAnswer[newX][newY]) {
+        if (!visited[newX][newY]) {
+          // 재귀 호출
+          if (dfs(squareAnswer, visited, newX, newY, x, y)) {
+            return true;
           }
+        } else if (newX != parentX || newY != parentY) {
+          // 이미 방문한 노드가 부모 노드가 아닌 경우 사이클 발견
+          return true;
         }
       }
     }
 
     return false;
+  }
+
+  Future<void> checkDuplicateAll() async {
+    await checkDuplicate(squareSmallAnswer);
+  }
+
+  Future<void> checkDuplicate(List<List<List<bool>>> answer) async {
+    List<List<double>> matrix = List.generate(answer.length, (_) => List.filled(answer.length, 0.0));
+    for (int i = 0; i < answer.length; i++) {
+      for (int j = i + 1; j < answer.length; j++) {
+        matrix[i][j] = calculateMatchPercentage(answer[i], answer[j]);
+      }
+    }
+
+    for(int i = 0 ; i < answer.length ; i++) {
+      matrix[i][i] = 100.0;
+    }
+
+    for (List<double> row in matrix) {
+      // ignore: avoid_print
+      print(row.map((e) => e.toStringAsFixed(2)).toList());
+    }
+  }
+
+  double calculateMatchPercentage(List<List<bool>> list1, List<List<bool>> list2) {
+    int totalCount = 1;
+    int matchCount = 0;
+
+    for (int i = 0; i < list1.length; i++) {
+      for (int j = 0; j < list1[i].length; j++) {
+        totalCount++;
+        if (list1[i][j] == list2[i][j]) {
+          matchCount++;
+        }
+      }
+    }
+
+    return (matchCount / totalCount) * 100;
   }
 
   ///parameter is always EN
-  bool checkRemainPuzzle(BuildContext context, String shape, String size) {
+  Future<bool> checkRemainPuzzle(BuildContext context, String shape, String size) async {
     bool rtValue = false;
     String key = "";
 
     if(shape.compareTo("square") == 0 && size.compareTo("small") == 0) {
       key = "square_small";
-      if(squareAnswer.length - 1 > UserInfo.getProgress(key)) {
+      if(squareSmallAnswer.length - 1 > UserInfo.getProgress(key)) {
         rtValue = true;
       }
     }
@@ -208,10 +217,18 @@ class Answer {
     return rtValue;
   }
 
-  List<List<bool>> getSquare(int index) {
-    if(index < squareAnswer.length) {
-      return squareAnswer[index];
+  Future<List<List<bool>>> getSquare(int index) async {
+    await _waitForInitialization();
+
+    if(index < squareSmallAnswer.length) {
+      return squareSmallAnswer[index];
     }
     return [];
+  }
+
+  Future<void> _waitForInitialization() async {
+    while (!isFinishInit) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
   }
 }
