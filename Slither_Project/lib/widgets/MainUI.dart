@@ -854,6 +854,10 @@ class MainUI {
     if(progressKey.isEmpty) {
       progressKey = progressPuzzle[0];
     }
+    //when complete puzzle in continue
+    if(!progressPuzzle.contains(progressKey)) {
+      progressKey = progressPuzzle[0];
+    }
 
     return DropdownButton(items: progressPuzzle
         .map((e) => DropdownMenuItem(
