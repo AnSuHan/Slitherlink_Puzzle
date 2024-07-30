@@ -4,9 +4,9 @@ import 'dart:html' as html;
 import 'dart:math';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
-class ExtractDataWeb {
+class ExtractData {
   // 웹 플랫폼에서 데이터를 파일로 저장하고 다운로드하는 메소드
-  void saveStringToFileInWeb(String data, String fileName) {
+  Future<void> saveStringToFile(String data, String fileName) async {
     if(!kIsWeb) {
       // ignore: avoid_print
       print("kIsWeb in ExtractDataWeb");

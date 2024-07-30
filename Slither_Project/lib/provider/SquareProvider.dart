@@ -443,7 +443,9 @@ class SquareProvider with ChangeNotifier {
     }
 
     temp = "${temp.substring(0, temp.length - 2)}]";
+    ExtractData().saveStringToFile(temp, "filename.txt");
 
+    /*
     if(kIsWeb) {
       //웹 플랫폼
       //안드로이드 빌드 시, 웹 전용 저장 함수 주석 처리 필수
@@ -456,6 +458,7 @@ class SquareProvider with ChangeNotifier {
       //경로 : 스마트폰\내장 저장공간\Android\data\slitherlink.com.puzzle.glorygem.slitherlink_project\files
       ExtractData().saveStringToFile(temp, "filename.txt");
     }
+     */
   }
 
   ///**********************************************************************************
