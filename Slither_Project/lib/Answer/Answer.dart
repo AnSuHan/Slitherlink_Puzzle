@@ -15,7 +15,10 @@ class Answer {
     ///hot load don't apply changes in json files
     initPuzzleAll().then((_) {
       isFinishInit = true;
-      checkCycleSquareAll();
+      if(UserInfo.isDebug) {
+        checkDuplicateAll();
+        checkCycleSquareAll();
+      }
     });
   }
 
@@ -159,6 +162,44 @@ class Answer {
     }
 
     return false;
+  }
+
+  Future<void> checkDuplicateAll() async {
+    await checkDuplicate(squareSmallAnswer);
+  }
+
+  Future<void> checkDuplicate(List<List<List<bool>>> answer) async {
+    List<List<double>> matrix = List.generate(answer.length, (_) => List.filled(answer.length, 0.0));
+    for (int i = 0; i < answer.length; i++) {
+      for (int j = i + 1; j < answer.length; j++) {
+        matrix[i][j] = calculateMatchPercentage(answer[i], answer[j]);
+      }
+    }
+
+    for(int i = 0 ; i < answer.length ; i++) {
+      matrix[i][i] = 100.0;
+    }
+
+    for (List<double> row in matrix) {
+      // ignore: avoid_print
+      print(row.map((e) => e.toStringAsFixed(2)).toList());
+    }
+  }
+
+  double calculateMatchPercentage(List<List<bool>> list1, List<List<bool>> list2) {
+    int totalCount = 1;
+    int matchCount = 0;
+
+    for (int i = 0; i < list1.length; i++) {
+      for (int j = 0; j < list1[i].length; j++) {
+        totalCount++;
+        if (list1[i][j] == list2[i][j]) {
+          matchCount++;
+        }
+      }
+    }
+
+    return (matchCount / totalCount) * 100;
   }
 
   ///parameter is always EN
