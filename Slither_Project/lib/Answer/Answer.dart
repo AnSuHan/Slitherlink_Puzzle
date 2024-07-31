@@ -8,6 +8,7 @@ import '../User/UserInfo.dart';
 
 class Answer {
   bool isFinishInit = false;
+  bool showCycle = false;
 
   Answer({
     BuildContext? context
@@ -15,7 +16,8 @@ class Answer {
     ///hot load don't apply changes in json files
     initPuzzleAll().then((_) {
       isFinishInit = true;
-      if(UserInfo.isDebug) {
+      showCycle = UserInfo.debugMode["Answer_showCycle"]!;
+      if(showCycle) {
         checkDuplicateAll();
         checkCycleSquareAll();
       }

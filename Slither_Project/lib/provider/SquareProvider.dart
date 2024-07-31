@@ -57,19 +57,22 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void showHint(BuildContext context) async {
+  Future<void> showHint(BuildContext context) async {
     List<List<dynamic>> items = await checkCompletePuzzleCompletely(context);
     //print("hint items : $items");
     List<dynamic> item;
-    if(items.length > 1) {
-      item = items[Random().nextInt(items.length - 1)];
-    }
-    else {
-      item = items[0];
-    }
 
-    //print("hint item : $item");
-    setLineColor(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
+    if(items.isNotEmpty) {
+      if(items.length > 1) {
+        item = items[Random().nextInt(items.length - 1)];
+      }
+      else {
+        item = items.first;
+      }
+      //print("hint item : $item");
+
+      setLineColor(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
+    }
   }
 
   ///메소드에서 필요할 때마다 호출
@@ -158,6 +161,10 @@ class SquareProvider with ChangeNotifier {
   Future<List<List<dynamic>>> checkCompletePuzzleCompletely(BuildContext context) async {
     List<List<dynamic>> rtValue = [];
 
+    while(_isUpdating != 0) {
+      Future.delayed(const Duration(milliseconds: 50));
+      print("wait in check : $_isUpdating");
+    }
     submit = await readSquare.readSubmit(puzzle);
 
     String dir = "";
@@ -469,8 +476,8 @@ class SquareProvider with ChangeNotifier {
     }
     _isUpdating = 3;
 
-    answer = await readSquare.readSubmit(puzzle);
-    List<List<int>> lineData = answer.map((row) => List<int>.from(row)).toList();
+    submit = await readSquare.readSubmit(puzzle);
+    List<List<int>> lineData = submit.map((row) => List<int>.from(row)).toList();
 
     //when clicking square after click undo
     if(doPointer < doIndex) {
@@ -560,7 +567,6 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   ///update `puzzle` variable
   Future<void> updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) async {
-    print("============================================");
     while(_isUpdating != 0) {
       await Future.delayed(const Duration(milliseconds: 50));
     }

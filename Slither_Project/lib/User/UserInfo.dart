@@ -7,6 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class UserInfo {
   static bool isDebug = true;
+  static Map<String, bool> debugMode = {
+    "Answer_showCycle" : false,
+  };
 
   static bool authState = false;
   static Map<String, int> progress = {

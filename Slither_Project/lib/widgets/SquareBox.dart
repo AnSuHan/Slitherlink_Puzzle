@@ -30,12 +30,31 @@ class SquareBox extends StatefulWidget {
   SquareBoxStateProvider createState() => SquareBoxStateProvider();
 }
 
-class SquareBoxStateProvider extends State<SquareBox> {
+class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderStateMixin {
   //setting color
   Map<String, Color> settingColor = ThemeColor().getColor();
   ThemeColor themeColor = ThemeColor();
 
   String lastClick = "";
+
+  //for hint's animation
+  late AnimationController _controller;
+  late Animation<Color?> _colorAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _controller = AnimationController(
+      duration: const Duration(seconds: 1),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _colorAnimation = ColorTween(
+      begin: Colors.blue,
+      end: Colors.red,
+    ).animate(_controller);
+  }
 
   @override
   void didUpdateWidget(covariant SquareBox oldWidget) {
@@ -47,6 +66,12 @@ class SquareBoxStateProvider extends State<SquareBox> {
         widget.row != oldWidget.row ||
         widget.column != oldWidget.column) {
     }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -86,7 +111,6 @@ class SquareBoxStateProvider extends State<SquareBox> {
                 Container(
                   height: 10,
                   width: 50,
-                  color: setupColor(widget.up),
                   child: GestureDetector(
                     onTap: () async {
                       lastClick = "up";
@@ -109,21 +133,26 @@ class SquareBoxStateProvider extends State<SquareBox> {
                       await Provider.of<SquareProvider>(context, listen: false)
                           .updateSquareBox(row, column, up: up);
                     },
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
+                    child: AnimatedBuilder(
+                      animation: _colorAnimation,
+                      builder: (context, child) {
+                        return Container(
                           height: 10,
                           width: 50,
-                          color: setupColor(widget.up),
-                        ),
-                        if (widget.up == -4)
-                          const Icon(
-                            Icons.close,
-                            color: Colors.black,
-                            size: 10,
+                          color: widget.up == -3 ? _colorAnimation.value ?? Colors.transparent : setupColor(widget.up),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              if (widget.up == -4)
+                                const Icon(
+                                  Icons.close,
+                                  color: Colors.black,
+                                  size: 10,
+                                ),
+                            ],
                           ),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -144,7 +173,6 @@ class SquareBoxStateProvider extends State<SquareBox> {
                 !isFirstColumn ? Container() : Container(
                   height: 50,
                   width: 10,
-                  color: setupColor(widget.left),
                   child: GestureDetector(
                     onTap: () async {
                       lastClick = "left";
@@ -167,21 +195,26 @@ class SquareBoxStateProvider extends State<SquareBox> {
                       await Provider.of<SquareProvider>(context, listen: false)
                           .updateSquareBox(row, column, left: left);
                     },
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          height: 10,
-                          width: 50,
-                          color: setupColor(widget.left),
-                        ),
-                        if (widget.left == -4)
-                          const Icon(
-                            Icons.close,
-                            color: Colors.black,
-                            size: 10,
+                    child: AnimatedBuilder(
+                      animation: _colorAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          height: 50,
+                          width: 10,
+                          color: widget.left == -3 ? _colorAnimation.value ?? Colors.transparent : setupColor(widget.left),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              if (widget.left == -4)
+                                const Icon(
+                                  Icons.close,
+                                  color: Colors.black,
+                                  size: 10,
+                                ),
+                            ],
                           ),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -196,7 +229,6 @@ class SquareBoxStateProvider extends State<SquareBox> {
                 Container(
                   height: 50,
                   width: 10,
-                  color: setupColor(widget.right),
                   child: GestureDetector(
                     onTap: () async {
                       lastClick = "right";
@@ -219,21 +251,26 @@ class SquareBoxStateProvider extends State<SquareBox> {
                       await Provider.of<SquareProvider>(context, listen: false)
                           .updateSquareBox(row, column, right: right);
                     },
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
-                          height: 10,
-                          width: 50,
-                          color: setupColor(widget.right),
-                        ),
-                        if (widget.right == -4)
-                          const Icon(
-                            Icons.close,
-                            color: Colors.black,
-                            size: 10,
+                    child: AnimatedBuilder(
+                      animation: _colorAnimation,
+                      builder: (context, child) {
+                        return Container(
+                          height: 50,
+                          width: 10,
+                          color: widget.right == -3 ? _colorAnimation.value ?? Colors.transparent : setupColor(widget.right),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              if (widget.right == -4)
+                                const Icon(
+                                  Icons.close,
+                                  color: Colors.black,
+                                  size: 10,
+                                ),
+                            ],
                           ),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -255,10 +292,9 @@ class SquareBoxStateProvider extends State<SquareBox> {
                     ),
                   ],
                 ) : Container(),
-                Container(
+                SizedBox(
                   height: 10,
                   width: 50,
-                  color: setupColor(widget.down),
                   child: GestureDetector(
                     onTap: () async {
                       lastClick = "down";
@@ -281,21 +317,26 @@ class SquareBoxStateProvider extends State<SquareBox> {
                       await Provider.of<SquareProvider>(context, listen: false)
                           .updateSquareBox(row, column, down: down);
                     },
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Container(
+                    child: AnimatedBuilder(
+                      animation: _colorAnimation,
+                      builder: (context, child) {
+                        return Container(
                           height: 10,
                           width: 50,
-                          color: setupColor(widget.down),
-                        ),
-                        if (widget.down == -4)
-                          const Icon(
-                            Icons.close,
-                            color: Colors.black,
-                            size: 10,
+                          color: widget.down == -3 ? _colorAnimation.value ?? Colors.transparent : setupColor(widget.down),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              if (widget.down == -4)
+                                const Icon(
+                                  Icons.close,
+                                  color: Colors.black,
+                                  size: 10,
+                                ),
+                            ],
                           ),
-                      ],
+                        );
+                      },
                     ),
                   ),
                 ),
