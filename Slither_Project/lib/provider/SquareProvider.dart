@@ -1,13 +1,11 @@
+// ignore_for_file: file_names
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../Platform/ExtractData.dart'
   if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
-//안드로이드 빌드 시 삭제 필수
-//import '../Platform/ExtractDataWeb.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
@@ -74,8 +72,17 @@ class SquareProvider with ChangeNotifier {
     setLineColor(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
   }
 
+  ///메소드에서 필요할 때마다 호출
+  ///
+  ///(updateSquareBox에서 호출하지 않음)
   Future<void> refreshSubmit() async {
+    //0이거나 2일 때만 통과
+    while(_isUpdating != 0 && _isUpdating != 2) {
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+
     submit = await readSquare.readSubmit(puzzle);
+    List<List<int>> temp = await readSquare.readSubmit(puzzle);
     // ignore: use_build_context_synchronously
     checkCompletePuzzle(context);
     notifyListeners();
@@ -444,21 +451,6 @@ class SquareProvider with ChangeNotifier {
 
     temp = "${temp.substring(0, temp.length - 2)}]";
     ExtractData().saveStringToFile(temp, "filename.txt");
-
-    /*
-    if(kIsWeb) {
-      //웹 플랫폼
-      //안드로이드 빌드 시, 웹 전용 저장 함수 주석 처리 필수
-      // + import '../Platform/ExtractDataWeb.dart'; 부분도 주석 처리 필수
-      //ExtractDataWeb().saveStringToFileInWeb(temp, "filename.txt");
-    } else {
-      //모든 플랫폼
-      //웹 빌드 시, 다른 플랫폼 용 함수 주석 처리 필수
-      //안드로이드로 생성된 파일은 PC에서만 확인 가능하다
-      //경로 : 스마트폰\내장 저장공간\Android\data\slitherlink.com.puzzle.glorygem.slitherlink_project\files
-      ExtractData().saveStringToFile(temp, "filename.txt");
-    }
-     */
   }
 
   ///**********************************************************************************
@@ -466,33 +458,45 @@ class SquareProvider with ChangeNotifier {
   ///****************************** about undo & redo ******************************
   ///**********************************************************************************
   ///**********************************************************************************
+  int _isUpdating = 0; //0: can update, 1,2 : in updateSquareBox, 3,0 : setDo
   List<List<List<int>>> doSubmit = [];
   int doPointer = -1;   //now position
   int doIndex = -1;     //max Index
 
   Future<void> setDo() async {
-    List<List<int>> clonedSubmit = List.generate(submit.length, (i) => List.from(submit[i]));
+    while(_isUpdating != 2) {
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+    _isUpdating = 3;
+
+    answer = await readSquare.readSubmit(puzzle);
+    List<List<int>> lineData = answer.map((row) => List<int>.from(row)).toList();
 
     //when clicking square after click undo
     if(doPointer < doIndex) {
       doSubmit = doSubmit.sublist(0, doPointer + 1);
-      doSubmit.add(clonedSubmit);
+      doSubmit.add(lineData);
       doIndex = doSubmit.length - 1;
       doPointer = doIndex;
     }
     else {
-      doSubmit.add(clonedSubmit);
+      doSubmit.add(lineData);
       doIndex++;
       doPointer++;
     }
+    _isUpdating = 0;
   }
 
   Future<void> undo() async {
     if(doPointer >= 0) {
       doPointer--;
       if(doPointer >= 0) {
-        submit = doSubmit[doPointer];
+        submit = List.generate(
+            doSubmit[doPointer].length,
+            (i) => List.from(doSubmit[doPointer][i])
+        );
       }
+      //back to init
       else if(doPointer == -1) {
         for(int i = 0 ; i < submit.length ; i++) {
           for(int j = 0 ; j < submit[i].length ; j++) {
@@ -502,7 +506,7 @@ class SquareProvider with ChangeNotifier {
       }
 
       await readSquare.writeSubmit(puzzle, submit);
-      refreshSubmit();
+      await refreshSubmit();
       notifyListeners();
     }
   }
@@ -510,10 +514,13 @@ class SquareProvider with ChangeNotifier {
   Future<void> redo() async {
     if(doPointer < doIndex) {
       doPointer++;
-      submit = doSubmit[doPointer];
+      submit = List.generate(
+          doSubmit[doPointer].length,
+              (i) => List.from(doSubmit[doPointer][i])
+      );
 
       await readSquare.writeSubmit(puzzle, submit);
-      refreshSubmit();
+      await refreshSubmit();
       notifyListeners();
     }
   }
@@ -525,9 +532,13 @@ class SquareProvider with ChangeNotifier {
         temp += "${submit[i][j]} ";
       }
       // ignore: avoid_print
-      print("row $i $temp");
+      print("row $i | $temp");
       temp = "";
     }
+  }
+
+  void printSubmitSimple(List<List<int>> list) {
+    print("submit : ${list.toString().replaceAll("0, ", "").replaceAll("0", "")}");
   }
 
   ///**********************************************************************************
@@ -549,6 +560,12 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   ///update `puzzle` variable
   Future<void> updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) async {
+    print("============================================");
+    while(_isUpdating != 0) {
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+    _isUpdating = 1;
+
     Set<int> nearColor = {};
     int lineValue = 0; //new line's value
 
@@ -621,6 +638,7 @@ class SquareProvider with ChangeNotifier {
         }
         //print("set $row, $column, $lineValue");
 
+        _isUpdating = 2;
         await refreshSubmit();
         notifyListeners();
         await setDo();
@@ -659,7 +677,7 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
-    await refreshSubmit();
+    _isUpdating = 2;
     notifyListeners();
     await setDo();
   }
