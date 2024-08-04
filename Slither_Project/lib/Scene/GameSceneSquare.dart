@@ -1,5 +1,6 @@
 // ignore_for_file: file_names
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -54,6 +55,9 @@ class GameStateSquare extends State<GameSceneSquare> {
   late GameUI ui;
   Map<String, Color> settingColor = ThemeColor().getColor();
 
+  //for moving interactive Viewer
+  late TransformationController _transformationController;
+
   void debugSetting() {
     if(UserInfo.isDebug) {
       extractData = true;
@@ -87,12 +91,15 @@ class GameStateSquare extends State<GameSceneSquare> {
         });
       }
     });
+
+    _transformationController = TransformationController();
   }
 
   @override
   void dispose() {
     // 타이머 취소
     _shutdownTimer?.cancel();
+    _transformationController.dispose();
     super.dispose();
   }
 
@@ -170,6 +177,7 @@ class GameStateSquare extends State<GameSceneSquare> {
                       Container(
                         color: settingColor["background"],
                         child: InteractiveViewer(
+                          transformationController: _transformationController,
                           boundaryMargin: EdgeInsets.symmetric(
                             horizontal: screenSize.width * 0.4,
                             vertical: screenSize.height * 0.4,
@@ -247,4 +255,52 @@ class GameStateSquare extends State<GameSceneSquare> {
       ),
     );
   }
+
+  List<double> getHintPos(List<dynamic> item) {
+    List<int> area = _provider.getResolutionCount();  //count of field
+    List<double> max = [
+      -screenSize.width,
+      -screenSize.height
+    ];
+    List<double> ratio = [item[1] * max[0] / area[0], item[0] * max[1] / area[1]];
+    //bias
+    if(item[1] < area[0] * 0.25) {
+      ratio[0] -= max[0] * 0.1;
+    }
+    else if(item[1] > area[0] * 0.75) {
+      ratio[0] -= max[0] * 0.3;
+    }
+    if(item[0] < area[1] * 0.25 || item[0] > area[1] * 0.75) {
+      ratio[1] -= max[1] * 0.1;
+    }
+
+    //double maxX = -screenSize.width * 0.8;  // ~ screenSize.width * 0.4
+    //double maxY = -screenSize.height * 0.2; // -screenSize.height * 0.2 ~ screenSize.height * 0.2
+    //print("maxX : ${max[0]}, maxY : ${max[1]}");
+    // print("area : ${area[0]}, ${area[1]}");
+    print("item : ${item[0]}, ${item[1]}");
+    print("ratio : ${ratio[0]} ${ratio[1]}");
+
+    return [ratio[0], ratio[1]];
+  }
+
+  ///move to position in "InteractiveViewer"
+  Future<void> moveTo(List<double> pos, double scale) async {
+    final matrix4 = Matrix4.identity()
+      ..translate(pos[0], pos[1])
+      ..scale(scale);
+    _transformationController.value = matrix4;
+  }
 }
+
+/*
+* [0,0] 좌상, [-screenSize.width * 1.2, 0] 우상, [0, -screenSize.height * 0.4] 좌하
+(1280, 752) => (-770, -440) 태블릿 가로
+(800, 1232) => (-1250, 0) 태블릿 세로
+
+(726, 360) => (-1350, -770) 스마트폰 가로
+(360, 752) => (-1700, -400) 스마트폰 세로
+
+(960, 961) => (-1150, -200) 웹 화면 절반
+screenSize => translate()
+* */

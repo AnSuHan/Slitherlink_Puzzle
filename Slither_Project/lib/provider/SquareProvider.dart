@@ -70,9 +70,15 @@ class SquareProvider with ChangeNotifier {
         item = items.first;
       }
       //print("hint item : $item");
+      gameStateSquare.moveTo(gameStateSquare.getHintPos(item), 1.6);
 
       setLineColor(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
     }
+  }
+
+  ///[width, height]
+  List<int> getResolutionCount() {
+    return [answer.length, answer[0].length];
   }
 
   ///메소드에서 필요할 때마다 호출
