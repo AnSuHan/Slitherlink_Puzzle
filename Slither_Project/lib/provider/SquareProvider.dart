@@ -2,6 +2,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../Platform/ExtractData.dart'
@@ -9,6 +10,7 @@ import '../Platform/ExtractData.dart'
 import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
+import '../widgets/MainUI.dart';
 import '../widgets/SquareBox.dart';
 
 class SquareProvider with ChangeNotifier {
@@ -313,9 +315,26 @@ class SquareProvider with ChangeNotifier {
     return rtValue;
   }
 
-  void showComplete(BuildContext context) {
+  Future<void> showComplete(BuildContext context) async {
     gameStateSquare.isComplete = true;
     UserInfo.clearPuzzle(loadKey);
+
+    //delete sharedPreference key about label
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> item = ["Red", "Green", "Blue"];
+    for(int i = 0 ; i < 3 ; i++) {
+      String key = "${MainUI.getProgressKey()}_${item[i]}";
+
+      //label data
+      if(prefs.containsKey(key)) {
+        await prefs.remove(key);
+      }
+      //control do data with label
+      if(prefs.containsKey("${key}_do")) {
+        await prefs.remove("${key}_do");
+      }
+    }
+
     // Show AlertDialog if isComplete is true
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showDialog(
@@ -341,13 +360,6 @@ class SquareProvider with ChangeNotifier {
         },
       );
     });
-  }
-
-  ///control only submit data
-  void applyLabel(List<List<int>> data) async {
-    submit = data;
-    //squareField = await buildSquarePuzzleLabel(answer, submit);
-    //_provider.setSquareField(await buildSquarePuzzleLabel(answer, submit));
   }
 
   Future<List<Widget>> puzzleToSquareField() async {
@@ -535,6 +547,24 @@ class SquareProvider with ChangeNotifier {
       await readSquare.writeSubmit(puzzle, submit);
       await refreshSubmit();
       notifyListeners();
+    }
+  }
+
+  ///key : loadKey + color + `do`
+  Future<void> controlDo({String key = "", bool save = false, bool load = false}) async {
+    SharedPreferences pref = await SharedPreferences.getInstance();
+
+    try {
+      if(save) {
+        await pref.setInt(key, doPointer);
+      }
+      else if(load) {
+        doPointer = pref.getInt(key)!;
+      }
+    }
+    catch(e) {
+      // ignore: avoid_print
+      print(e);
     }
   }
 

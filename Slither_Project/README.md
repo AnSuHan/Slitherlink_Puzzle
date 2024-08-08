@@ -15,11 +15,27 @@ For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
 
+## SharedPreference Key Handling
+
 loading puzzle key (init and restart) : shape_size_progress (ex. square_small_0)
+- generated when click start button in **MainUI().getStartButton()**
+- deleted puzzle key(including continue) when complete puzzle in **SquareProvider().showComplete()**
 loading submit key (continue) : shape_size_progress_continue (ex. square_small_0_continue)
+- generated when click back button in **GameUI().getGameAppBar()**
+- deleted when clear puzzle with passing **MainUI().getProgressPuzzle()'s key** 
 
 game label key (save and load) : shape_size_progress_color (ex. square_small_0_Red, square_small_0_Green, square_small_0_Blue)
+- generated when click label in **GameUI().saveData()**
+- deleted when clear label & clear puzzle in **GameUI().clearLabel() / SquareProvider().showComplete()**
+
+game label key (for controlling do) : shape_size_progress_color_do (ex. square_small_0_Red_do, square_small_0_Green_do, square_small_0_Blue_do)
+- generated when click label in **SquareProvider().controlDo()**
+- deleted when clear label & clear puzzle in **GameUI().clearLabel() /**
 
 setting key (for app setting) : setting
+- generated in **UserInfo.setSettingAll()** in mobile
+- not deleted
+
+## File Handling
 
 Square_small.json : item's length should be 1410 (like test form) 

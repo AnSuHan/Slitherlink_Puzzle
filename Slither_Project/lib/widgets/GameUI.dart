@@ -234,8 +234,9 @@ class GameUI {
     }
   }
 
-  void saveData(String label) {
+  Future<void> saveData(String label) async {
     readSquare.savePuzzle("${MainUI.getProgressKey()}_$label");
+    await squareProvider.controlDo(save: true, key: "${MainUI.getProgressKey()}_${label}_do");
 
     switch(label) {
       case "Red":
@@ -252,6 +253,7 @@ class GameUI {
   void loadData(String label) async {
     List<List<int>> value = await readSquare.loadPuzzle("${MainUI.getProgressKey()}_$label");
     squareProvider.loadLabel(value);
+    await squareProvider.controlDo(load: true, key: "${MainUI.getProgressKey()}_${label}_do");
   }
   void clearData(String label) async {
     clearLabel(label);
@@ -293,8 +295,13 @@ class GameUI {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String key = "${MainUI.getProgressKey()}_$color";
 
+    //label data
     if(prefs.containsKey(key)) {
       await prefs.remove(key);
+    }
+    //control do data with label
+    if(prefs.containsKey("${key}_do")) {
+      await prefs.remove("${key}_do");
     }
   }
 }

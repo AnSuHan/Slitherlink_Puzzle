@@ -118,6 +118,7 @@ class UserInfo {
     return null;
   }
 
+  ///TODO : make platform branch
   static Future<void> setSettingAll(Map<String, String> value) async {
     Iterable<String> keys = setting.keys;
     for(String key in keys) {
