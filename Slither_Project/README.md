@@ -34,7 +34,11 @@ samples, guidance on mobile development, and a full API reference.
 
 ### do-value keys (controlling progress) : shape_size_progress_color_`doValue` (ex. square_small_0_Red_doValue, square_small_0__doValue {`this means now state when back without clear`})
 - generated when click label and quit puzzle in **/ SquareProvider().quitDoValue()**
-- deleted when clear label & clear puzzle in
+- deleted when clear puzzle in **SquareProvider().showComplete()**
+
+    doSubmit list (for do-value) : shape_size_progress_color_`doSubmit` (ex. square_small_0_Red_doSubmit, square_small_0__doValue {`this means now state when back without clear`})
+    - generated when click label and quit puzzle(for supporting undo/redo in continue) in **a**
+    - deleted when clear puzzle in **SquareProvider().showComplete()**
 
 ### setting key (for app setting) : `setting`
 - generated in **UserInfo.setSettingAll()** in mobile

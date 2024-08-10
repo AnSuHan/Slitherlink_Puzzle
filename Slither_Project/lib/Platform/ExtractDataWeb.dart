@@ -46,7 +46,7 @@ class ExtractData {
     }
   }
 
-  void removeData(String key) {
+  Future<void> removeData(String key) async {
     html.window.localStorage.remove(key);
   }
 }
