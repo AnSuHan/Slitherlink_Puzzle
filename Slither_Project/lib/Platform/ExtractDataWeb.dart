@@ -2,10 +2,11 @@
 import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:math';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ExtractData {
-  // 웹 플랫폼에서 데이터를 파일로 저장하고 다운로드하는 메소드
+  ///웹 플랫폼에서 데이터를 파일로 저장하고 다운로드하는 메소드
   Future<void> saveStringToFile(String data, String fileName) async {
     if(!kIsWeb) {
       // ignore: avoid_print
@@ -23,5 +24,29 @@ class ExtractData {
 
     // ignore: avoid_print
     print('웹 파일 다운로드 성공: $fileName');
+  }
+
+  ///String 데이터를 SharedPreference에 저장
+  Future<void> saveStringToLocal(String key, String value) async {
+    try {
+      html.window.localStorage[key] = value;
+    }
+    catch(e) {
+      debugPrintStack(stackTrace: StackTrace.fromString(key));
+    }
+  }
+
+  ///String 데이터를 SharedPreference에서 불러오기
+  Future<String?> getStringFromLocal(String key) async {
+    try {
+      return html.window.localStorage[key];
+    }
+    catch(e) {
+      return null;
+    }
+  }
+
+  void removeData(String key) {
+    html.window.localStorage.remove(key);
   }
 }

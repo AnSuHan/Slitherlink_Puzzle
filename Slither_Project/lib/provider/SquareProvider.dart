@@ -28,6 +28,7 @@ class SquareProvider with ChangeNotifier {
     required this.loadKey,
   }) {
     readSquare = ReadSquare(squareProvider: this, context: context);
+    initDoValue();
   }
 
   ThemeColor themeColor = ThemeColor();
@@ -335,6 +336,9 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
+    //clear doValue normal & label
+    await clearDoValue();
+
     // Show AlertDialog if isComplete is true
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showDialog(
@@ -487,6 +491,66 @@ class SquareProvider with ChangeNotifier {
   List<List<List<int>>> doSubmit = [];
   int doPointer = -1;   //now position
   int doIndex = -1;     //max Index
+  List<int> doPointerColor = [];  //for label
+  List<int> doIndexColor = [];    //for label
+
+  Future<void> initDoValue() async {
+    String? value = await ExtractData().getStringFromLocal("${loadKey}_doValue");
+
+    if(value == null) {
+      doPointer = -1;
+      doIndex = -1;
+      doPointerColor= [-1, -1, -1];
+      doIndexColor = [-1, -1, -1];
+
+      return;
+    }
+
+    List<String> token = value.split("_");
+    doPointer = int.parse(token[0]);
+    doIndex = int.parse(token[1]);
+    doPointerColor = token[2].split("@").map(int.parse).toList();
+    doIndexColor = token[3].split("@").map(int.parse).toList();
+    print("init doValue : $doPointer, $doIndex, $doPointerColor, $doIndexColor");
+  }
+  Future<void> saveDoValue() async {
+    //split with `@`
+    String pointer = "${doPointerColor[0]}@${doPointerColor[1]}@${doPointerColor[2]}";
+    String index = "${doIndexColor[0]}@${doIndexColor[1]}@${doIndexColor[2]}";
+    //split with `_`
+    String value = "${doPointer}_${doIndex}_${pointer}_$index";
+
+    await ExtractData().saveStringToLocal("${loadKey}_doValue", value);
+    print("save doValue : $value");
+  }
+  void setDoValue(String color) {
+    int index = 0;
+    switch(color) {
+      case "Red":
+        index = 0;
+        break;
+      case "Green":
+        index = 1;
+        break;
+      case "Blue":
+        index = 2;
+        break;
+    }
+
+    doPointer = doPointerColor[index];
+    doIndex = doIndexColor[index];
+  }
+  Future<void> clearDoValue() async {
+    ExtractData().removeData("${loadKey}_doValue");
+  }
+
+  Future<void> saveDoSubmit() async {
+
+  }
+  ///call in initDoValue() & change label
+  Future<void> loadDoSubmit() async {
+
+  }
 
   Future<void> setDo() async {
     while(_isUpdating != 2) {

@@ -34,11 +34,12 @@ class GameUI {
       backgroundColor: appbarColor,
       foregroundColor: iconColor,
       leading: InkWell(
-        onTap: () {
+        onTap: () async {
           //when back button click, set class {UserInfo}
           String key = "${MainUI.getProgressKey()}_continue";
           //print("key : $key");  //square_small_0
           readSquare.savePuzzle(key);
+          squareProvider.saveDoValue();
           Navigator.pop(context);
         },
         child: Icon(Icons.keyboard_backspace, color: iconColor,),
