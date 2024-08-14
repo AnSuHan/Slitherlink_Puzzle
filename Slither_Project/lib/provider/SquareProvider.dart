@@ -369,83 +369,15 @@ class SquareProvider with ChangeNotifier {
     });
   }
 
-  Future<List<Widget>> puzzleToSquareField() async {
-    List<Widget> columnChildren = [];
-
-    for (int i = 0; i < puzzle.length; i++) {
-      List<Widget> rowChildren = [];
-      for (int j = 0; j < puzzle[i].length; j++) {
-        rowChildren.add(puzzle[i][j]);
-        //print("${puzzle[i][j].up}${puzzle[i][j].down}${puzzle[i][j].left}${puzzle[i][j].right}");
-      }
-      columnChildren.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: rowChildren,
-        ),
-      );
-    }
-
-    return columnChildren;
-  }
-
-  Future<List<Widget>> buildSquarePuzzleLabel(List<List<int>> answer, List<List<int>> submit) async {
-    //resize puzzle
-    if(answer.isEmpty) {
-      //print("answer is empty");
-      return Future.value([]);
-    }
-    List<List<SquareBox>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
-    //print("puzzle SquareBoxProvider => row ${puzzle.length}, col ${puzzle[0].length}");
-    List<Widget> columnChildren = [];
-
-    //marking answer line
-    applyUIWithAnswer(puzzle, answer);
-
-    for (int i = 0; i < puzzle.length; i++) {
-      List<Widget> rowChildren = [];
-      for (int j = 0; j < puzzle[i].length; j++) {
-        rowChildren.add(puzzle[i][j]);
-      }
-      columnChildren.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: rowChildren,
-        ),
-      );
-    }
-    //marking number with answer
-    setNumWithAnswer(puzzle);
-    //setDefaultLineStep1(puzzle);
-    clearLineForStart();
-
-    applyUIWithAnswer(puzzle, submit);
-
-    return columnChildren;
-  }
-
   ///getter and setter about widgets
 
   List<Widget> getSquareField() {
     return squareField;
   }
-  void setSquareField(List<Widget> field) {
-    squareField = field;
-    notifyListeners();
-  }
-
-  void setPuzzle(List<List<SquareBox>> puzzle) {
-    this.puzzle = puzzle;
-    puzzleToWidget();
-  }
 
   void setGameField(GameStateSquare gameField) {
     this.gameField = gameField;
     notifyListeners();
-  }
-
-  void setContinue(bool isContinue) {
-    this.isContinue = isContinue;
   }
 
   void setAnswer(List<List<int>> answer) {
@@ -524,23 +456,6 @@ class SquareProvider with ChangeNotifier {
     String value = "${doPointer}_${doIndex}_${pointer}_$index";
 
     await ExtractData().saveDataToLocal("${loadKey}_doValue", value);
-  }
-  void setDoValue(String color) {
-    int index = 0;
-    switch(color) {
-      case "Red":
-        index = 0;
-        break;
-      case "Green":
-        index = 1;
-        break;
-      case "Blue":
-        index = 2;
-        break;
-    }
-
-    doPointer = doPointerColor[index];
-    doIndex = doIndexColor[index];
   }
   Future<void> clearDoValue() async {
     await ExtractData().removeKey("${loadKey}_doValue");
@@ -1709,40 +1624,5 @@ class SquareProvider with ChangeNotifier {
         }
       }
     }
-  }
-
-
-  void puzzleToWidget() {
-    //puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
-    //print("puzzle SquareBoxProvider => row ${puzzle.length}, col ${puzzle[0].length}");
-    List<Widget> columnChildren = [];
-
-    //marking answer line
-    applyUIWithAnswer(puzzle, answer);
-
-    for (int i = 0; i < puzzle.length; i++) {
-      List<Widget> rowChildren = [];
-      for (int j = 0; j < puzzle[i].length; j++) {
-        rowChildren.add(puzzle[i][j]);
-      }
-      columnChildren.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: rowChildren,
-        ),
-      );
-    }
-    //marking number with answer
-    setNumWithAnswer(puzzle);
-    //setDefaultLineStep1(puzzle);
-    clearLineForStart();
-
-    //apply saved submit lines
-    if(isContinue) {
-      applyUIWithAnswer(puzzle, submit);
-    }
-
-    squareField = columnChildren;
-    notifyListeners();
   }
 }

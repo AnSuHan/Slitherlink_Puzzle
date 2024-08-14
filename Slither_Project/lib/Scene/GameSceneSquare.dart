@@ -255,10 +255,6 @@ class GameStateSquare extends State<GameSceneSquare> {
     );
   }
 
-  String getPuzzleKey() {
-    return widget.loadKey;
-  }
-
   List<double> getHintPos(List<dynamic> item) {
     List<int> area = _provider.getResolutionCount();  //count of field
     List<double> max = [

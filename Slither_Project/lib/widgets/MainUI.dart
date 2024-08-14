@@ -24,7 +24,6 @@ class MainUI {
   static final List<String> _selectedType = ["square", "small"];
   //continue data
   List<String> progressPuzzle = UserInfo.getContinuePuzzle().isEmpty ? [""] : UserInfo.getContinuePuzzle().toList();
-  String selectedContinue = "";
   static String progressKey = "";
 
   final GlobalKey<PopupMenuButtonState<int>> _mainMenuKey = GlobalKey<PopupMenuButtonState<int>>();
@@ -938,10 +937,6 @@ class MainUI {
   }
 
   //about screen size
-  double getTopMargin() {
-    return screenSize.height / 10;
-  }
-
   double getMargin(double ratio) {
     return screenSize.height * ratio;
   }
@@ -949,10 +944,6 @@ class MainUI {
   void setScreenSize(Size size) {
     screenSize = size;
     auth.setScreenSize(size);
-  }
-
-  Size getScreenSize(Size size) {
-    return screenSize;
   }
 
   //last tried key

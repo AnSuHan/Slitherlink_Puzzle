@@ -143,12 +143,6 @@ class UserInfo {
     print("setting : $setting");
   }
 
-  static void setSetting(String key, String value) {
-    if(setting.containsKey(key)) {
-      setting[key] = value;
-    }
-  }
-
   static String getLanguage() {
     return setting["language"]!;
   }
@@ -166,11 +160,5 @@ class UserInfo {
 
   static String getAppbarMode() {
     return setting["appbar_mode"]!;
-  }
-
-  static void setAppbarMode(String mode) {
-    if(setting.containsKey("appbar_mode")) {
-      setting["appbar_mode"] = mode;
-    }
   }
 }

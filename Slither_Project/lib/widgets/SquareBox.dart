@@ -1,3 +1,4 @@
+// ignore_for_file: file_names
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -33,7 +34,6 @@ class SquareBox extends StatefulWidget {
 class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderStateMixin {
   //setting color
   Map<String, Color> settingColor = ThemeColor().getColor();
-  ThemeColor themeColor = ThemeColor();
 
   String lastClick = "";
 

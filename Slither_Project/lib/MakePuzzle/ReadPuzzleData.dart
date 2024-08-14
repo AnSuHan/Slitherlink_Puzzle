@@ -17,18 +17,7 @@ class ReadPuzzleData {
     answer = Answer(context: context);
   }
 
-  List<List<bool>> prefData = [];
-  UserInfo info = UserInfo();
   late Answer answer;
-
-  Future<void> writeData(List<List<bool>> data, String fileName) async {
-    // Convert List<List<bool>> to List<List<int>> for JSON serialization
-    List<List<int>> intData = data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
-
-    final ExtractData prefs = ExtractData();
-    prefs.saveDataToLocal(fileName, jsonEncode(intData));
-    //print("jsonData in writeData : ${jsonEncode(intData)}");
-  }
 
   //save submit data(int)
   Future<void> writeIntData(List<List<int>> data, String fileName) async {
