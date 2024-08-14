@@ -1,12 +1,16 @@
 // ignore_for_file: file_names
 import 'dart:convert';
+import '../Platform/ExtractData.dart'
+if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class UserInfo {
   static bool isDebug = true;
+  static Map<String, bool> debugMode = {
+    "Answer_showCycle" : false,
+  };
 
   static bool authState = false;
   static Map<String, int> progress = {
@@ -86,6 +90,7 @@ class UserInfo {
   }
 
   static void clearPuzzle(String key) {
+    // ignore: avoid_print
     print("in clearPuzzle : $key");
     continuePuzzle.remove(key);
     updateContinueWidget = true;
@@ -123,33 +128,19 @@ class UserInfo {
       }
     }
 
-    //mobile
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
     String settingJson = jsonEncode(setting);
-    await prefs.setString("setting", settingJson);
-    //web
-    //html.window.localStorage['setting'] = settingsJson;
-    print("end of set setting all");
+    await ExtractData().saveDataToLocal("setting", settingJson);
   }
 
   static Future<void> loadSetting() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? settingsJson = prefs.getString("setting");
-    //web
-    //String? settingsJson = html.window.localStorage['setting'];
+    String? settingJson = await ExtractData().getDataFromLocal("setting");
 
-    if (settingsJson != null) {
-      Map<String, dynamic> loadedSettings = jsonDecode(settingsJson);
+    if (settingJson != null) {
+      Map<String, dynamic> loadedSettings = jsonDecode(settingJson);
       setting = loadedSettings.map((key, value) => MapEntry(key, value.toString()));
-      print("setting : $setting");
     }
+    // ignore: avoid_print
     print("setting : $setting");
-  }
-
-  static void setSetting(String key, String value) {
-    if(setting.containsKey(key)) {
-      setting[key] = value;
-    }
   }
 
   static String getLanguage() {
@@ -169,11 +160,5 @@ class UserInfo {
 
   static String getAppbarMode() {
     return setting["appbar_mode"]!;
-  }
-
-  static void setAppbarMode(String mode) {
-    if(setting.containsKey("appbar_mode")) {
-      setting["appbar_mode"] = mode;
-    }
   }
 }

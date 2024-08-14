@@ -1,8 +1,9 @@
 // ignore_for_file: file_names
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../Platform/ExtractData.dart'
+if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
 import '../MakePuzzle/ReadSquare.dart';
 import '../l10n/app_localizations.dart';
 import '../provider/SquareProvider.dart';
@@ -34,11 +35,14 @@ class GameUI {
       backgroundColor: appbarColor,
       foregroundColor: iconColor,
       leading: InkWell(
-        onTap: () {
+        onTap: () async {
           //when back button click, set class {UserInfo}
           String key = "${MainUI.getProgressKey()}_continue";
           //print("key : $key");  //square_small_0
-          readSquare.savePuzzle(key);
+          await readSquare.savePuzzle(key);
+          await squareProvider.saveDoValue();
+          await squareProvider.saveDoSubmit();
+          // ignore: use_build_context_synchronously
           Navigator.pop(context);
         },
         child: Icon(Icons.keyboard_backspace, color: iconColor,),
@@ -234,8 +238,9 @@ class GameUI {
     }
   }
 
-  void saveData(String label) {
+  Future<void> saveData(String label) async {
     readSquare.savePuzzle("${MainUI.getProgressKey()}_$label");
+    await squareProvider.controlDo(save: true, key: "${MainUI.getProgressKey()}_${label}_do");
 
     switch(label) {
       case "Red":
@@ -252,6 +257,7 @@ class GameUI {
   void loadData(String label) async {
     List<List<int>> value = await readSquare.loadPuzzle("${MainUI.getProgressKey()}_$label");
     squareProvider.loadLabel(value);
+    await squareProvider.controlDo(load: true, key: "${MainUI.getProgressKey()}_${label}_do");
   }
   void clearData(String label) async {
     clearLabel(label);
@@ -278,23 +284,28 @@ class GameUI {
   }
 
   void initLabel() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    ExtractData prefs = ExtractData();
     List<String> labelColor = ["Red", "Green", "Blue"];
 
     for(int i = 0 ; i < labelColor.length ; i++) {
       String key = "${MainUI.getProgressKey()}_${labelColor[i]}";
-      if(prefs.containsKey(key)) {
+      if(await prefs.containsKey(key)) {
         labelState[i] = "load";
       }
     }
   }
 
   void clearLabel(String color) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    ExtractData prefs = ExtractData();
     String key = "${MainUI.getProgressKey()}_$color";
 
-    if(prefs.containsKey(key)) {
-      await prefs.remove(key);
+    //label data
+    if(await prefs.containsKey(key)) {
+      await prefs.removeKey(key);
+    }
+    //control do data with label
+    if(await prefs.containsKey("${key}_do")) {
+      await prefs.removeKey("${key}_do");
     }
   }
 }

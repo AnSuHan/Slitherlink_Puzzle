@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import '../User/UserInfo.dart';
 import '../firebase_options.dart';
 import 'EnterScene.dart';
+import '../Platform/ExtractData.dart'
+if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
 
 class Splash extends StatefulWidget {
   const Splash({Key? key}) : super(key: key);
@@ -51,6 +53,9 @@ class SplashState extends State<Splash> {
   Future<void> loading() async {
     await firebase();
     await setUserInfo();
+    await clearKeys();
+
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   Future<void> firebase() async {
@@ -65,5 +70,10 @@ class SplashState extends State<Splash> {
 
   Future<void> setUserInfo() async {
     await UserInfo.init();
+  }
+
+  Future<void> clearKeys() async {
+    //remove SharedPreference's keys | web local storage's keys
+    await ExtractData().removeKeyAll();
   }
 }

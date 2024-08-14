@@ -1,9 +1,12 @@
+// ignore_for_file: file_names
 import 'dart:io';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show kIsWeb; // 웹 플랫폼 확인을 위해 추가
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ExtractData {
-  // JSON 데이터를 파일로 저장하는 메소드
+  ///String(JSON) 데이터를 앱 내 저장 공간에 파일로 저장하는 메소드
   Future<void> saveStringToFile(String data, String fileName) async {
     try {
       // 웹 플랫폼 확인
@@ -58,5 +61,74 @@ class ExtractData {
       // ignore: avoid_print
       print('파일 저장 실패: $e');
     }
+  }
+
+  ///데이터를 SharedPreference에 저장
+  Future<void> saveDataToLocal(String key, dynamic value) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    try {
+      // 웹 플랫폼 확인
+      if (kIsWeb) {
+        // ignore: avoid_print
+        print("kIsWeb in ExtractData");
+        return;
+      }
+
+      switch(value.runtimeType) {
+        case String:
+          prefs.setString(key, value);
+          break;
+        case int:
+          prefs.setInt(key, value);
+          break;
+      }
+    }
+    catch(e) {
+      debugPrintStack(stackTrace: StackTrace.fromString(value));
+    }
+  }
+
+  ///데이터를 SharedPreference에서 불러오기
+  Future<dynamic> getDataFromLocal(String key) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    try {
+      // 웹 플랫폼 확인
+      if (kIsWeb) {
+        // ignore: avoid_print
+        print("kIsWeb in ExtractData");
+        return "imported wrong class : $kIsWeb";
+      }
+      if(prefs.containsKey(key)) {
+        return prefs.getString(key)!;
+      }
+      return null;
+    }
+    catch(e) {
+      return null;
+    }
+  }
+
+  Future<void> removeKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(key);
+  }
+
+  Future<void> removeKeyAll() async {
+    //remove SharedPreference's keys
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> keys = prefs.getKeys().toList();
+
+    for(var key in keys) {
+      await prefs.remove(key);
+    }
+
+    //print("now key : ${prefs.getKeys().toList()}");
+  }
+
+  Future<bool> containsKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey(key);
   }
 }

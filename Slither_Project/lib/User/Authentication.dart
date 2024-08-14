@@ -100,11 +100,14 @@ class Authentication {
     try {
       User? user = FirebaseAuth.instance.currentUser;
       if (user != null) {
+        await deleteDB();
         await user.delete();
         UserInfo.authState = false;
         return 0;
       }
     } catch(e) {
+      // ignore: avoid_print
+      print("Error during withdrawal: $e");
       return 400;
     }
 
@@ -170,5 +173,31 @@ class Authentication {
     await db.collection("users").doc(user.email).set(userData).then((_) =>
         // ignore: avoid_print
         print('DocumentSnapshot added with ID: ${user.email}'));
+  }
+
+  Future<int> deleteDB() async {
+    try {
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        FirebaseFirestore db = FirebaseFirestore.instance;
+
+        await db.collection("users").doc(user.email).delete().then((_) {
+          // ignore: avoid_print
+          print("User document with email ${user.email} deleted from Firestore.");
+        }).catchError((error) {
+          // ignore: avoid_print
+          print("Failed to delete user document: $error");
+          throw Exception("Failed to delete user document");
+        });
+
+        return 0;
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print("Error during withdrawal: $e");
+      throw Exception("Database deletion failed");
+    }
+
+    return 400;
   }
 }

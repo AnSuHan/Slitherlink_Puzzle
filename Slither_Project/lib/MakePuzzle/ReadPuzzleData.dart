@@ -1,12 +1,13 @@
 // ignore_for_file: file_names
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:slitherlink_project/User/UserInfo.dart';
 
+import '../Platform/ExtractData.dart'
+if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
 import '../Answer/Answer.dart';
 
-//handle data with SharedPreferences (NOT ACCESS to GameSceneStateSquare class)
+//handle data with SharedPreferences | local storage (NOT ACCESS to GameSceneStateSquare class)
 class ReadPuzzleData {
   final BuildContext context;
 
@@ -16,23 +17,12 @@ class ReadPuzzleData {
     answer = Answer(context: context);
   }
 
-  List<List<bool>> prefData = [];
-  UserInfo info = UserInfo();
   late Answer answer;
-
-  Future<void> writeData(List<List<bool>> data, String fileName) async {
-    // Convert List<List<bool>> to List<List<int>> for JSON serialization
-    List<List<int>> intData = data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
-
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString(fileName, jsonEncode(intData));
-    //print("jsonData in writeData : ${jsonEncode(intData)}");
-  }
 
   //save submit data(int)
   Future<void> writeIntData(List<List<int>> data, String fileName) async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setString(fileName, jsonEncode(data));
+    final ExtractData prefs = ExtractData();
+    prefs.saveDataToLocal(fileName, jsonEncode(data));
   }
 
   Future<List<List<bool>>> readData(String keyName, {bool isContinue = false}) async {

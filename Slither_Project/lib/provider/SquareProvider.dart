@@ -1,16 +1,15 @@
+// ignore_for_file: file_names
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../Platform/ExtractData.dart'
   if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
-//안드로이드 빌드 시 삭제 필수
-//import '../Platform/ExtractDataWeb.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
+import '../widgets/MainUI.dart';
 import '../widgets/SquareBox.dart';
 
 class SquareProvider with ChangeNotifier {
@@ -42,9 +41,13 @@ class SquareProvider with ChangeNotifier {
 
   ///Init
   void init() async {
+    //setting field
     puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
     squareField = await buildSquarePuzzleAnswer(answer, isContinue: isContinue);
     readSquare.setPuzzle(puzzle);
+
+    //for working do-things
+    initDoValue();
     notifyListeners();
   }
 
@@ -59,22 +62,39 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void showHint(BuildContext context) async {
+  Future<void> showHint(BuildContext context) async {
     List<List<dynamic>> items = await checkCompletePuzzleCompletely(context);
     //print("hint items : $items");
     List<dynamic> item;
-    if(items.length > 1) {
-      item = items[Random().nextInt(items.length - 1)];
-    }
-    else {
-      item = items[0];
-    }
 
-    //print("hint item : $item");
-    setLineColor(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
+    if(items.isNotEmpty) {
+      if(items.length > 1) {
+        item = items[Random().nextInt(items.length - 1)];
+      }
+      else {
+        item = items.first;
+      }
+      //print("hint item : $item");
+      gameStateSquare.moveTo(gameStateSquare.getHintPos(item), 1.6);
+
+      setLineColor(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
+    }
   }
 
+  ///[width, height]
+  List<int> getResolutionCount() {
+    return [answer.length, answer[0].length];
+  }
+
+  ///메소드에서 필요할 때마다 호출
+  ///
+  ///(updateSquareBox에서 호출하지 않음)
   Future<void> refreshSubmit() async {
+    //0이거나 2일 때만 통과
+    while(_isUpdating != 0 && _isUpdating != 2) {
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+
     submit = await readSquare.readSubmit(puzzle);
     // ignore: use_build_context_synchronously
     checkCompletePuzzle(context);
@@ -151,6 +171,10 @@ class SquareProvider with ChangeNotifier {
   Future<List<List<dynamic>>> checkCompletePuzzleCompletely(BuildContext context) async {
     List<List<dynamic>> rtValue = [];
 
+    while(_isUpdating != 0) {
+      Future.delayed(const Duration(milliseconds: 50));
+      //print("wait in check : $_isUpdating");
+    }
     submit = await readSquare.readSubmit(puzzle);
 
     String dir = "";
@@ -293,9 +317,31 @@ class SquareProvider with ChangeNotifier {
     return rtValue;
   }
 
-  void showComplete(BuildContext context) {
+  Future<void> showComplete(BuildContext context) async {
     gameStateSquare.isComplete = true;
     UserInfo.clearPuzzle(loadKey);
+
+    //delete sharedPreference key about label
+    ExtractData prefs = ExtractData();
+    List<String> item = ["Red", "Green", "Blue"];
+    for(int i = 0 ; i < 3 ; i++) {
+      String key = "${MainUI.getProgressKey()}_${item[i]}";
+
+      //label data
+      if(await prefs.containsKey(key)) {
+        await prefs.removeKey(key);
+      }
+      //control do data with label
+      if(await prefs.containsKey("${key}_do")) {
+        await prefs.removeKey("${key}_do");
+      }
+    }
+
+    //clear doValue normal & label
+    await clearDoValue();
+    //clear submit data
+    await clearDoSubmit();
+
     // Show AlertDialog if isComplete is true
     WidgetsBinding.instance.addPostFrameCallback((_) {
       showDialog(
@@ -323,90 +369,15 @@ class SquareProvider with ChangeNotifier {
     });
   }
 
-  ///control only submit data
-  void applyLabel(List<List<int>> data) async {
-    submit = data;
-    //squareField = await buildSquarePuzzleLabel(answer, submit);
-    //_provider.setSquareField(await buildSquarePuzzleLabel(answer, submit));
-  }
-
-  Future<List<Widget>> puzzleToSquareField() async {
-    List<Widget> columnChildren = [];
-
-    for (int i = 0; i < puzzle.length; i++) {
-      List<Widget> rowChildren = [];
-      for (int j = 0; j < puzzle[i].length; j++) {
-        rowChildren.add(puzzle[i][j]);
-        //print("${puzzle[i][j].up}${puzzle[i][j].down}${puzzle[i][j].left}${puzzle[i][j].right}");
-      }
-      columnChildren.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: rowChildren,
-        ),
-      );
-    }
-
-    return columnChildren;
-  }
-
-  Future<List<Widget>> buildSquarePuzzleLabel(List<List<int>> answer, List<List<int>> submit) async {
-    //resize puzzle
-    if(answer.isEmpty) {
-      //print("answer is empty");
-      return Future.value([]);
-    }
-    List<List<SquareBox>> puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
-    //print("puzzle SquareBoxProvider => row ${puzzle.length}, col ${puzzle[0].length}");
-    List<Widget> columnChildren = [];
-
-    //marking answer line
-    applyUIWithAnswer(puzzle, answer);
-
-    for (int i = 0; i < puzzle.length; i++) {
-      List<Widget> rowChildren = [];
-      for (int j = 0; j < puzzle[i].length; j++) {
-        rowChildren.add(puzzle[i][j]);
-      }
-      columnChildren.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: rowChildren,
-        ),
-      );
-    }
-    //marking number with answer
-    setNumWithAnswer(puzzle);
-    //setDefaultLineStep1(puzzle);
-    clearLineForStart();
-
-    applyUIWithAnswer(puzzle, submit);
-
-    return columnChildren;
-  }
-
   ///getter and setter about widgets
 
   List<Widget> getSquareField() {
     return squareField;
   }
-  void setSquareField(List<Widget> field) {
-    squareField = field;
-    notifyListeners();
-  }
-
-  void setPuzzle(List<List<SquareBox>> puzzle) {
-    this.puzzle = puzzle;
-    puzzleToWidget();
-  }
 
   void setGameField(GameStateSquare gameField) {
     this.gameField = gameField;
     notifyListeners();
-  }
-
-  void setContinue(bool isContinue) {
-    this.isContinue = isContinue;
   }
 
   void setAnswer(List<List<int>> answer) {
@@ -444,21 +415,6 @@ class SquareProvider with ChangeNotifier {
 
     temp = "${temp.substring(0, temp.length - 2)}]";
     ExtractData().saveStringToFile(temp, "filename.txt");
-
-    /*
-    if(kIsWeb) {
-      //웹 플랫폼
-      //안드로이드 빌드 시, 웹 전용 저장 함수 주석 처리 필수
-      // + import '../Platform/ExtractDataWeb.dart'; 부분도 주석 처리 필수
-      //ExtractDataWeb().saveStringToFileInWeb(temp, "filename.txt");
-    } else {
-      //모든 플랫폼
-      //웹 빌드 시, 다른 플랫폼 용 함수 주석 처리 필수
-      //안드로이드로 생성된 파일은 PC에서만 확인 가능하다
-      //경로 : 스마트폰\내장 저장공간\Android\data\slitherlink.com.puzzle.glorygem.slitherlink_project\files
-      ExtractData().saveStringToFile(temp, "filename.txt");
-    }
-     */
   }
 
   ///**********************************************************************************
@@ -466,33 +422,143 @@ class SquareProvider with ChangeNotifier {
   ///****************************** about undo & redo ******************************
   ///**********************************************************************************
   ///**********************************************************************************
+  int _isUpdating = 0; //0: can update, 1,2 : in updateSquareBox, 3,0 : setDo
   List<List<List<int>>> doSubmit = [];
   int doPointer = -1;   //now position
   int doIndex = -1;     //max Index
+  List<int> doPointerColor = [];  //for label
+  List<int> doIndexColor = [];    //for label
+
+  Future<void> initDoValue() async {
+    String? value = await ExtractData().getDataFromLocal("${loadKey}_doValue");
+
+    if(value == null) {
+      doPointer = -1;
+      doIndex = -1;
+      doPointerColor= [-1, -1, -1];
+      doIndexColor = [-1, -1, -1];
+
+      return;
+    }
+
+    List<String> token = value.split("_");
+    doPointer = int.parse(token[0]);
+    doIndex = int.parse(token[1]);
+    doPointerColor = token[2].split("@").map(int.parse).toList();
+    doIndexColor = token[3].split("@").map(int.parse).toList();
+    await loadDoSubmit();
+  }
+  Future<void> saveDoValue() async {
+    //split with `@`
+    String pointer = "${doPointerColor[0]}@${doPointerColor[1]}@${doPointerColor[2]}";
+    String index = "${doIndexColor[0]}@${doIndexColor[1]}@${doIndexColor[2]}";
+    //split with `_`
+    String value = "${doPointer}_${doIndex}_${pointer}_$index";
+
+    await ExtractData().saveDataToLocal("${loadKey}_doValue", value);
+  }
+  Future<void> clearDoValue() async {
+    await ExtractData().removeKey("${loadKey}_doValue");
+  }
+
+  Future<void> saveDoSubmit({String? color}) async {
+    List<String> flatList = [];
+    for (var list2D in doSubmit) {
+      List<String> tempList = [];
+      for (var list1D in list2D) {
+        String innerListString = list1D.join(',');
+        tempList.add(innerListString);
+      }
+      flatList.add(tempList.join('_'));
+    }
+
+    String value = flatList.join('|');
+    if(color == null) {
+      await ExtractData().saveDataToLocal("${loadKey}__doSubmit", value);
+    }
+    else {
+      await ExtractData().saveDataToLocal("${loadKey}_${color}_doSubmit", value);
+    }
+
+  }
+  ///call in initDoValue() & change label
+  Future<void> loadDoSubmit({String? color}) async {
+    String? value = color == null
+        ? await ExtractData().getDataFromLocal("${loadKey}__doSubmit")
+        : await ExtractData().getDataFromLocal("${loadKey}_${color}_doSubmit");
+
+    //print("value : $value");
+    if(value == null) {
+      doSubmit = [];
+      doSubmit.add(await readSquare.readSubmit(puzzle));
+      return;
+    }
+
+    List<String> list2DStrings = value.split('|');
+    List<List<List<int>>> loadedDoSubmit = [];
+
+    for (var list2DString in list2DStrings) {
+      List<String> list1DStrings = list2DString.split('_');
+      List<List<int>> list2D = [];
+
+      for (var list1DString in list1DStrings) {
+        if(list1DString.isEmpty) {
+          continue;
+        }
+        List<int> list1D = list1DString.split(',').map(int.parse).toList();
+        list2D.add(list1D);
+      }
+      loadedDoSubmit.add(list2D);
+    }
+
+    doSubmit = loadedDoSubmit.map((list2D) =>
+        list2D.map((list1D) =>
+        List<int>.from(list1D)
+        ).toList()
+    ).toList();
+
+    for (var list1D in doSubmit[doPointer]) {
+      submit.add(List<int>.from(list1D));
+    }
+  }
+  Future<void> clearDoSubmit() async {
+    await ExtractData().removeKey("${loadKey}_doSubmit");
+  }
 
   Future<void> setDo() async {
-    List<List<int>> clonedSubmit = List.generate(submit.length, (i) => List.from(submit[i]));
+    while(_isUpdating != 2) {
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+    _isUpdating = 3;
+
+    submit = await readSquare.readSubmit(puzzle);
+    List<List<int>> lineData = submit.map((row) => List<int>.from(row)).toList();
 
     //when clicking square after click undo
     if(doPointer < doIndex) {
       doSubmit = doSubmit.sublist(0, doPointer + 1);
-      doSubmit.add(clonedSubmit);
+      doSubmit.add(lineData);
       doIndex = doSubmit.length - 1;
       doPointer = doIndex;
     }
     else {
-      doSubmit.add(clonedSubmit);
+      doSubmit.add(lineData);
       doIndex++;
       doPointer++;
     }
+    _isUpdating = 0;
   }
 
   Future<void> undo() async {
     if(doPointer >= 0) {
       doPointer--;
       if(doPointer >= 0) {
-        submit = doSubmit[doPointer];
+        submit = List.generate(
+            doSubmit[doPointer].length,
+            (i) => List.from(doSubmit[doPointer][i])
+        );
       }
+      //back to init
       else if(doPointer == -1) {
         for(int i = 0 ; i < submit.length ; i++) {
           for(int j = 0 ; j < submit[i].length ; j++) {
@@ -502,7 +568,7 @@ class SquareProvider with ChangeNotifier {
       }
 
       await readSquare.writeSubmit(puzzle, submit);
-      refreshSubmit();
+      await refreshSubmit();
       notifyListeners();
     }
   }
@@ -510,11 +576,32 @@ class SquareProvider with ChangeNotifier {
   Future<void> redo() async {
     if(doPointer < doIndex) {
       doPointer++;
-      submit = doSubmit[doPointer];
+      submit = List.generate(
+          doSubmit[doPointer].length,
+              (i) => List.from(doSubmit[doPointer][i])
+      );
 
       await readSquare.writeSubmit(puzzle, submit);
-      refreshSubmit();
+      await refreshSubmit();
       notifyListeners();
+    }
+  }
+
+  ///key : loadKey + color + `do`
+  Future<void> controlDo({String key = "", bool save = false, bool load = false}) async {
+    ExtractData prefs = ExtractData();
+
+    try {
+      if(save) {
+        await prefs.saveDataToLocal(key, doPointer);
+      }
+      else if(load) {
+        doPointer = int.parse(await prefs.getDataFromLocal(key));
+      }
+    }
+    catch(e) {
+      // ignore: avoid_print
+      print(e);
     }
   }
 
@@ -525,9 +612,14 @@ class SquareProvider with ChangeNotifier {
         temp += "${submit[i][j]} ";
       }
       // ignore: avoid_print
-      print("row $i $temp");
+      print("row $i | $temp");
       temp = "";
     }
+  }
+
+  void printSubmitSimple(List<List<int>> list) {
+    // ignore: avoid_print
+    print("submit : ${list.toString().replaceAll("0, ", "").replaceAll("0", "")}");
   }
 
   ///**********************************************************************************
@@ -549,6 +641,11 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   ///update `puzzle` variable
   Future<void> updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) async {
+    while(_isUpdating != 0) {
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+    _isUpdating = 1;
+
     Set<int> nearColor = {};
     int lineValue = 0; //new line's value
 
@@ -621,6 +718,7 @@ class SquareProvider with ChangeNotifier {
         }
         //print("set $row, $column, $lineValue");
 
+        _isUpdating = 2;
         await refreshSubmit();
         notifyListeners();
         await setDo();
@@ -659,7 +757,7 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
-    await refreshSubmit();
+    _isUpdating = 2;
     notifyListeners();
     await setDo();
   }
@@ -1526,40 +1624,5 @@ class SquareProvider with ChangeNotifier {
         }
       }
     }
-  }
-
-
-  void puzzleToWidget() {
-    //puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
-    //print("puzzle SquareBoxProvider => row ${puzzle.length}, col ${puzzle[0].length}");
-    List<Widget> columnChildren = [];
-
-    //marking answer line
-    applyUIWithAnswer(puzzle, answer);
-
-    for (int i = 0; i < puzzle.length; i++) {
-      List<Widget> rowChildren = [];
-      for (int j = 0; j < puzzle[i].length; j++) {
-        rowChildren.add(puzzle[i][j]);
-      }
-      columnChildren.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: rowChildren,
-        ),
-      );
-    }
-    //marking number with answer
-    setNumWithAnswer(puzzle);
-    //setDefaultLineStep1(puzzle);
-    clearLineForStart();
-
-    //apply saved submit lines
-    if(isContinue) {
-      applyUIWithAnswer(puzzle, submit);
-    }
-
-    squareField = columnChildren;
-    notifyListeners();
   }
 }

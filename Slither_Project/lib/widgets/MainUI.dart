@@ -24,7 +24,6 @@ class MainUI {
   static final List<String> _selectedType = ["square", "small"];
   //continue data
   List<String> progressPuzzle = UserInfo.getContinuePuzzle().isEmpty ? [""] : UserInfo.getContinuePuzzle().toList();
-  String selectedContinue = "";
   static String progressKey = "";
 
   final GlobalKey<PopupMenuButtonState<int>> _mainMenuKey = GlobalKey<PopupMenuButtonState<int>>();
@@ -886,9 +885,11 @@ class MainUI {
         int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
         //restrict puzzle's EOF
+        // ignore: use_build_context_synchronously
         if(await answer.checkRemainPuzzle(context, selectedType[0], selectedType[1])) {
           UserInfo.addContinuePuzzle(progressKey);
           onUpdate();
+          // ignore: use_build_context_synchronously
           changeScene(context, progressKey);
         }
         else {
@@ -936,10 +937,6 @@ class MainUI {
   }
 
   //about screen size
-  double getTopMargin() {
-    return screenSize.height / 10;
-  }
-
   double getMargin(double ratio) {
     return screenSize.height * ratio;
   }
@@ -947,10 +944,6 @@ class MainUI {
   void setScreenSize(Size size) {
     screenSize = size;
     auth.setScreenSize(size);
-  }
-
-  Size getScreenSize(Size size) {
-    return screenSize;
   }
 
   //last tried key
