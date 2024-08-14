@@ -64,6 +64,7 @@ class EnterSceneState extends State<EnterScene> {
   @override
   void dispose() {
     _focusNode.dispose();
+    _timer?.cancel();
     super.dispose();
   }
 

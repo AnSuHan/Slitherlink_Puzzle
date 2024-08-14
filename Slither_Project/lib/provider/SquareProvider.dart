@@ -97,7 +97,6 @@ class SquareProvider with ChangeNotifier {
     }
 
     submit = await readSquare.readSubmit(puzzle);
-    List<List<int>> temp = await readSquare.readSubmit(puzzle);
     // ignore: use_build_context_synchronously
     checkCompletePuzzle(context);
     notifyListeners();
@@ -175,7 +174,7 @@ class SquareProvider with ChangeNotifier {
 
     while(_isUpdating != 0) {
       Future.delayed(const Duration(milliseconds: 50));
-      print("wait in check : $_isUpdating");
+      //print("wait in check : $_isUpdating");
     }
     submit = await readSquare.readSubmit(puzzle);
 
@@ -501,7 +500,6 @@ class SquareProvider with ChangeNotifier {
 
   Future<void> initDoValue() async {
     String? value = await ExtractData().getStringFromLocal("${loadKey}_doValue");
-    print("in initDoValue : $value");
 
     if(value == null) {
       doPointer = -1;
@@ -517,7 +515,6 @@ class SquareProvider with ChangeNotifier {
     doIndex = int.parse(token[1]);
     doPointerColor = token[2].split("@").map(int.parse).toList();
     doIndexColor = token[3].split("@").map(int.parse).toList();
-    print("init doValue : $doPointer, $doIndex, $doPointerColor, $doIndexColor");
     await loadDoSubmit();
   }
   Future<void> saveDoValue() async {
@@ -528,7 +525,6 @@ class SquareProvider with ChangeNotifier {
     String value = "${doPointer}_${doIndex}_${pointer}_$index";
 
     await ExtractData().saveStringToLocal("${loadKey}_doValue", value);
-    print("save doValue : $value");
   }
   void setDoValue(String color) {
     int index = 0;
@@ -565,11 +561,9 @@ class SquareProvider with ChangeNotifier {
     String value = flatList.join('|');
     if(color == null) {
       await ExtractData().saveStringToLocal("${loadKey}__doSubmit", value);
-      print("save doSubmit ${value.substring(0, 20)} with ${loadKey}__doSubmit");
     }
     else {
       await ExtractData().saveStringToLocal("${loadKey}_${color}_doSubmit", value);
-      print("save doSubmit ${value.substring(0, 20)} with ${loadKey}_${color}_doSubmit");
     }
 
   }
@@ -578,7 +572,6 @@ class SquareProvider with ChangeNotifier {
     String? value = color == null
         ? await ExtractData().getStringFromLocal("${loadKey}__doSubmit")
         : await ExtractData().getStringFromLocal("${loadKey}_${color}_doSubmit");
-    print("key in load : ${value?.substring(0, 20)} with ${loadKey}_${color ?? ""}_doSubmit");
 
     //print("value : $value");
     if(value == null) {
@@ -610,7 +603,6 @@ class SquareProvider with ChangeNotifier {
         ).toList()
     ).toList();
 
-    print("load doSubmit : ${doSubmit[1].sublist(0, 10)}");
     for (var list1D in doSubmit[doPointer]) {
       submit.add(List<int>.from(list1D));
     }
@@ -712,6 +704,7 @@ class SquareProvider with ChangeNotifier {
   }
 
   void printSubmitSimple(List<List<int>> list) {
+    // ignore: avoid_print
     print("submit : ${list.toString().replaceAll("0, ", "").replaceAll("0", "")}");
   }
 

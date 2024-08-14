@@ -117,6 +117,6 @@ class ExtractData {
       await prefs.remove(key);
     }
 
-    print("now key : ${prefs.getKeys().toList()}");
+    //print("now key : ${prefs.getKeys().toList()}");
   }
 }

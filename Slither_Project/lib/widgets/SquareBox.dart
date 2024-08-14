@@ -108,7 +108,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                     ),
                   ],
                 ) : Container(),
-                Container(
+                SizedBox(
                   height: 10,
                   width: 50,
                   child: GestureDetector(
@@ -170,7 +170,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                !isFirstColumn ? Container() : Container(
+                !isFirstColumn ? Container() : SizedBox(
                   height: 50,
                   width: 10,
                   child: GestureDetector(
@@ -226,7 +226,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                     child: Text(num.toString(), style: TextStyle(color: settingColor["number"])),
                   ),
                 ),
-                Container(
+                SizedBox(
                   height: 50,
                   width: 10,
                   child: GestureDetector(

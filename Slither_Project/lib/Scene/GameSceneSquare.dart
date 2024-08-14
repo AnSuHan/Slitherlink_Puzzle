@@ -1,6 +1,5 @@
 // ignore_for_file: file_names
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -282,8 +281,8 @@ class GameStateSquare extends State<GameSceneSquare> {
     //double maxY = -screenSize.height * 0.2; // -screenSize.height * 0.2 ~ screenSize.height * 0.2
     //print("maxX : ${max[0]}, maxY : ${max[1]}");
     // print("area : ${area[0]}, ${area[1]}");
-    print("item : ${item[0]}, ${item[1]}");
-    print("ratio : ${ratio[0]} ${ratio[1]}");
+    //print("item : ${item[0]}, ${item[1]}");
+    //print("ratio : ${ratio[0]} ${ratio[1]}");
 
     return [ratio[0], ratio[1]];
   }

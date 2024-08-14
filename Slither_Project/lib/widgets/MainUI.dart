@@ -886,9 +886,11 @@ class MainUI {
         int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
         //restrict puzzle's EOF
+        // ignore: use_build_context_synchronously
         if(await answer.checkRemainPuzzle(context, selectedType[0], selectedType[1])) {
           UserInfo.addContinuePuzzle(progressKey);
           onUpdate();
+          // ignore: use_build_context_synchronously
           changeScene(context, progressKey);
         }
         else {

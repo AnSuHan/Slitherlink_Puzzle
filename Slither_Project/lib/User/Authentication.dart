@@ -106,6 +106,7 @@ class Authentication {
         return 0;
       }
     } catch(e) {
+      // ignore: avoid_print
       print("Error during withdrawal: $e");
       return 400;
     }

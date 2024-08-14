@@ -89,6 +89,7 @@ class UserInfo {
   }
 
   static void clearPuzzle(String key) {
+    // ignore: avoid_print
     print("in clearPuzzle : $key");
     continuePuzzle.remove(key);
     updateContinueWidget = true;
@@ -133,7 +134,6 @@ class UserInfo {
     await prefs.setString("setting", settingJson);
     //web
     //html.window.localStorage['setting'] = settingsJson;
-    print("end of set setting all");
   }
 
   static Future<void> loadSetting() async {
@@ -145,8 +145,8 @@ class UserInfo {
     if (settingsJson != null) {
       Map<String, dynamic> loadedSettings = jsonDecode(settingsJson);
       setting = loadedSettings.map((key, value) => MapEntry(key, value.toString()));
-      print("setting : $setting");
     }
+    // ignore: avoid_print
     print("setting : $setting");
   }
 
