@@ -28,7 +28,6 @@ class SquareProvider with ChangeNotifier {
     required this.loadKey,
   }) {
     readSquare = ReadSquare(squareProvider: this, context: context);
-    initDoValue();
   }
 
   ThemeColor themeColor = ThemeColor();
@@ -43,9 +42,13 @@ class SquareProvider with ChangeNotifier {
 
   ///Init
   void init() async {
+    //setting field
     puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
     squareField = await buildSquarePuzzleAnswer(answer, isContinue: isContinue);
     readSquare.setPuzzle(puzzle);
+
+    //for working do-things
+    initDoValue();
     notifyListeners();
   }
 
@@ -338,6 +341,8 @@ class SquareProvider with ChangeNotifier {
 
     //clear doValue normal & label
     await clearDoValue();
+    //clear submit data
+    await clearDoSubmit();
 
     // Show AlertDialog if isComplete is true
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -496,6 +501,7 @@ class SquareProvider with ChangeNotifier {
 
   Future<void> initDoValue() async {
     String? value = await ExtractData().getStringFromLocal("${loadKey}_doValue");
+    print("in initDoValue : $value");
 
     if(value == null) {
       doPointer = -1;
@@ -512,6 +518,7 @@ class SquareProvider with ChangeNotifier {
     doPointerColor = token[2].split("@").map(int.parse).toList();
     doIndexColor = token[3].split("@").map(int.parse).toList();
     print("init doValue : $doPointer, $doIndex, $doPointerColor, $doIndexColor");
+    await loadDoSubmit();
   }
   Future<void> saveDoValue() async {
     //split with `@`
@@ -541,15 +548,75 @@ class SquareProvider with ChangeNotifier {
     doIndex = doIndexColor[index];
   }
   Future<void> clearDoValue() async {
-    ExtractData().removeData("${loadKey}_doValue");
+    await ExtractData().removeData("${loadKey}_doValue");
   }
 
-  Future<void> saveDoSubmit() async {
+  Future<void> saveDoSubmit({String? color}) async {
+    List<String> flatList = [];
+    for (var list2D in doSubmit) {
+      List<String> tempList = [];
+      for (var list1D in list2D) {
+        String innerListString = list1D.join(',');
+        tempList.add(innerListString);
+      }
+      flatList.add(tempList.join('_'));
+    }
+
+    String value = flatList.join('|');
+    if(color == null) {
+      await ExtractData().saveStringToLocal("${loadKey}__doSubmit", value);
+      print("save doSubmit ${value.substring(0, 20)} with ${loadKey}__doSubmit");
+    }
+    else {
+      await ExtractData().saveStringToLocal("${loadKey}_${color}_doSubmit", value);
+      print("save doSubmit ${value.substring(0, 20)} with ${loadKey}_${color}_doSubmit");
+    }
 
   }
   ///call in initDoValue() & change label
-  Future<void> loadDoSubmit() async {
+  Future<void> loadDoSubmit({String? color}) async {
+    String? value = color == null
+        ? await ExtractData().getStringFromLocal("${loadKey}__doSubmit")
+        : await ExtractData().getStringFromLocal("${loadKey}_${color}_doSubmit");
+    print("key in load : ${value?.substring(0, 20)} with ${loadKey}_${color ?? ""}_doSubmit");
 
+    //print("value : $value");
+    if(value == null) {
+      doSubmit = [];
+      doSubmit.add(await readSquare.readSubmit(puzzle));
+      return;
+    }
+
+    List<String> list2DStrings = value.split('|');
+    List<List<List<int>>> loadedDoSubmit = [];
+
+    for (var list2DString in list2DStrings) {
+      List<String> list1DStrings = list2DString.split('_');
+      List<List<int>> list2D = [];
+
+      for (var list1DString in list1DStrings) {
+        if(list1DString.isEmpty) {
+          continue;
+        }
+        List<int> list1D = list1DString.split(',').map(int.parse).toList();
+        list2D.add(list1D);
+      }
+      loadedDoSubmit.add(list2D);
+    }
+
+    doSubmit = loadedDoSubmit.map((list2D) =>
+        list2D.map((list1D) =>
+        List<int>.from(list1D)
+        ).toList()
+    ).toList();
+
+    print("load doSubmit : ${doSubmit[1].sublist(0, 10)}");
+    for (var list1D in doSubmit[doPointer]) {
+      submit.add(List<int>.from(list1D));
+    }
+  }
+  Future<void> clearDoSubmit() async {
+    await ExtractData().removeData("${loadKey}_doSubmit");
   }
 
   Future<void> setDo() async {

@@ -2,6 +2,7 @@
 import 'package:firebase_auth/firebase_auth.dart' hide UserInfo;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../User/UserInfo.dart';
 import '../firebase_options.dart';
 import 'EnterScene.dart';
@@ -51,6 +52,9 @@ class SplashState extends State<Splash> {
   Future<void> loading() async {
     await firebase();
     await setUserInfo();
+    await clearKeys();
+
+    await Future.delayed(const Duration(milliseconds: 500));
   }
 
   Future<void> firebase() async {
@@ -65,5 +69,17 @@ class SplashState extends State<Splash> {
 
   Future<void> setUserInfo() async {
     await UserInfo.init();
+  }
+
+  Future<void> clearKeys() async {
+    //remove SharedPreference's keys
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> keys = prefs.getKeys().toList();
+
+    for(var key in keys) {
+      await prefs.remove(key);
+    }
+
+    print("now key : ${prefs.getKeys().toList()}");
   }
 }
