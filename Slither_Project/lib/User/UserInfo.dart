@@ -1,9 +1,10 @@
 // ignore_for_file: file_names
 import 'dart:convert';
+import '../Platform/ExtractData.dart'
+if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class UserInfo {
   static bool isDebug = true;
@@ -119,7 +120,6 @@ class UserInfo {
     return null;
   }
 
-  ///TODO : make platform branch
   static Future<void> setSettingAll(Map<String, String> value) async {
     Iterable<String> keys = setting.keys;
     for(String key in keys) {
@@ -128,22 +128,15 @@ class UserInfo {
       }
     }
 
-    //mobile
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
     String settingJson = jsonEncode(setting);
-    await prefs.setString("setting", settingJson);
-    //web
-    //html.window.localStorage['setting'] = settingsJson;
+    await ExtractData().saveStringToLocal("setting", settingJson);
   }
 
   static Future<void> loadSetting() async {
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? settingsJson = prefs.getString("setting");
-    //web
-    //String? settingsJson = html.window.localStorage['setting'];
+    String? settingJson = await ExtractData().getStringFromLocal("setting");
 
-    if (settingsJson != null) {
-      Map<String, dynamic> loadedSettings = jsonDecode(settingsJson);
+    if (settingJson != null) {
+      Map<String, dynamic> loadedSettings = jsonDecode(settingJson);
       setting = loadedSettings.map((key, value) => MapEntry(key, value.toString()));
     }
     // ignore: avoid_print
