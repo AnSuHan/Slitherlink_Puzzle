@@ -2,7 +2,6 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
 import '../Platform/ExtractData.dart'
@@ -323,18 +322,18 @@ class SquareProvider with ChangeNotifier {
     UserInfo.clearPuzzle(loadKey);
 
     //delete sharedPreference key about label
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    ExtractData prefs = ExtractData();
     List<String> item = ["Red", "Green", "Blue"];
     for(int i = 0 ; i < 3 ; i++) {
       String key = "${MainUI.getProgressKey()}_${item[i]}";
 
       //label data
-      if(prefs.containsKey(key)) {
-        await prefs.remove(key);
+      if(await prefs.containsKey(key)) {
+        await prefs.removeKey(key);
       }
       //control do data with label
-      if(prefs.containsKey("${key}_do")) {
-        await prefs.remove("${key}_do");
+      if(await prefs.containsKey("${key}_do")) {
+        await prefs.removeKey("${key}_do");
       }
     }
 
@@ -499,7 +498,7 @@ class SquareProvider with ChangeNotifier {
   List<int> doIndexColor = [];    //for label
 
   Future<void> initDoValue() async {
-    String? value = await ExtractData().getStringFromLocal("${loadKey}_doValue");
+    String? value = await ExtractData().getDataFromLocal("${loadKey}_doValue");
 
     if(value == null) {
       doPointer = -1;
@@ -524,7 +523,7 @@ class SquareProvider with ChangeNotifier {
     //split with `_`
     String value = "${doPointer}_${doIndex}_${pointer}_$index";
 
-    await ExtractData().saveStringToLocal("${loadKey}_doValue", value);
+    await ExtractData().saveDataToLocal("${loadKey}_doValue", value);
   }
   void setDoValue(String color) {
     int index = 0;
@@ -560,18 +559,18 @@ class SquareProvider with ChangeNotifier {
 
     String value = flatList.join('|');
     if(color == null) {
-      await ExtractData().saveStringToLocal("${loadKey}__doSubmit", value);
+      await ExtractData().saveDataToLocal("${loadKey}__doSubmit", value);
     }
     else {
-      await ExtractData().saveStringToLocal("${loadKey}_${color}_doSubmit", value);
+      await ExtractData().saveDataToLocal("${loadKey}_${color}_doSubmit", value);
     }
 
   }
   ///call in initDoValue() & change label
   Future<void> loadDoSubmit({String? color}) async {
     String? value = color == null
-        ? await ExtractData().getStringFromLocal("${loadKey}__doSubmit")
-        : await ExtractData().getStringFromLocal("${loadKey}_${color}_doSubmit");
+        ? await ExtractData().getDataFromLocal("${loadKey}__doSubmit")
+        : await ExtractData().getDataFromLocal("${loadKey}_${color}_doSubmit");
 
     //print("value : $value");
     if(value == null) {
@@ -675,14 +674,14 @@ class SquareProvider with ChangeNotifier {
 
   ///key : loadKey + color + `do`
   Future<void> controlDo({String key = "", bool save = false, bool load = false}) async {
-    SharedPreferences pref = await SharedPreferences.getInstance();
+    ExtractData prefs = ExtractData();
 
     try {
       if(save) {
-        await pref.setInt(key, doPointer);
+        await prefs.saveDataToLocal(key, doPointer);
       }
       else if(load) {
-        doPointer = pref.getInt(key)!;
+        doPointer = int.parse(await prefs.getDataFromLocal(key));
       }
     }
     catch(e) {

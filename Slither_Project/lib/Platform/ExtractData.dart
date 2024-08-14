@@ -63,8 +63,8 @@ class ExtractData {
     }
   }
 
-  ///String 데이터를 SharedPreference에 저장
-  Future<void> saveStringToLocal(String key, String value) async {
+  ///데이터를 SharedPreference에 저장
+  Future<void> saveDataToLocal(String key, dynamic value) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     try {
@@ -75,15 +75,22 @@ class ExtractData {
         return;
       }
 
-      prefs.setString(key, value);
+      switch(value.runtimeType) {
+        case String:
+          prefs.setString(key, value);
+          break;
+        case int:
+          prefs.setInt(key, value);
+          break;
+      }
     }
     catch(e) {
       debugPrintStack(stackTrace: StackTrace.fromString(value));
     }
   }
 
-  ///String 데이터를 SharedPreference에서 불러오기
-  Future<String?> getStringFromLocal(String key) async {
+  ///데이터를 SharedPreference에서 불러오기
+  Future<dynamic> getDataFromLocal(String key) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
 
     try {
@@ -118,5 +125,10 @@ class ExtractData {
     }
 
     //print("now key : ${prefs.getKeys().toList()}");
+  }
+
+  Future<bool> containsKey(String key) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey(key);
   }
 }

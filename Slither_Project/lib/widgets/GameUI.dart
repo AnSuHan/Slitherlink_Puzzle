@@ -1,8 +1,9 @@
 // ignore_for_file: file_names
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../Platform/ExtractData.dart'
+if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
 import '../MakePuzzle/ReadSquare.dart';
 import '../l10n/app_localizations.dart';
 import '../provider/SquareProvider.dart';
@@ -283,28 +284,28 @@ class GameUI {
   }
 
   void initLabel() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    ExtractData prefs = ExtractData();
     List<String> labelColor = ["Red", "Green", "Blue"];
 
     for(int i = 0 ; i < labelColor.length ; i++) {
       String key = "${MainUI.getProgressKey()}_${labelColor[i]}";
-      if(prefs.containsKey(key)) {
+      if(await prefs.containsKey(key)) {
         labelState[i] = "load";
       }
     }
   }
 
   void clearLabel(String color) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    ExtractData prefs = ExtractData();
     String key = "${MainUI.getProgressKey()}_$color";
 
     //label data
-    if(prefs.containsKey(key)) {
-      await prefs.remove(key);
+    if(await prefs.containsKey(key)) {
+      await prefs.removeKey(key);
     }
     //control do data with label
-    if(prefs.containsKey("${key}_do")) {
-      await prefs.remove("${key}_do");
+    if(await prefs.containsKey("${key}_do")) {
+      await prefs.removeKey("${key}_do");
     }
   }
 }

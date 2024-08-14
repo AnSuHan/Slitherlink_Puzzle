@@ -129,11 +129,11 @@ class UserInfo {
     }
 
     String settingJson = jsonEncode(setting);
-    await ExtractData().saveStringToLocal("setting", settingJson);
+    await ExtractData().saveDataToLocal("setting", settingJson);
   }
 
   static Future<void> loadSetting() async {
-    String? settingJson = await ExtractData().getStringFromLocal("setting");
+    String? settingJson = await ExtractData().getDataFromLocal("setting");
 
     if (settingJson != null) {
       Map<String, dynamic> loadedSettings = jsonDecode(settingJson);

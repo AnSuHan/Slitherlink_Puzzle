@@ -26,20 +26,20 @@ class ExtractData {
     print('웹 파일 다운로드 성공: $fileName');
   }
 
-  ///String 데이터를 SharedPreference에 저장
-  Future<void> saveStringToLocal(String key, String value) async {
+  ///데이터를 SharedPreference에 저장
+  Future<void> saveDataToLocal(String key, dynamic value) async {
     try {
-      html.window.localStorage[key] = value;
+      html.window.localStorage[key] = value.toString();
     }
     catch(e) {
       debugPrintStack(stackTrace: StackTrace.fromString(key));
     }
   }
 
-  ///String 데이터를 SharedPreference에서 불러오기
-  Future<String?> getStringFromLocal(String key) async {
+  ///데이터를 SharedPreference에서 불러오기
+  Future<dynamic> getDataFromLocal(String key) async {
     try {
-      return html.window.localStorage[key];
+      return html.window.localStorage[key]!;
     }
     catch(e) {
       return null;
@@ -54,5 +54,9 @@ class ExtractData {
     //remove web local storage's key
     html.window.localStorage.clear();
     //print("Local storage keys cleared. : ${html.window.localStorage.keys}");
+  }
+
+  Future<bool> containsKey(String key) async {
+    return html.window.localStorage.containsKey(key);
   }
 }

@@ -1,8 +1,9 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
+import '../Platform/ExtractData.dart'
+if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
 import '../provider/SquareProvider.dart';
 import '../widgets/SquareBox.dart';
 import 'ReadPuzzleData.dart';
@@ -58,8 +59,8 @@ class ReadSquare {
     //get submit data
     //read from SharedPreference
     else {
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? temp = prefs.getString(key);
+      final ExtractData prefs = ExtractData();
+      String? temp = (await prefs.getDataFromLocal(key)) ?.toString();
 
       if (temp != null) {
         // JSON to List<List<int>>
