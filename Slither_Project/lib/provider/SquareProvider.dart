@@ -548,7 +548,7 @@ class SquareProvider with ChangeNotifier {
     doIndex = doIndexColor[index];
   }
   Future<void> clearDoValue() async {
-    await ExtractData().removeData("${loadKey}_doValue");
+    await ExtractData().removeKey("${loadKey}_doValue");
   }
 
   Future<void> saveDoSubmit({String? color}) async {
@@ -616,7 +616,7 @@ class SquareProvider with ChangeNotifier {
     }
   }
   Future<void> clearDoSubmit() async {
-    await ExtractData().removeData("${loadKey}_doSubmit");
+    await ExtractData().removeKey("${loadKey}_doSubmit");
   }
 
   Future<void> setDo() async {

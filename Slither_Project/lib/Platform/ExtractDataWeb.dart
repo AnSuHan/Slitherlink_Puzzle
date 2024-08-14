@@ -46,7 +46,13 @@ class ExtractData {
     }
   }
 
-  Future<void> removeData(String key) async {
+  Future<void> removeKey(String key) async {
     html.window.localStorage.remove(key);
+  }
+
+  Future<void> removeKeyAll() async {
+    //remove web local storage's key
+    html.window.localStorage.clear();
+    print("Local storage keys cleared. : ${html.window.localStorage.keys}");
   }
 }

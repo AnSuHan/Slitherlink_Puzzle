@@ -103,8 +103,20 @@ class ExtractData {
     }
   }
 
-  Future<void> removeData(String key) async {
+  Future<void> removeKey(String key) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(key);
+  }
+
+  Future<void> removeKeyAll() async {
+    //remove SharedPreference's keys
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> keys = prefs.getKeys().toList();
+
+    for(var key in keys) {
+      await prefs.remove(key);
+    }
+
+    print("now key : ${prefs.getKeys().toList()}");
   }
 }

@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../User/UserInfo.dart';
 import '../firebase_options.dart';
 import 'EnterScene.dart';
+import '../Platform/ExtractData.dart'
+if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
 
 class Splash extends StatefulWidget {
   const Splash({Key? key}) : super(key: key);
@@ -72,14 +74,7 @@ class SplashState extends State<Splash> {
   }
 
   Future<void> clearKeys() async {
-    //remove SharedPreference's keys
-    final SharedPreferences prefs = await SharedPreferences.getInstance();
-    List<String> keys = prefs.getKeys().toList();
-
-    for(var key in keys) {
-      await prefs.remove(key);
-    }
-
-    print("now key : ${prefs.getKeys().toList()}");
+    //remove SharedPreference's keys | web local storage's keys
+    await ExtractData().removeKeyAll();
   }
 }
