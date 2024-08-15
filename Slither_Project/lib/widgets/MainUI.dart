@@ -128,39 +128,42 @@ class MainUI {
           showDialog(
             context: context,
             builder: (BuildContext context) {
+              //내부의 변경 사항을 적용하기 위해 사용
               return StatefulBuilder(
                 builder: (BuildContext context, StateSetter setState) {
                   return Dialog(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          double containerWidth = screenSize.width < 450
-                              ? screenSize.width * 0.6
-                              : screenSize.width * 0.4;
-                          double labelWidth = containerWidth * 0.2;
-                          return Container(
-                              width: containerWidth,
-                              padding: const EdgeInsets.all(20),
-                              child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      appLocalizations.translate('MainUI_login'),
-                                      style: const TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.bold,
+                    //showDialog의 height-overflow를 처리하기 위해 사용
+                    child: SingleChildScrollView(
+                      child: LayoutBuilder(
+                          builder: (context, constraints) {
+                            double containerWidth = screenSize.width < 450
+                                ? screenSize.width * 0.6
+                                : screenSize.width * 0.4;
+                            double labelWidth = containerWidth * 0.2;
+                            return Container(
+                                width: containerWidth,
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        appLocalizations.translate('MainUI_login'),
+                                        style: const TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    Column(
-                                      children: [
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            SizedBox(
-                                              width: labelWidth,
+                                      const SizedBox(height: 20),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          SizedBox(
+                                            width: labelWidth,
+                                            child: Align(
+                                              alignment: Alignment.centerLeft,
                                               child: Text(
                                                 appLocalizations.translate('email'),
                                                 style: const TextStyle(
@@ -169,152 +172,155 @@ class MainUI {
                                                 ),
                                               ),
                                             ),
-                                            Expanded(
-                                              child: TextField(
-                                                controller: emailInput,
-                                                decoration: const InputDecoration(
-                                                  border: OutlineInputBorder(),
-                                                  labelText: "example@example.com",
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 8),
+                                            child: TextField(
+                                              controller: emailInput,
+                                              decoration: const InputDecoration(
+                                                border: OutlineInputBorder(),
+                                                labelText: "example@example.com",
+                                              ),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 8),
+                                            child: SizedBox(
+                                              width: labelWidth,
+                                              child: Align(
+                                                alignment: Alignment.centerLeft,
+                                                child: Text(
+                                                  appLocalizations.translate('password'),
+                                                  style: const TextStyle(
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.visible,
                                                 ),
                                               ),
                                             ),
-                                          ],
-                                        ),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            SizedBox(
-                                              width: labelWidth,
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.only(top: 8.0),
+                                            child: TextField(
+                                              controller: passwordInput,
+                                              decoration: const InputDecoration(
+                                                border: OutlineInputBorder(),
+                                                labelText: "password",
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          //error message
+                                          Text(
+                                            errType == 0 ? "" :
+                                            errType == 11 ? appLocalizations.translate('errMsg_Sign04') :
+                                            errType == 10 ? appLocalizations.translate('errMsg_Sign01') :
+                                            errType == 13 ? appLocalizations.translate('errMsg_Sign02') :
+                                            errType == 400 ? appLocalizations.translate('errMsg_Sign03') :
+                                            errType == 1 ? appLocalizations.translate('errMsg_Sign05') :
+                                            errType == 14 ? appLocalizations.translate('errMsg_Sign06') :
+                                            "",
+                                            style: const TextStyle(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.red,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          SizedBox(
+                                            width: containerWidth * 0.6,
+                                            child: ElevatedButton(
+                                              onPressed: () async {
+                                                auth.setScreenSize(screenSize);
+                                                errType = await auth.signInEmail(context, emailInput.text, passwordInput.text);
+
+                                                setState(() {});
+                                                onUpdate();
+                                                //print("errType : $errType");
+                                                if(errType == 0) {
+                                                  popupMsg = appLocalizations.translate('complete_sign_in');
+                                                  // ignore: use_build_context_synchronously
+                                                  Navigator.of(context).pop();
+                                                }
+                                              },
                                               child: Text(
-                                                appLocalizations.translate('password'),
+                                                appLocalizations.translate('sign_in'),
                                                 style: const TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
                                                 ),
                                               ),
                                             ),
-                                            Expanded(
-                                              child: TextField(
-                                                controller: passwordInput,
-                                                decoration: const InputDecoration(
-                                                  border: OutlineInputBorder(),
-                                                  labelText: "password",
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 10),
-                                        //error message
-                                        Text(
-                                          errType == 0 ? "" :
-                                          errType == 11 ? appLocalizations.translate('errMsg_Sign04') :
-                                          errType == 10 ? appLocalizations.translate('errMsg_Sign01') :
-                                          errType == 13 ? appLocalizations.translate('errMsg_Sign02') :
-                                          errType == 400 ? appLocalizations.translate('errMsg_Sign03') :
-                                          errType == 1 ? appLocalizations.translate('errMsg_Sign05') :
-                                          errType == 14 ? appLocalizations.translate('errMsg_Sign06') :
-                                          "",
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.red,
                                           ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        SizedBox(
-                                          width: containerWidth * 0.6,
-                                          child: ElevatedButton(
-                                            onPressed: () async {
-                                              auth.setScreenSize(screenSize);
-                                              errType = await auth.signInEmail(context, emailInput.text, passwordInput.text);
+                                          const SizedBox(height: 20),
+                                          Row(
+                                            children: [
+                                              SizedBox(
+                                                width: containerWidth * 0.4,
+                                                child: ElevatedButton(
+                                                  onPressed: () async {
+                                                    auth.setScreenSize(screenSize);
+                                                    errType = await auth.signUpEmail(context, emailInput.text, passwordInput.text);
 
-                                              setState(() {});
-                                              onUpdate();
-                                              //print("errType : $errType");
-                                              if(errType == 0) {
-                                                popupMsg = appLocalizations.translate('complete_sign_in');
-                                                // ignore: use_build_context_synchronously
-                                                Navigator.of(context).pop();
-                                              }
-                                            },
-                                            child: Text(
-                                              appLocalizations.translate('sign_in'),
-                                              style: const TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
+                                                    setState(() {});
+                                                    onUpdate();
+                                                    //print("errType : $errType");
+                                                    if(errType == 0) {
+                                                      popupMsg = appLocalizations.translate('complete_sign_up');
+                                                      // ignore: use_build_context_synchronously
+                                                      Navigator.of(context).pop();
+                                                    }
+                                                  },
+                                                  child: Text(
+                                                    appLocalizations.translate('sign_up'),
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
+                                              const Spacer(),
+                                              SizedBox(
+                                                width: containerWidth * 0.4,
+                                                child: ElevatedButton(
+                                                  onPressed: () async {
+                                                    auth.setScreenSize(screenSize);
+                                                    errType = await auth.resetPasswordEmail(context, emailInput.text);
+
+                                                    setState(() {});
+                                                    onUpdate();
+                                                    //print("errType : $errType");
+                                                    if(errType == 1) {
+                                                      popupMsg = appLocalizations.translate('errMsg_Sign05');
+                                                      // ignore: use_build_context_synchronously
+                                                      Navigator.of(context).pop();
+                                                    }
+                                                  },
+                                                  child: Text(
+                                                    appLocalizations.translate('reset_password'),
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                    maxLines: 2,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                        const SizedBox(height: 20),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.center,
-                                          children: [
-                                            SizedBox(
-                                              width: containerWidth * 0.3,
-                                              child: ElevatedButton(
-                                                onPressed: () async {
-                                                  auth.setScreenSize(screenSize);
-                                                  errType = await auth.signUpEmail(context, emailInput.text, passwordInput.text);
-
-                                                  setState(() {});
-                                                  onUpdate();
-                                                  //print("errType : $errType");
-                                                  if(errType == 0) {
-                                                    popupMsg = appLocalizations.translate('complete_sign_up');
-                                                    // ignore: use_build_context_synchronously
-                                                    Navigator.of(context).pop();
-                                                  }
-                                                },
-                                                child: Text(
-                                                  appLocalizations.translate('sign_up'),
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                              ),
-                                            ),
-                                            SizedBox(
-                                              width: containerWidth * 0.1,
-                                            ),
-                                            SizedBox(
-                                              width: containerWidth * 0.3,
-                                              child: ElevatedButton(
-                                                onPressed: () async {
-                                                  auth.setScreenSize(screenSize);
-                                                  errType = await auth.resetPasswordEmail(context, emailInput.text);
-
-                                                  setState(() {});
-                                                  onUpdate();
-                                                  //print("errType : $errType");
-                                                  if(errType == 1) {
-                                                    popupMsg = appLocalizations.translate('errMsg_Sign05');
-                                                    // ignore: use_build_context_synchronously
-                                                    Navigator.of(context).pop();
-                                                  }
-                                                },
-                                                child: Text(
-                                                  appLocalizations.translate('reset_password'),
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                  textAlign: TextAlign.center,
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ]
-                              )
-                          );
-                        }
-                      )
+                                        ],
+                                      ),
+                                    ]
+                                )
+                            );
+                          }
+                        ),
+                    )
                   );
                 }
               );
