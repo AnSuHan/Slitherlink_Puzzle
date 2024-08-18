@@ -143,6 +143,45 @@ class MainUI {
                                 ? screenSize.width * 0.6
                                 : screenSize.width * 0.4;
                             double labelWidth = containerWidth * 0.2;
+
+                            double height = 0;
+                            // Create TextPainter for the 'sign up' and 'reset password' buttons
+                            TextPainter createTextPainter(String text, double maxWidth) {
+                              final textSpan = TextSpan(
+                                text: text,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              );
+
+                              final textPainter = TextPainter(
+                                text: textSpan,
+                                textDirection: TextDirection.ltr,
+                                maxLines: null,
+                              );
+
+                              // 텍스트를 두 줄로 강제하기 위해 추가 설정
+                              textPainter.layout(minWidth: maxWidth, maxWidth: maxWidth);
+
+                              // 한 줄의 높이 계산
+                              final double lineHeight = textPainter.preferredLineHeight;
+
+                              // 텍스트 높이가 두 줄 이상이 되도록 강제
+                              final double calculatedHeight = textPainter.height > lineHeight ? textPainter.height : lineHeight * 2;
+                              height = calculatedHeight;
+
+                              return textPainter;
+                            }
+
+                            final resetPasswordTextPainter = createTextPainter(
+                                appLocalizations.translate('reset_password'), containerWidth * 0.5);
+
+                            double buttonWidth = resetPasswordTextPainter.size.width;
+                            double buttonHeight = height;//resetPasswordTextPainter.size.height;
+
+                            print("buttonHeight : $buttonHeight");
+
                             return Container(
                                 width: containerWidth,
                                 padding: const EdgeInsets.all(20),
@@ -258,7 +297,8 @@ class MainUI {
                                           Row(
                                             children: [
                                               SizedBox(
-                                                width: containerWidth * 0.4,
+                                                width: buttonWidth,
+                                                height: buttonHeight,
                                                 child: ElevatedButton(
                                                   onPressed: () async {
                                                     auth.setScreenSize(screenSize);
@@ -280,12 +320,14 @@ class MainUI {
                                                       fontWeight: FontWeight.bold,
                                                     ),
                                                     textAlign: TextAlign.center,
+                                                    overflow: TextOverflow.visible,
                                                   ),
                                                 ),
                                               ),
                                               const Spacer(),
                                               SizedBox(
-                                                width: containerWidth * 0.4,
+                                                width: buttonWidth,
+                                                height: buttonHeight,
                                                 child: ElevatedButton(
                                                   onPressed: () async {
                                                     auth.setScreenSize(screenSize);
@@ -308,6 +350,8 @@ class MainUI {
                                                     ),
                                                     textAlign: TextAlign.center,
                                                     maxLines: 2,
+                                                    softWrap: true,
+                                                    overflow: TextOverflow.visible,
                                                   ),
                                                 ),
                                               ),
