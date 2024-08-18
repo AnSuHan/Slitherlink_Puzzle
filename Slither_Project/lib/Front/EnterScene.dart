@@ -310,7 +310,9 @@ class EnterSceneState extends State<EnterScene> {
               flex: 3,
               child: Center(
                 child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  mainAxisAlignment: ui.getContinueWidget(context) == null
+                    ? MainAxisAlignment.center
+                    : MainAxisAlignment.spaceEvenly,
                   children: [
                     //title, start button, puzzle type
                     Column(
@@ -331,6 +333,7 @@ class EnterSceneState extends State<EnterScene> {
                       ],
                     ),
                     //continue puzzle
+                    ui.getContinueWidget(context) == null ? const SizedBox.shrink() :
                     Center(
                       child: ui.getContinueWidget(context),
                     ),

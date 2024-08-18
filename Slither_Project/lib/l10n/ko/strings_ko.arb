@@ -36,7 +36,7 @@
   "complete_sign_out": "로그아웃 되었습니다",
   "withdraw": "탈퇴하기",
   "complete_withdraw": "탈퇴가 완료 되었습니다",
-  "reset_password": "비밀번호 재설정",
+  "reset_password": "비밀번호\n재설정",
   "email" : "이메일",
   "password" : "비밀번호",
   "language_en" : "영어",
