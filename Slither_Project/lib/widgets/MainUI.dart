@@ -144,7 +144,7 @@ class MainUI {
                                 : screenSize.width * 0.4;
                             double labelWidth = containerWidth * 0.2;
 
-                            double height = 0;
+                            double buttonHeight = 0;
                             // Create TextPainter for the 'sign up' and 'reset password' buttons
                             TextPainter createTextPainter(String text, double maxWidth) {
                               final textSpan = TextSpan(
@@ -169,18 +169,13 @@ class MainUI {
 
                               // 텍스트 높이가 두 줄 이상이 되도록 강제
                               final double calculatedHeight = textPainter.height > lineHeight ? textPainter.height : lineHeight * 2;
-                              height = calculatedHeight;
+                              buttonHeight = calculatedHeight;
 
                               return textPainter;
                             }
 
-                            final resetPasswordTextPainter = createTextPainter(
+                            createTextPainter(
                                 appLocalizations.translate('reset_password'), containerWidth * 0.5);
-
-                            double buttonWidth = resetPasswordTextPainter.size.width;
-                            double buttonHeight = height;//resetPasswordTextPainter.size.height;
-
-                            print("buttonHeight : $buttonHeight");
 
                             return Container(
                                 width: containerWidth,
@@ -297,7 +292,6 @@ class MainUI {
                                           Row(
                                             children: [
                                               SizedBox(
-                                                width: buttonWidth,
                                                 height: buttonHeight,
                                                 child: ElevatedButton(
                                                   onPressed: () async {
@@ -326,7 +320,6 @@ class MainUI {
                                               ),
                                               const Spacer(),
                                               SizedBox(
-                                                width: buttonWidth,
                                                 height: buttonHeight,
                                                 child: ElevatedButton(
                                                   onPressed: () async {
