@@ -25,7 +25,7 @@ class GameSceneSquare extends StatefulWidget {
   GameStateSquare createState() => GameStateSquare();
 }
 
-class GameStateSquare extends State<GameSceneSquare> {
+class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver {
   ///ONLY-DEBUG variables
   bool extractData = false;
   final FocusNode _focusNode = FocusNode();
@@ -92,6 +92,7 @@ class GameStateSquare extends State<GameSceneSquare> {
     });
 
     _transformationController = TransformationController();
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
@@ -99,6 +100,7 @@ class GameStateSquare extends State<GameSceneSquare> {
     // 타이머 취소
     _shutdownTimer?.cancel();
     _transformationController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -125,6 +127,25 @@ class GameStateSquare extends State<GameSceneSquare> {
     _provider.setGameField(this); //start 할 때, 바로 field가 보이도록 하기 위해 사용
   }
 
+  Future<bool> _onWillPop() async {
+    // 여기서 뒤로 가기 버튼을 눌렀을 때 실행할 메소드를 호출
+    if(uiNullable != null) {
+      await ui.exitGame();
+    }
+    print("뒤로 가기 버튼이 눌렸습니다.");
+    return true;  // true를 반환하면 앱이 종료됩니다.
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    if (state == AppLifecycleState.paused) {
+      // 앱이 백그라운드로 전환될 때 실행할 메소드 호출
+      ui.pauseGame();
+      print("앱이 백그라운드로 이동했습니다.");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if(uiNullable == null) {
@@ -132,125 +153,128 @@ class GameStateSquare extends State<GameSceneSquare> {
       ui = uiNullable!;
     }
 
-    return ChangeNotifierProvider( // ChangeNotifierProvider 사용
-      create: (context) => _provider, //ChangeNotifier class
-      child: Consumer<SquareProvider>(
-        builder: (context, provider, child) {
-          screenSize = MediaQuery.of(context).size;
-          ui.setScreenSize(screenSize);
-          _provider = provider;
+    return WillPopScope(
+      onWillPop: _onWillPop,
+      child: ChangeNotifierProvider( // ChangeNotifierProvider 사용
+        create: (context) => _provider, //ChangeNotifier class
+        child: Consumer<SquareProvider>(
+          builder: (context, provider, child) {
+            screenSize = MediaQuery.of(context).size;
+            ui.setScreenSize(screenSize);
+            _provider = provider;
 
-          return Scaffold(
-            appBar: !showAppbar ? null : ui.getGameAppBar(context, settingColor["appBar"]!, settingColor["appIcon"]!),
-            body: RawKeyboardListener(
-              focusNode: _focusNode,
-              onKey: (RawKeyEvent event) {
-                if(!useKeyInput) {
-                  return;
-                }
-                if (event is RawKeyDownEvent) {
-                  //apply answer to field
-                  if (event.logicalKey == LogicalKeyboardKey.keyA) {
-                    setState(() {
-                      _provider.loadLabel(answer);
-                    });
-                  } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
-                    setState(() {
-                      _provider.showComplete(context);
-                    });
+            return Scaffold(
+              appBar: !showAppbar ? null : ui.getGameAppBar(context, settingColor["appBar"]!, settingColor["appIcon"]!),
+              body: RawKeyboardListener(
+                focusNode: _focusNode,
+                onKey: (RawKeyEvent event) {
+                  if(!useKeyInput) {
+                    return;
                   }
-                }
-              },
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    if(appbarMode.compareTo("fixed") != 0) {
-                      showAppbar = !showAppbar;
+                  if (event is RawKeyDownEvent) {
+                    //apply answer to field
+                    if (event.logicalKey == LogicalKeyboardKey.keyA) {
+                      setState(() {
+                        _provider.loadLabel(answer);
+                      });
+                    } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
+                      setState(() {
+                        _provider.showComplete(context);
+                      });
                     }
-                  });
+                  }
                 },
-                child: AbsorbPointer(
-                  absorbing: isComplete,
-                  child: Stack(
-                    children: [
-                      Container(
-                        color: settingColor["background"],
-                        child: InteractiveViewer(
-                          transformationController: _transformationController,
-                          boundaryMargin: EdgeInsets.symmetric(
-                            horizontal: screenSize.width * 0.4,
-                            vertical: screenSize.height * 0.4,
-                          ),
-                          constrained: false,
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 20),
-                            child: Column(
-                              //provider와 ChangeNotifier를 통해 접근
-                              children: _provider.getSquareField().isNotEmpty
-                                  ? _provider.getSquareField()
-                                  : [
-                                    SizedBox(
-                                      width: screenSize.width,
-                                      height: screenSize.height,
-                                      child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        crossAxisAlignment: CrossAxisAlignment.center,
-                                        children: const [CircularProgressIndicator()],
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      if(appbarMode.compareTo("fixed") != 0) {
+                        showAppbar = !showAppbar;
+                      }
+                    });
+                  },
+                  child: AbsorbPointer(
+                    absorbing: isComplete,
+                    child: Stack(
+                      children: [
+                        Container(
+                          color: settingColor["background"],
+                          child: InteractiveViewer(
+                            transformationController: _transformationController,
+                            boundaryMargin: EdgeInsets.symmetric(
+                              horizontal: screenSize.width * 0.4,
+                              vertical: screenSize.height * 0.4,
+                            ),
+                            constrained: false,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 20),
+                              child: Column(
+                                //provider와 ChangeNotifier를 통해 접근
+                                children: _provider.getSquareField().isNotEmpty
+                                    ? _provider.getSquareField()
+                                    : [
+                                      SizedBox(
+                                        width: screenSize.width,
+                                        height: screenSize.height,
+                                        child: Row(
+                                          mainAxisAlignment: MainAxisAlignment.center,
+                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          children: const [CircularProgressIndicator()],
+                                        ),
                                       ),
-                                    ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      Positioned(
-                        width: 70,
-                        height: 70,
-                        left: UserInfo.getButtonAlignment() ? 20
-                            : ui.getScreenSize().width - 90, //margin
-                        bottom: 110,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await _provider.undo();
-                          },
-                          child: const Icon(Icons.undo),
-                        ),
-                      ),
-                      Positioned(
-                        width: 70,
-                        height: 70,
-                        left: UserInfo.getButtonAlignment() ? 20
-                            : ui.getScreenSize().width - 90, //margin
-                        bottom: 20,
-                        child: ElevatedButton(
-                          onPressed: () async {
-                            await _provider.redo();
-                          },
-                          child: const Icon(Icons.redo),
-                        ),
-                      ),
-                      if(extractData)
                         Positioned(
                           width: 70,
                           height: 70,
                           left: UserInfo.getButtonAlignment() ? 20
                               : ui.getScreenSize().width - 90, //margin
-                          bottom: 200,
+                          bottom: 110,
                           child: ElevatedButton(
                             onPressed: () async {
-                              await _provider.extractData();
+                              await _provider.undo();
                             },
-                            child: const Icon(Icons.upload_rounded),
+                            child: const Icon(Icons.undo),
                           ),
                         ),
-                    ],
-                  )
+                        Positioned(
+                          width: 70,
+                          height: 70,
+                          left: UserInfo.getButtonAlignment() ? 20
+                              : ui.getScreenSize().width - 90, //margin
+                          bottom: 20,
+                          child: ElevatedButton(
+                            onPressed: () async {
+                              await _provider.redo();
+                            },
+                            child: const Icon(Icons.redo),
+                          ),
+                        ),
+                        if(extractData)
+                          Positioned(
+                            width: 70,
+                            height: 70,
+                            left: UserInfo.getButtonAlignment() ? 20
+                                : ui.getScreenSize().width - 90, //margin
+                            bottom: 200,
+                            child: ElevatedButton(
+                              onPressed: () async {
+                                await _provider.extractData();
+                              },
+                              child: const Icon(Icons.upload_rounded),
+                            ),
+                          ),
+                      ],
+                    )
+                  ),
                 ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
