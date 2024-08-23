@@ -63,6 +63,9 @@ class SquareProvider with ChangeNotifier {
   }
 
   Future<void> showHint(BuildContext context) async {
+    await removeHintLine();
+
+    // ignore: use_build_context_synchronously
     List<List<dynamic>> items = await checkCompletePuzzleCompletely(context);
     //print("hint items : $items");
     List<dynamic> item;
@@ -77,7 +80,26 @@ class SquareProvider with ChangeNotifier {
       //print("hint item : $item");
       gameStateSquare.moveTo(gameStateSquare.getHintPos(item), 1.6);
 
-      setLineColor(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
+      setLineColorBox(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
+    }
+  }
+
+  Future<void> removeHintLine() async {
+    while(_isUpdating != 0) {
+      Future.delayed(const Duration(milliseconds: 50));
+      //print("wait in check : $_isUpdating");
+    }
+    submit = await readSquare.readSubmit(puzzle);
+
+    //find hint line
+    for(int i = 0 ; i < answer.length ; i++) {
+      for(int j = 0 ; j < answer[i].length ; j++) {
+        //힌트 라인이 남아 있는 경우 제거 후 조기 종료
+        if(submit[i][j] == -3) {
+          setLineColor(i, j, 0);
+          return;
+        }
+      }
     }
   }
 
@@ -102,7 +124,10 @@ class SquareProvider with ChangeNotifier {
   }
 
   //row, column is puzzle's row, column
-  void setLineColor(int row, int column, String dir, int color) {
+  ///SquareBox 단위로 방향을 지정하여 동작하는 함수
+  ///
+  ///(submit 기준 : setLineColor)
+  void setLineColorBox(int row, int column, String dir, int color) {
     switch(dir) {
       case "up":
         puzzle[row][column].up = color;
@@ -117,6 +142,35 @@ class SquareProvider with ChangeNotifier {
         puzzle[row][column].right = color;
         break;
     }
+    refreshSubmit();
+    notifyListeners();
+  }
+
+  ///submit 기준으로 동작하는 함수
+  ///
+  ///(SquareBox 기준 + dir 제공 : setLineColorBox)
+  void setLineColor(int row, int column, int color) {
+    int puzzleRow = row == 0 ? 0 : (row - 1) ~/ 2;    //012->0, 34->1, 56->2
+    int puzzleCol = row % 2 == 0 ? column :   //0->0, 1->1
+      column <= 1 ? 0 : column - 1;           //01->1, 2->1
+
+    if(row % 2 == 0) {
+      if(row == 0) {
+        puzzle[puzzleRow][puzzleCol].up = color;
+      }
+      else {
+        puzzle[puzzleRow][puzzleCol].down = color;
+      }
+    }
+    else {
+      if(column == 0) {
+        puzzle[puzzleRow][puzzleCol].left = color;
+      }
+      else {
+        puzzle[puzzleRow][puzzleCol].right = color;
+      }
+    }
+
     refreshSubmit();
     notifyListeners();
   }
@@ -752,7 +806,7 @@ class SquareProvider with ChangeNotifier {
         int oldColumn = int.parse(oldList[i][1].toString());
         String pos = oldList[i][2].toString();
 
-        setLineColor(oldRow, oldColumn, pos, lineValue);
+        setLineColorBox(oldRow, oldColumn, pos, lineValue);
         //print("set [$oldRow, $oldColumn, $pos, $lineValue]");
       }
     }
