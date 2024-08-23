@@ -1693,5 +1693,41 @@ class SquareProvider with ChangeNotifier {
         }
       }
     }
+
+    setDefaultLineStep1();
+  }
+
+  ///find SquareBox(num is zero) and set color -1
+  void setDefaultLineStep1() {
+    for(int i = 0 ; i < puzzle.length ; i++) {
+      for(int j = 0 ; j < puzzle[i].length ; j++) {
+        if(puzzle[i][j].num == 0) {
+          if(i != 0 && j != 0) {
+            puzzle[i - 1][j].down = -1;
+            puzzle[i][j].down = -1;
+            puzzle[i][j - 1].right = -1;
+            puzzle[i][j].right = -1;
+          }
+          else if(i == 0 && j != 0) {
+            puzzle[i][j].up = -1;
+            puzzle[i][j].down = -1;
+            puzzle[i][j - 1].right = -1;
+            puzzle[i][j].right = -1;
+          }
+          else if(i != 0 && j == 0) {
+            puzzle[i - 1][j].down = -1;
+            puzzle[i][j].down = -1;
+            puzzle[i][j].left = -1;
+            puzzle[i][j].right = -1;
+          }
+          else {
+            puzzle[i][j].up = -1;
+            puzzle[i][j].down = -1;
+            puzzle[i][j].left = -1;
+            puzzle[i][j].right = -1;
+          }
+        }
+      }  
+    }
   }
 }
