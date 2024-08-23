@@ -46,6 +46,7 @@ class GameUI {
     //when back button click, set class {UserInfo}
     String key = "${MainUI.getProgressKey()}_continue";
     //print("key : $key");  //square_small_0
+    await squareProvider.removeHintLine();
     await readSquare.savePuzzle(key);
     await squareProvider.saveDoValue();
     await squareProvider.saveDoSubmit();

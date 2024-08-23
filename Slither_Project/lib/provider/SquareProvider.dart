@@ -80,7 +80,12 @@ class SquareProvider with ChangeNotifier {
       //print("hint item : $item");
       gameStateSquare.moveTo(gameStateSquare.getHintPos(item), 1.6);
 
-      setLineColorBox(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
+      setLineColorBox(
+          int.parse(item[0].toString()),
+          int.parse(item[1].toString()),
+          item[2].toString(),
+          (item[3] as bool) ? -5 : -3   //item[3] is `isWrongSubmit`
+      );
     }
   }
 
@@ -95,7 +100,7 @@ class SquareProvider with ChangeNotifier {
     for(int i = 0 ; i < answer.length ; i++) {
       for(int j = 0 ; j < answer[i].length ; j++) {
         //힌트 라인이 남아 있는 경우 제거 후 조기 종료
-        if(submit[i][j] == -3) {
+        if(submit[i][j] == -3 || submit[i][j] == -5) {
           setLineColor(i, j, 0);
           return;
         }
@@ -222,6 +227,7 @@ class SquareProvider with ChangeNotifier {
     //UserInfo.ContinuePuzzle();
   }
 
+  ///for getting hint item : [row, col, dir, `isWrongSubmit`]
   Future<List<List<dynamic>>> checkCompletePuzzleCompletely(BuildContext context) async {
     List<List<dynamic>> rtValue = [];
 
@@ -233,6 +239,7 @@ class SquareProvider with ChangeNotifier {
 
     String dir = "";
     int row = 0, col = 0;
+    bool isWrongSubmit = true;
 
     //compare submit and answer
     for(int i = 0 ; i < answer.length ; i++) {
@@ -303,6 +310,7 @@ class SquareProvider with ChangeNotifier {
 
     //현재 입력한 데이터가 모두 정답인 경우, answer 중 입력되지 않은 것을 리턴
     if(rtValue.isEmpty) {
+      isWrongSubmit = false;
       for(int i = 0 ; i < answer.length ; i++) {
         for(int j = 0 ; j < answer[i].length ; j++) {
           if(submit[i][j] == 0 && answer[i][j] == 1) {
@@ -368,6 +376,9 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
+    for(int i = 0 ; i < rtValue.length ; i++) {
+      rtValue[i].add(isWrongSubmit);
+    }
     return rtValue;
   }
 
@@ -563,6 +574,10 @@ class SquareProvider with ChangeNotifier {
         list2D.add(list1D);
       }
       loadedDoSubmit.add(list2D);
+    }
+
+    if(doPointer == -1) {
+      return;
     }
 
     doSubmit = loadedDoSubmit.map((list2D) =>
