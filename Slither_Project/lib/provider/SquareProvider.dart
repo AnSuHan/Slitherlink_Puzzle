@@ -1729,5 +1729,163 @@ class SquareProvider with ChangeNotifier {
         }
       }  
     }
+
+    setDefaultLineStep2();
+  }
+
+  ///내부 라인인 경우 상|하|좌|우 중 3개의 -1이 인접하면 해당 라인이 -1
+  ///
+  ///테두리 라인인 경우 상|하|좌|우 중 2개의 -1이 인접하면 해당 라인이 -1
+  ///
+  /// 모서리 라인인 경우 상|하|좌|우 중 1~2개의 -1이 인접하면 해당 라인이 -1
+  void setDefaultLineStep2() {
+    int value = 0;
+
+    for (int i = 0; i < puzzle.length; i++) {
+      for (int j = 0; j < puzzle[i].length; j++) {
+        if(i > 0 && j > 0) {
+        }
+        else if(i == 0 && j != 0) {
+          //puzzle[i][j].up
+          {
+            value = 0;
+            //left
+            value = max(puzzle[i][j - 1].up, puzzle[i][j - 1].right);
+            //right
+            if(value == 0) {
+              if(j + 1 < puzzle[i].length) {
+                value = max(puzzle[i][j].right, puzzle[i][j + 1].up);
+              }
+              else {
+                value = puzzle[i][j].right;
+              }
+            }
+            if(puzzle[i][j].up == 0) {
+              puzzle[i][j].up = value;
+            }
+          }
+          //puzzle[i][j].down
+          {
+            value = 0;
+            //left
+            value = max(puzzle[i][j - 1].right, max(puzzle[i][j - 1].down, puzzle[i + 1][j - 1].right));
+            if(value == 0){
+              //right
+              if(j + 1 < puzzle[i].length) {
+                value = max(puzzle[i][j + 1].down, max(puzzle[i][j].right, puzzle[i + 1][j].right));
+              }
+              else {
+                value = max(puzzle[i][j].right, puzzle[i + 1][j].right);
+              }
+            }
+            if(puzzle[i][j].down == 0) {
+              puzzle[i][j].down = value;
+            }
+          }
+          //puzzle[i][j].right
+          {
+            value = 0;
+            //up
+            if(j + 1 < puzzle[i].length) {
+              value = max(puzzle[i][j].up, puzzle[i][j + 1].up);
+            }
+            else {
+              value = puzzle[i][j].up;
+            }
+            //down
+            if(value == 0) {
+              value = max(puzzle[i][j].down, puzzle[i + 1][j].right);
+              if(j + 1 < puzzle[i].length) {
+                value = max(value, puzzle[i][j + 1].down);
+              }
+            }
+            if(puzzle[i][j].right == 0) {
+              puzzle[i][j].right = value;
+            }
+          }
+        }
+        else if(i != 0 && j == 0) {
+          //puzzle[i][j].left
+          {
+            value = 0;
+            //up
+            value = max(puzzle[i - 1][j].left, puzzle[i - 1][j].down);
+            //down
+            if(value == 0) {
+              if(i + 1 < puzzle.length) {
+                value = max(puzzle[i][j].down, puzzle[i + 1][j].left);
+              }
+              else {
+                value = puzzle[i][j].down;
+              }
+            }
+
+            if(puzzle[i][j].left == 0) {
+              puzzle[i][j].left = value;
+            }
+          }
+          //puzzle[i][j].right
+          {
+            value = 0;
+            //up
+            value = max(max(puzzle[i - 1][j].down, puzzle[i - 1][j].right), puzzle[i - 1][j + 1].down);
+            //down
+            if(value == 0) {
+              if(i + 1 < puzzle.length) {
+                value = max(puzzle[i + 1][j].right, max(puzzle[i][j].down, puzzle[i][j + 1].down));
+              }
+              else {
+                value = max(puzzle[i][j].down, puzzle[i][j + 1].down);
+              }
+            }
+
+            if(puzzle[i][j].right == 0) {
+              puzzle[i][j].right = value;
+            }
+          }
+          //puzzle[i][j].down
+          {
+            value = 0;
+            //left
+            value = puzzle[i][j].left;
+            if(i + 1 < puzzle.length) {
+              value = max(value, puzzle[i + 1][j].left);
+            }
+            //right
+            if(value == 0) {
+              value = max(puzzle[i][j].right, puzzle[i][j + 1].down);
+              if(i + 1 < puzzle.length) {
+                value = max(value, puzzle[i + 1][j].right);
+              }
+            }
+
+            if(puzzle[i][j].down == 0) {
+              puzzle[i][j].down = value;
+            }
+          }
+        }
+        else {
+          //i == 0 && j == 0
+          //puzzle[i][j].up
+          if(puzzle[i][j].left == -1 || (puzzle[i][j].right == -1 && puzzle[i][j + 1].up == -1)) {
+            puzzle[i][j].up = -1;
+          }
+          //puzzle[i][j].left
+          if(puzzle[i][j].up == -1 || (puzzle[i][j].down == -1 && puzzle[i + 1][j].left == -1)) {
+            puzzle[i][j].left = -1;
+          }
+          //puzzle[i][j].down
+          if((puzzle[i][j].left == -1 && puzzle[i + 1][j].left == -1)
+              || (puzzle[i][j].right == -1 && puzzle[i][j + 1].down == -1 && puzzle[i + 1][j].right == -1)) {
+            puzzle[i][j].down = -1;
+          }
+          //puzzle[i][j].right
+          if((puzzle[i][j].up == -1 && puzzle[i][j + 1].up == -1)
+            || (puzzle[i][j].down == -1 && puzzle[i][j + 1].down == -1 && puzzle[i + 1][j].right == -1)) {
+            puzzle[i][j].right = -1;
+          }
+        }
+      }
+    }
   }
 }
