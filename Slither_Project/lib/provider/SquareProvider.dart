@@ -865,7 +865,7 @@ class SquareProvider with ChangeNotifier {
           break;
       }
     }
-    else if(col != 0) {
+    else if(row == 0 && col != 0) {
       switch(pos) {
         case "up":
           addIfPositive(use, puzzle[row][col - 1].up);
@@ -903,14 +903,18 @@ class SquareProvider with ChangeNotifier {
           break;
       }
     }
-    else if(row != 0) {
+    else if(row != 0 && col == 0) {
       switch(pos) {
         case "down":
           addIfPositive(use, puzzle[row][col].left);
           addIfPositive(use, puzzle[row][col].right);
-          addIfPositive(use, puzzle[row + 1][col].left);
-          addIfPositive(use, puzzle[row + 1][col].right);
-          addIfPositive(use, puzzle[row][col + 1].down);
+          if(row + 1 < puzzle.length) {
+            addIfPositive(use, puzzle[row + 1][col].left);
+            addIfPositive(use, puzzle[row + 1][col].right);
+          }
+          if(col + 1 < puzzle[row].length) {
+            addIfPositive(use, puzzle[row][col + 1].down);
+          }
           break;
         case "left":
           addIfPositive(use, puzzle[row - 1][col].left);
@@ -924,17 +928,19 @@ class SquareProvider with ChangeNotifier {
         case "right":
           addIfPositive(use, puzzle[row - 1][col].right);
           addIfPositive(use, puzzle[row - 1][col].down);
-          addIfPositive(use, puzzle[row - 1][col + 1].down);
           addIfPositive(use, puzzle[row][col].down);
 
           if(puzzle.length > row + 1) {
             addIfPositive(use, puzzle[row + 1][col].right);
-            addIfPositive(use, puzzle[row + 1][col + 1].down);
+          }
+          if(col + 1 < puzzle[row].length) {
+            addIfPositive(use, puzzle[row - 1][col + 1].down);
+            addIfPositive(use, puzzle[row][col + 1].down);
           }
           break;
       }
     }
-    else {
+    else {    //row == 0 && col == 0
       switch(pos) {
         case "up":
           addIfPositive(use, puzzle[row][col].left);
@@ -973,8 +979,10 @@ class SquareProvider with ChangeNotifier {
     }
   }
 
+  ///클릭한 라인 기준으로 가장 가까운 변경해야 할 라인을 하나 찾아서 getContinueOld()로 넘기는 메소드
   List<dynamic> getOldColorList(int row, int col, String pos, int now) {
     //[row, col, pos]
+    ///rtValue는 값을 now로 변경해야 할 목록
     List<dynamic> rtValue = [];
     int normal = 0;
 
@@ -1222,6 +1230,7 @@ class SquareProvider with ChangeNotifier {
     return getContinueOld(rtValue);
   }
 
+  ///변경해야 하는 라인 하나를 받아, 변경이 필요한 모든 라인을 찾아 반환하는 메소드
   List<dynamic> getContinueOld(List<dynamic> start) {
     List<List<dynamic>> rtTempList = [start[0]];
 
@@ -1252,6 +1261,7 @@ class SquareProvider with ChangeNotifier {
       if(rtTempList.length <= count) {
         break;
       }
+      //set now standard
       row = int.parse(rtTempList[count][0].toString());
       col = int.parse(rtTempList[count][1].toString());
       pos = rtTempList[count][2];
@@ -1312,7 +1322,7 @@ class SquareProvider with ChangeNotifier {
             break;
         }
       }
-      else if (col != 0) {
+      else if (row == 0 && col != 0) {
         switch (pos) {
           case "up":
             if (puzzle[row][col - 1].up == find) {
@@ -1377,7 +1387,7 @@ class SquareProvider with ChangeNotifier {
             break;
         }
       }
-      else if (row != 0) {
+      else if (row != 0 && col == 0) {
         switch (pos) {
           case "down":
             if (puzzle[row][col].left == find) {
@@ -1386,14 +1396,16 @@ class SquareProvider with ChangeNotifier {
             if (puzzle[row][col].right == find) {
               addIfNotExist(rtTempList, [row, col, "right"]);
             }
-            if (puzzle[row + 1][col].left == find) {
-              addIfNotExist(rtTempList, [row + 1, col, "left"]);
-            }
-            if (puzzle[row + 1][col].right == find) {
-              addIfNotExist(rtTempList, [row + 1, col, "right"]);
-            }
             if (puzzle[row][col + 1].down == find) {
               addIfNotExist(rtTempList, [row, col + 1, "down"]);
+            }
+            if(row + 1 < puzzle.length) {
+              if (puzzle[row + 1][col].left == find) {
+                addIfNotExist(rtTempList, [row + 1, col, "left"]);
+              }
+              if (puzzle[row + 1][col].right == find) {
+                addIfNotExist(rtTempList, [row + 1, col, "right"]);
+              }
             }
             break;
           case "left":
