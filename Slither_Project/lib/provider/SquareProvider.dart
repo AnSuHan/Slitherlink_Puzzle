@@ -1744,6 +1744,52 @@ class SquareProvider with ChangeNotifier {
     for (int i = 0; i < puzzle.length; i++) {
       for (int j = 0; j < puzzle[i].length; j++) {
         if(i > 0 && j > 0) {
+          //puzzle[i][j].down
+          {
+            value = 0;
+            //check left
+            value = max(puzzle[i][j - 1].down, puzzle[i][j - 1].right);
+            if(i + 1 < puzzle.length) {
+              value = max(value, puzzle[i + 1][j - 1].right);
+            }
+            //check right
+            if(value == 0) {
+              value = puzzle[i][j].right;
+              if(i + 1 < puzzle.length) {
+                value = max(value, puzzle[i + 1][j].right);
+              }
+              if(j + 1 < puzzle[i].length) {
+                value = max(value, puzzle[i][j + 1].down);
+              }
+            }
+
+            if(puzzle[i][j].down == 0) {
+              puzzle[i][j].down = value;
+            }
+          }
+          //puzzle[i][j].right
+          {
+            value = 0;
+            //check up
+            value = max(puzzle[i - 1][j].down, puzzle[i - 1][j].right);
+            if(j + 1 < puzzle[i].length) {
+              value = max(value, puzzle[i - 1][j + 1].down);
+            }
+            //check down
+            if(value == 0) {
+              value = puzzle[i][j].down;
+              if(i + 1 < puzzle.length) {
+                value = max(value, puzzle[i + 1][j].right);
+              }
+              if(j + 1 < puzzle[i].length) {
+                value = max(value, puzzle[i][j + 1].down);
+              }
+            }
+
+            if(puzzle[i][j].right == 0) {
+              puzzle[i][j].right = value;
+            }
+          }
         }
         else if(i == 0 && j != 0) {
           //puzzle[i][j].up
