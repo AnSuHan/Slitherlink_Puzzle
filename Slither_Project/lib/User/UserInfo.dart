@@ -10,6 +10,8 @@ class UserInfo {
   static bool isDebug = true;
   static Map<String, bool> debugMode = {
     "Answer_showCycle" : false,
+    "use_KeyInput" : true,
+    "enable_extract" : false,
   };
 
   static bool authState = false;

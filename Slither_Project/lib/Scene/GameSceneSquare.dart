@@ -58,14 +58,8 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
   late TransformationController _transformationController;
 
   void debugSetting() {
-    if(UserInfo.isDebug) {
-      extractData = true;
-      useKeyInput = true;
-    }
-    else {
-      extractData = false;
-      useKeyInput = false;
-    }
+    extractData = UserInfo.debugMode["enable_extract"]!;
+    useKeyInput = UserInfo.debugMode["use_KeyInput"]!;
   }
 
   @override
@@ -177,6 +171,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
                       setState(() {
                         _provider.loadLabel(answer);
                       });
+                    //clear puzzle
                     } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
                       setState(() {
                         _provider.showComplete(context);
