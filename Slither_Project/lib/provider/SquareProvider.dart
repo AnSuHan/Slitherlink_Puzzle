@@ -51,15 +51,20 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void restart() async {
+  void restart() {
     for(int i = 0 ; i < submit.length ; i++) {
       for(int j = 0 ; j < submit[i].length ; j++) {
         submit[i][j] = 0;
       }
     }
 
-    await readSquare.writeSubmit(puzzle, submit);
+    readSquare.writeSubmit(puzzle, submit);
     notifyListeners();
+  }
+
+  Future<void> readSubmit() async {
+    // ignore: avoid_print
+    print("readSubmit : ${await readSquare.readSubmit(puzzle)}");
   }
 
   Future<void> showHint(BuildContext context) async {
@@ -636,7 +641,7 @@ class SquareProvider with ChangeNotifier {
         }
       }
 
-      await readSquare.writeSubmit(puzzle, submit);
+      readSquare.writeSubmit(puzzle, submit);
       await refreshSubmit();
       notifyListeners();
     }
@@ -650,7 +655,7 @@ class SquareProvider with ChangeNotifier {
               (i) => List.from(doSubmit[doPointer][i])
       );
 
-      await readSquare.writeSubmit(puzzle, submit);
+      readSquare.writeSubmit(puzzle, submit);
       await refreshSubmit();
       notifyListeners();
     }

@@ -171,10 +171,17 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
                       setState(() {
                         _provider.loadLabel(answer);
                       });
+                    }
                     //clear puzzle
-                    } else if (event.logicalKey == LogicalKeyboardKey.keyF) {
+                    else if (event.logicalKey == LogicalKeyboardKey.keyF) {
                       setState(() {
                         _provider.showComplete(context);
+                      });
+                    }
+                    //print submit
+                    else if (event.logicalKey == LogicalKeyboardKey.keyP) {
+                      setState(() {
+                        _provider.readSubmit();
                       });
                     }
                   }
