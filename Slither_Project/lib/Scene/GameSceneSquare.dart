@@ -281,32 +281,48 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     );
   }
 
+  ///item => [row, col, dir, `isWrongSubmit : bool`]
+  ///
+  ///item => [vertical, horizontal]
   List<double> getHintPos(List<dynamic> item) {
-    List<int> area = _provider.getResolutionCount();  //count of field
-    List<double> max = [
-      -screenSize.width,
-      -screenSize.height
-    ];
-    List<double> ratio = [item[1] * max[0] / area[0], item[0] * max[1] / area[1]];
-    //bias
-    if(item[1] < area[0] * 0.25) {
-      ratio[0] -= max[0] * 0.1;
+    //[vertical, horizontal]
+    List<int> hintCount = _provider.getResolutionCount();
+    print("screenSize : $screenSize");
+
+    //한 화면에 보이는 아이템의 최대 개수
+    //[vertical, horizontal]
+    List<int> inScreen = [(screenSize.height / 50 / 1.6 - 2).toInt(), (screenSize.width / 50 / 1.6 - 2).toInt()];
+    print("inScreen : $inScreen");
+
+    print("item : $item");
+    int row = int.parse(item[0].toString());
+    int col = int.parse(item[1].toString());
+
+    double xPos = 0, yPos = 0;
+
+    //find xPos
+    if(col < inScreen[1] / 2) {
+      xPos = 0;
     }
-    else if(item[1] > area[0] * 0.75) {
-      ratio[0] -= max[0] * 0.3;
+    else if(col > hintCount[0] - inScreen[0] / 2) {
+      xPos = -hintCount[1].toDouble() * 50;
     }
-    if(item[0] < area[1] * 0.25 || item[0] > area[1] * 0.75) {
-      ratio[1] -= max[1] * 0.1;
+    else {
+      xPos = -col * 50;
     }
 
-    //double maxX = -screenSize.width * 0.8;  // ~ screenSize.width * 0.4
-    //double maxY = -screenSize.height * 0.2; // -screenSize.height * 0.2 ~ screenSize.height * 0.2
-    //print("maxX : ${max[0]}, maxY : ${max[1]}");
-    // print("area : ${area[0]}, ${area[1]}");
-    //print("item : ${item[0]}, ${item[1]}");
-    //print("ratio : ${ratio[0]} ${ratio[1]}");
+    //find yPos
+    if(row < inScreen[0] / 2) {
+      yPos = 0;
+    }
+    else if(row > hintCount[1] - inScreen[1] / 2) {
+      yPos = -hintCount[0].toDouble() * 50;
+    }
+    else {
+      yPos = -row * 50;
+    }
 
-    return [ratio[0], ratio[1]];
+    return [xPos, yPos];
   }
 
   ///move to position in "InteractiveViewer"
@@ -315,6 +331,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
       ..translate(pos[0], pos[1])
       ..scale(scale);
     _transformationController.value = matrix4;
+    print("pos : $pos");
   }
 }
 

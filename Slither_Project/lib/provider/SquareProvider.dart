@@ -232,7 +232,7 @@ class SquareProvider with ChangeNotifier {
     //UserInfo.ContinuePuzzle();
   }
 
-  ///for getting hint item : [row, col, dir, `isWrongSubmit`]
+  ///for getting hint item : [row, col, dir, `isWrongSubmit : bool`]
   Future<List<List<dynamic>>> checkCompletePuzzleCompletely(BuildContext context) async {
     List<List<dynamic>> rtValue = [];
 
