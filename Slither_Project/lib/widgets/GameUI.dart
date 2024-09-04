@@ -254,6 +254,7 @@ class GameUI {
   }
 
   Future<void> saveData(String label) async {
+    await squareProvider.removeHintLine();
     readSquare.savePuzzle("${MainUI.getProgressKey()}_$label");
     await squareProvider.controlDo(save: true, key: "${MainUI.getProgressKey()}_${label}_do");
 
@@ -269,7 +270,8 @@ class GameUI {
         break;
     }
   }
-  void loadData(String label) async {
+  Future<void> loadData(String label) async {
+    await squareProvider.removeHintLine();
     List<List<int>> value = await readSquare.loadPuzzle("${MainUI.getProgressKey()}_$label");
     squareProvider.loadLabel(value);
     await squareProvider.controlDo(load: true, key: "${MainUI.getProgressKey()}_${label}_do");

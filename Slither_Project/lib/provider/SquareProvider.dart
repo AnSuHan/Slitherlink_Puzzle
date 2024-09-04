@@ -624,6 +624,8 @@ class SquareProvider with ChangeNotifier {
   }
 
   Future<void> undo() async {
+    await removeHintLine();
+
     if(doPointer >= 0) {
       doPointer--;
       if(doPointer >= 0) {
@@ -648,6 +650,8 @@ class SquareProvider with ChangeNotifier {
   }
 
   Future<void> redo() async {
+    await removeHintLine();
+
     if(doPointer < doIndex) {
       doPointer++;
       submit = List.generate(
@@ -715,6 +719,7 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   ///update `puzzle` variable
   Future<void> updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) async {
+    await removeHintLine();
     while(_isUpdating != 0) {
       await Future.delayed(const Duration(milliseconds: 50));
     }
