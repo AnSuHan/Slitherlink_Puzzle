@@ -644,6 +644,11 @@ class SquareProvider with ChangeNotifier {
             submit[i][j] = 0;
           }
         }
+
+        await clearLineForStart();
+        notifyListeners();
+        submit = await readSquare.readSubmit(puzzle);
+        notifyListeners();
       }
 
       readSquare.writeSubmit(puzzle, submit);
