@@ -257,6 +257,8 @@ class GameUI {
     await squareProvider.removeHintLine();
     readSquare.savePuzzle("${MainUI.getProgressKey()}_$label");
     await squareProvider.controlDo(save: true, key: "${MainUI.getProgressKey()}_${label}_do");
+    //await squareProvider.saveDoValue();
+    await squareProvider.saveDoSubmit(color: label);
 
     switch(label) {
       case "Red":

@@ -560,7 +560,6 @@ class SquareProvider with ChangeNotifier {
         ? await ExtractData().getDataFromLocal("${loadKey}__doSubmit")
         : await ExtractData().getDataFromLocal("${loadKey}_${color}_doSubmit");
 
-    //print("value : $value");
     if(value == null) {
       doSubmit = [];
       doSubmit.add(await readSquare.readSubmit(puzzle));
@@ -682,7 +681,11 @@ class SquareProvider with ChangeNotifier {
         await prefs.saveDataToLocal(key, doPointer);
       }
       else if(load) {
+        //초기화 후 라벨 로드를 하고 undo 하면 doSubmit이 존재하지 않음
         doPointer = int.parse(await prefs.getDataFromLocal(key));
+        doIndex = doPointer;
+        //doSubmit 배열도 복구
+        await loadDoSubmit(color: key.split("_")[3]);
       }
     }
     catch(e) {
