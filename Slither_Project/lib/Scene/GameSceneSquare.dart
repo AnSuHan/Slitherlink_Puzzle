@@ -134,7 +134,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     if(uiNullable != null) {
       await ui.exitGame();
     }
-    print("뒤로 가기 버튼이 눌렸습니다.");
+    //print("뒤로 가기 버튼이 눌렸습니다.");
     return true;  // true를 반환하면 앱이 종료됩니다.
   }
 
@@ -144,7 +144,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     if (state == AppLifecycleState.paused) {
       // 앱이 백그라운드로 전환될 때 실행할 메소드 호출
       ui.pauseGame();
-      print("앱이 백그라운드로 이동했습니다.");
+      //print("앱이 백그라운드로 이동했습니다.");
     }
   }
 
@@ -298,6 +298,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
   List<double> getHintPos(List<dynamic> item) {
     return [0.0, 0.0];
 
+    /*
     //[vertical, horizontal]
     List<int> hintCount = _provider.getResolutionCount();
 
@@ -341,7 +342,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     }
     else if(col > hintCount[0] - inScreen[0] / 2) {
       xPos = -(hintCount[1] - inScreen[1]) * boxSize;
-      print("in xpos");
+      print("in xPos");
     }
     else {
       xPos = -col * boxSize;
@@ -359,6 +360,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     }
 
     return [xPos, yPos];
+     */
   }
 
   ///move to position in "InteractiveViewer"

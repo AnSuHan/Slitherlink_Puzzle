@@ -324,8 +324,6 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                   child: GestureDetector(
                     onTap: () async {
                       lastClick = "down";
-                      int d1 = down;
-                      int d2 = -1;
 
                       setState(() {
                         if(down == 0 || down == -3) {
@@ -340,9 +338,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                           down = 0;
                         }
                         widget.down = down;
-                        d2 = down;
                       });
-                      print("d1 : $d1, d2 : $d2");
 
                       await Provider.of<SquareProvider>(context, listen: false)
                           .updateSquareBox(row, column, down: down);
