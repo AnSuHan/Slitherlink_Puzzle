@@ -25,6 +25,13 @@ class GameSceneSquare extends StatefulWidget {
   GameStateSquare createState() => GameStateSquare();
 }
 
+enum DisplayType {
+  smallLand,
+  smallPortrait,
+  bigLand,
+  bigPortrait,
+}
+
 class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver {
   ///ONLY-DEBUG variables
   bool extractData = false;
@@ -53,6 +60,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
   GameUI? uiNullable;
   late GameUI ui;
   Map<String, Color> settingColor = ThemeColor().getColor();
+  late DisplayType displayType;
 
   //for moving interactive Viewer
   late TransformationController _transformationController;
@@ -281,20 +289,47 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     );
   }
 
+  double boxSize = 50;
+  double scale = 1.6;
+
   ///item => [row, col, dir, `isWrongSubmit : bool`]
   ///
   ///item => [vertical, horizontal]
   List<double> getHintPos(List<dynamic> item) {
+    return [0.0, 0.0];
+
     //[vertical, horizontal]
     List<int> hintCount = _provider.getResolutionCount();
-    print("screenSize : $screenSize");
 
     //한 화면에 보이는 아이템의 최대 개수
     //[vertical, horizontal]
-    List<int> inScreen = [(screenSize.height / 50 / 1.6 - 2).toInt(), (screenSize.width / 50 / 1.6 - 2).toInt()];
-    print("inScreen : $inScreen");
+    List<int> inScreen = [
+      screenSize.height ~/ (boxSize * scale),
+      screenSize.width ~/ (boxSize * scale)
+    ];
 
-    print("item : $item");
+    //landscape small
+    if(screenSize.width > screenSize.height && screenSize.height <= 600) {
+      inScreen = [inScreen[0] - 2, inScreen[1] - 2];
+      displayType = DisplayType.smallLand;
+    }
+    //portrait small
+    else if(screenSize.width < screenSize.height && screenSize.width <= 400) {
+      inScreen = [inScreen[0] - 2, inScreen[1] - 2];
+      displayType = DisplayType.smallPortrait;
+    }
+    //landscape big ok
+    else if(screenSize.width > screenSize.height && screenSize.height > 600) {
+      inScreen = [inScreen[0] - 2, inScreen[1] - 2];
+      displayType = DisplayType.bigLand;
+    }
+    //portrait big (default)
+    else if((screenSize.width < screenSize.height && screenSize.width > 400) || true) {
+      inScreen = [inScreen[1] - 3, inScreen[0] - 5];
+      displayType = DisplayType.bigPortrait;
+    }
+    print("inScreen : $inScreen, $displayType");
+
     int row = int.parse(item[0].toString());
     int col = int.parse(item[1].toString());
 
@@ -305,10 +340,11 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
       xPos = 0;
     }
     else if(col > hintCount[0] - inScreen[0] / 2) {
-      xPos = -hintCount[1].toDouble() * 50;
+      xPos = -(hintCount[1] - inScreen[1]) * boxSize;
+      print("in xpos");
     }
     else {
-      xPos = -col * 50;
+      xPos = -col * boxSize;
     }
 
     //find yPos
@@ -316,10 +352,10 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
       yPos = 0;
     }
     else if(row > hintCount[1] - inScreen[1] / 2) {
-      yPos = -hintCount[0].toDouble() * 50;
+      yPos = -(hintCount[0] - inScreen[0]) * boxSize;
     }
     else {
-      yPos = -row * 50;
+      yPos = -row * boxSize;
     }
 
     return [xPos, yPos];
@@ -328,10 +364,9 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
   ///move to position in "InteractiveViewer"
   Future<void> moveTo(List<double> pos, double scale) async {
     final matrix4 = Matrix4.identity()
-      ..translate(pos[0], pos[1])
-      ..scale(scale);
+      //..translate(-screenSize.width / 2, -screenSize.height / 2)
+      ..scale(1);
     _transformationController.value = matrix4;
-    print("pos : $pos");
   }
 }
 

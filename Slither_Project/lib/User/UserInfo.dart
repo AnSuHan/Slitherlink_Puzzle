@@ -12,6 +12,7 @@ class UserInfo {
     "Answer_showCycle" : false,
     "use_KeyInput" : true,
     "enable_extract" : false,
+    "debug_snackBar" : true,
   };
 
   static bool authState = false;
