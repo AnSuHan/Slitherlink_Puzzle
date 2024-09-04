@@ -15,7 +15,7 @@ class SquareBox extends StatefulWidget {
 
   //각 숫자는 색에 대한 의미를 같이 가짐
   //0 : 기본, 1~ : 유저가 선택, -4 : 유저가 x로 표기
-  //-1 : 비활성(미선택), -2 : 비활성(선택), -3 : 힌트
+  //-1 : 비활성(미선택), -2 : 비활성(선택), -3 : 정답을 나타내는 힌트, -5 : 오답을 나타내는 힌트 
   var up = 0, down = 0, left = 0, right = 0;
   var num = 0;
 
@@ -29,6 +29,23 @@ class SquareBox extends StatefulWidget {
 
   @override
   SquareBoxStateProvider createState() => SquareBoxStateProvider();
+
+  void setColor(int color, String dir) {
+    switch(dir) {
+      case "down":
+        down = color;
+        break;
+      case "right":
+        right = color;
+        break;
+      case "up":
+        up = color;
+        break;
+      case "left":
+        left = color;
+        break;
+    }
+  }
 }
 
 class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderStateMixin {
@@ -40,18 +57,24 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
   //for hint's animation
   late AnimationController _controller;
   late Animation<Color?> _colorAnimation;
+  late Animation<Color?> _wrongColorAnimation;
 
   @override
   void initState() {
     super.initState();
 
     _controller = AnimationController(
-      duration: const Duration(seconds: 1),
+      duration: const Duration(milliseconds: 500),
       vsync: this,
     )..repeat(reverse: true);
 
     _colorAnimation = ColorTween(
       begin: Colors.blue,
+      end: Colors.yellow,
+    ).animate(_controller);
+
+    _wrongColorAnimation = ColorTween(
+      begin: Colors.black,
       end: Colors.red,
     ).animate(_controller);
   }
@@ -118,7 +141,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       setState(() {
                         if(up == 0 || up == -3) {
                           up = 1;
-                        } else if(up >= 1) {
+                        } else if(up >= 1 || up == -5) {
                           up = -4;
                         } else if(up == -1) {
                           up = -2;
@@ -139,7 +162,8 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                         return Container(
                           height: 10,
                           width: 50,
-                          color: widget.up == -3 ? _colorAnimation.value ?? Colors.transparent : setupColor(widget.up),
+                          color: widget.up == -3 ? _colorAnimation.value ?? Colors.transparent
+                              : widget.up == -5 ? _wrongColorAnimation.value ?? Colors.transparent : setupColor(widget.up),
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
@@ -180,7 +204,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       setState(() {
                         if(left == 0 || left == -3) {
                           left = 1;
-                        } else if(left >= 1) {
+                        } else if(left >= 1 || left == -5) {
                           left = -4;
                         } else if(left == -1) {
                           left = -2;
@@ -201,7 +225,8 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                         return Container(
                           height: 50,
                           width: 10,
-                          color: widget.left == -3 ? _colorAnimation.value ?? Colors.transparent : setupColor(widget.left),
+                          color: widget.left == -3 ? _colorAnimation.value ?? Colors.transparent
+                              : widget.left == -5 ? _wrongColorAnimation.value ?? Colors.transparent : setupColor(widget.left),
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
@@ -236,7 +261,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       setState(() {
                         if(right == 0 || right == -3) {
                           right = 1;
-                        } else if(right >= 1) {
+                        } else if(right >= 1 || right == -5) {
                           right = -4;
                         } else if(right == -1) {
                           right = -2;
@@ -257,7 +282,8 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                         return Container(
                           height: 50,
                           width: 10,
-                          color: widget.right == -3 ? _colorAnimation.value ?? Colors.transparent : setupColor(widget.right),
+                          color: widget.right == -3 ? _colorAnimation.value ?? Colors.transparent
+                              : widget.right == -5 ? _wrongColorAnimation.value ?? Colors.transparent : setupColor(widget.right),
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
@@ -302,7 +328,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       setState(() {
                         if(down == 0 || down == -3) {
                           down = 1;
-                        } else if(down >= 1) {
+                        } else if(down >= 1 || down == -5) {
                           down = -4;
                         } else if(down == -1) {
                           down = -2;
@@ -323,7 +349,8 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                         return Container(
                           height: 10,
                           width: 50,
-                          color: widget.down == -3 ? _colorAnimation.value ?? Colors.transparent : setupColor(widget.down),
+                          color: widget.down == -3 ? _colorAnimation.value ?? Colors.transparent
+                              : widget.down == -5 ? _wrongColorAnimation.value ?? Colors.transparent : setupColor(widget.down),
                           child: Stack(
                             alignment: Alignment.center,
                             children: [

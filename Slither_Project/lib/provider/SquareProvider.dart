@@ -51,18 +51,29 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void restart() async {
+  Future<void> restart() async {
     for(int i = 0 ; i < submit.length ; i++) {
       for(int j = 0 ; j < submit[i].length ; j++) {
         submit[i][j] = 0;
       }
     }
 
-    await readSquare.writeSubmit(puzzle, submit);
+    await clearLineForStart();
+    await resetDo();
+    notifyListeners();
+    submit = await readSquare.readSubmit(puzzle);
     notifyListeners();
   }
 
+  Future<void> readSubmit() async {
+    // ignore: avoid_print
+    print("readSubmit : ${await readSquare.readSubmit(puzzle)}");
+  }
+
   Future<void> showHint(BuildContext context) async {
+    await removeHintLine();
+
+    // ignore: use_build_context_synchronously
     List<List<dynamic>> items = await checkCompletePuzzleCompletely(context);
     //print("hint items : $items");
     List<dynamic> item;
@@ -77,7 +88,31 @@ class SquareProvider with ChangeNotifier {
       //print("hint item : $item");
       gameStateSquare.moveTo(gameStateSquare.getHintPos(item), 1.6);
 
-      setLineColor(int.parse(item[0].toString()), int.parse(item[1].toString()), item[2].toString(), -3);
+      setLineColorBox(
+          int.parse(item[0].toString()),
+          int.parse(item[1].toString()),
+          item[2].toString(),
+          (item[3] as bool) ? -5 : -3   //item[3] is `isWrongSubmit`
+      );
+    }
+  }
+
+  Future<void> removeHintLine() async {
+    while(_isUpdating != 0) {
+      Future.delayed(const Duration(milliseconds: 50));
+      //print("wait in check : $_isUpdating");
+    }
+    submit = await readSquare.readSubmit(puzzle);
+
+    //find hint line
+    for(int i = 0 ; i < answer.length ; i++) {
+      for(int j = 0 ; j < answer[i].length ; j++) {
+        //힌트 라인이 남아 있는 경우 제거 후 조기 종료
+        if(submit[i][j] == -3 || submit[i][j] == -5) {
+          setLineColor(i, j, 0);
+          return;
+        }
+      }
     }
   }
 
@@ -102,7 +137,10 @@ class SquareProvider with ChangeNotifier {
   }
 
   //row, column is puzzle's row, column
-  void setLineColor(int row, int column, String dir, int color) {
+  ///SquareBox 단위로 방향을 지정하여 동작하는 함수
+  ///
+  ///(submit 기준 : setLineColor)
+  void setLineColorBox(int row, int column, String dir, int color) {
     switch(dir) {
       case "up":
         puzzle[row][column].up = color;
@@ -117,6 +155,35 @@ class SquareProvider with ChangeNotifier {
         puzzle[row][column].right = color;
         break;
     }
+    refreshSubmit();
+    notifyListeners();
+  }
+
+  ///submit 기준으로 동작하는 함수
+  ///
+  ///(SquareBox 기준 + dir 제공 : setLineColorBox)
+  void setLineColor(int row, int column, int color) {
+    int puzzleRow = row == 0 ? 0 : (row - 1) ~/ 2;    //012->0, 34->1, 56->2
+    int puzzleCol = row % 2 == 0 ? column :   //0->0, 1->1
+      column <= 1 ? 0 : column - 1;           //01->1, 2->1
+
+    if(row % 2 == 0) {
+      if(row == 0) {
+        puzzle[puzzleRow][puzzleCol].up = color;
+      }
+      else {
+        puzzle[puzzleRow][puzzleCol].down = color;
+      }
+    }
+    else {
+      if(column == 0) {
+        puzzle[puzzleRow][puzzleCol].left = color;
+      }
+      else {
+        puzzle[puzzleRow][puzzleCol].right = color;
+      }
+    }
+
     refreshSubmit();
     notifyListeners();
   }
@@ -168,6 +235,7 @@ class SquareProvider with ChangeNotifier {
     //UserInfo.ContinuePuzzle();
   }
 
+  ///for getting hint item : [row, col, dir, `isWrongSubmit : bool`]
   Future<List<List<dynamic>>> checkCompletePuzzleCompletely(BuildContext context) async {
     List<List<dynamic>> rtValue = [];
 
@@ -179,6 +247,7 @@ class SquareProvider with ChangeNotifier {
 
     String dir = "";
     int row = 0, col = 0;
+    bool isWrongSubmit = true;
 
     //compare submit and answer
     for(int i = 0 ; i < answer.length ; i++) {
@@ -249,6 +318,7 @@ class SquareProvider with ChangeNotifier {
 
     //현재 입력한 데이터가 모두 정답인 경우, answer 중 입력되지 않은 것을 리턴
     if(rtValue.isEmpty) {
+      isWrongSubmit = false;
       for(int i = 0 ; i < answer.length ; i++) {
         for(int j = 0 ; j < answer[i].length ; j++) {
           if(submit[i][j] == 0 && answer[i][j] == 1) {
@@ -314,6 +384,9 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
+    for(int i = 0 ; i < rtValue.length ; i++) {
+      rtValue[i].add(isWrongSubmit);
+    }
     return rtValue;
   }
 
@@ -487,7 +560,6 @@ class SquareProvider with ChangeNotifier {
         ? await ExtractData().getDataFromLocal("${loadKey}__doSubmit")
         : await ExtractData().getDataFromLocal("${loadKey}_${color}_doSubmit");
 
-    //print("value : $value");
     if(value == null) {
       doSubmit = [];
       doSubmit.add(await readSquare.readSubmit(puzzle));
@@ -509,6 +581,10 @@ class SquareProvider with ChangeNotifier {
         list2D.add(list1D);
       }
       loadedDoSubmit.add(list2D);
+    }
+
+    if(doPointer == -1) {
+      return;
     }
 
     doSubmit = loadedDoSubmit.map((list2D) =>
@@ -550,6 +626,8 @@ class SquareProvider with ChangeNotifier {
   }
 
   Future<void> undo() async {
+    await removeHintLine();
+
     if(doPointer >= 0) {
       doPointer--;
       if(doPointer >= 0) {
@@ -565,15 +643,22 @@ class SquareProvider with ChangeNotifier {
             submit[i][j] = 0;
           }
         }
+
+        await clearLineForStart();
+        notifyListeners();
+        submit = await readSquare.readSubmit(puzzle);
+        notifyListeners();
       }
 
-      await readSquare.writeSubmit(puzzle, submit);
+      readSquare.writeSubmit(puzzle, submit);
       await refreshSubmit();
       notifyListeners();
     }
   }
 
   Future<void> redo() async {
+    await removeHintLine();
+
     if(doPointer < doIndex) {
       doPointer++;
       submit = List.generate(
@@ -581,7 +666,7 @@ class SquareProvider with ChangeNotifier {
               (i) => List.from(doSubmit[doPointer][i])
       );
 
-      await readSquare.writeSubmit(puzzle, submit);
+      readSquare.writeSubmit(puzzle, submit);
       await refreshSubmit();
       notifyListeners();
     }
@@ -596,13 +681,24 @@ class SquareProvider with ChangeNotifier {
         await prefs.saveDataToLocal(key, doPointer);
       }
       else if(load) {
+        //초기화 후 라벨 로드를 하고 undo 하면 doSubmit이 존재하지 않음
         doPointer = int.parse(await prefs.getDataFromLocal(key));
+        doIndex = doPointer;
+        //doSubmit 배열도 복구
+        await loadDoSubmit(color: key.split("_")[3]);
       }
     }
     catch(e) {
       // ignore: avoid_print
       print(e);
     }
+  }
+
+  Future<void> resetDo() async {
+    doPointer = -1;
+    doIndex = -1;
+    doSubmit = [];
+    _isUpdating = 0;
   }
 
   void printSubmit() {
@@ -641,6 +737,7 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   ///update `puzzle` variable
   Future<void> updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) async {
+    await removeHintLine();
     while(_isUpdating != 0) {
       await Future.delayed(const Duration(milliseconds: 50));
     }
@@ -752,7 +849,7 @@ class SquareProvider with ChangeNotifier {
         int oldColumn = int.parse(oldList[i][1].toString());
         String pos = oldList[i][2].toString();
 
-        setLineColor(oldRow, oldColumn, pos, lineValue);
+        setLineColorBox(oldRow, oldColumn, pos, lineValue);
         //print("set [$oldRow, $oldColumn, $pos, $lineValue]");
       }
     }
@@ -796,7 +893,7 @@ class SquareProvider with ChangeNotifier {
           break;
       }
     }
-    else if(col != 0) {
+    else if(row == 0 && col != 0) {
       switch(pos) {
         case "up":
           addIfPositive(use, puzzle[row][col - 1].up);
@@ -834,14 +931,18 @@ class SquareProvider with ChangeNotifier {
           break;
       }
     }
-    else if(row != 0) {
+    else if(row != 0 && col == 0) {
       switch(pos) {
         case "down":
           addIfPositive(use, puzzle[row][col].left);
           addIfPositive(use, puzzle[row][col].right);
-          addIfPositive(use, puzzle[row + 1][col].left);
-          addIfPositive(use, puzzle[row + 1][col].right);
-          addIfPositive(use, puzzle[row][col + 1].down);
+          if(row + 1 < puzzle.length) {
+            addIfPositive(use, puzzle[row + 1][col].left);
+            addIfPositive(use, puzzle[row + 1][col].right);
+          }
+          if(col + 1 < puzzle[row].length) {
+            addIfPositive(use, puzzle[row][col + 1].down);
+          }
           break;
         case "left":
           addIfPositive(use, puzzle[row - 1][col].left);
@@ -855,17 +956,19 @@ class SquareProvider with ChangeNotifier {
         case "right":
           addIfPositive(use, puzzle[row - 1][col].right);
           addIfPositive(use, puzzle[row - 1][col].down);
-          addIfPositive(use, puzzle[row - 1][col + 1].down);
           addIfPositive(use, puzzle[row][col].down);
 
           if(puzzle.length > row + 1) {
             addIfPositive(use, puzzle[row + 1][col].right);
-            addIfPositive(use, puzzle[row + 1][col + 1].down);
+          }
+          if(col + 1 < puzzle[row].length) {
+            addIfPositive(use, puzzle[row - 1][col + 1].down);
+            addIfPositive(use, puzzle[row][col + 1].down);
           }
           break;
       }
     }
-    else {
+    else {    //row == 0 && col == 0
       switch(pos) {
         case "up":
           addIfPositive(use, puzzle[row][col].left);
@@ -904,8 +1007,10 @@ class SquareProvider with ChangeNotifier {
     }
   }
 
+  ///클릭한 라인 기준으로 가장 가까운 변경해야 할 라인을 하나 찾아서 getContinueOld()로 넘기는 메소드
   List<dynamic> getOldColorList(int row, int col, String pos, int now) {
     //[row, col, pos]
+    ///rtValue는 값을 now로 변경해야 할 목록
     List<dynamic> rtValue = [];
     int normal = 0;
 
@@ -1153,6 +1258,7 @@ class SquareProvider with ChangeNotifier {
     return getContinueOld(rtValue);
   }
 
+  ///변경해야 하는 라인 하나를 받아, 변경이 필요한 모든 라인을 찾아 반환하는 메소드
   List<dynamic> getContinueOld(List<dynamic> start) {
     List<List<dynamic>> rtTempList = [start[0]];
 
@@ -1183,6 +1289,7 @@ class SquareProvider with ChangeNotifier {
       if(rtTempList.length <= count) {
         break;
       }
+      //set now standard
       row = int.parse(rtTempList[count][0].toString());
       col = int.parse(rtTempList[count][1].toString());
       pos = rtTempList[count][2];
@@ -1243,7 +1350,7 @@ class SquareProvider with ChangeNotifier {
             break;
         }
       }
-      else if (col != 0) {
+      else if (row == 0 && col != 0) {
         switch (pos) {
           case "up":
             if (puzzle[row][col - 1].up == find) {
@@ -1308,7 +1415,7 @@ class SquareProvider with ChangeNotifier {
             break;
         }
       }
-      else if (row != 0) {
+      else if (row != 0 && col == 0) {
         switch (pos) {
           case "down":
             if (puzzle[row][col].left == find) {
@@ -1317,14 +1424,16 @@ class SquareProvider with ChangeNotifier {
             if (puzzle[row][col].right == find) {
               addIfNotExist(rtTempList, [row, col, "right"]);
             }
-            if (puzzle[row + 1][col].left == find) {
-              addIfNotExist(rtTempList, [row + 1, col, "left"]);
-            }
-            if (puzzle[row + 1][col].right == find) {
-              addIfNotExist(rtTempList, [row + 1, col, "right"]);
-            }
             if (puzzle[row][col + 1].down == find) {
               addIfNotExist(rtTempList, [row, col + 1, "down"]);
+            }
+            if(row + 1 < puzzle.length) {
+              if (puzzle[row + 1][col].left == find) {
+                addIfNotExist(rtTempList, [row + 1, col, "left"]);
+              }
+              if (puzzle[row + 1][col].right == find) {
+                addIfNotExist(rtTempList, [row + 1, col, "right"]);
+              }
             }
             break;
           case "left":
@@ -1599,7 +1708,7 @@ class SquareProvider with ChangeNotifier {
     }
   }
 
-  void clearLineForStart() {
+  Future<void> clearLineForStart() async {
     for(int i = 0 ; i < puzzle.length ; i++) {
       for(int j = 0 ; j < puzzle[i].length ; j++) {
         if(i != 0 && j != 0) {
@@ -1624,5 +1733,247 @@ class SquareProvider with ChangeNotifier {
         }
       }
     }
+
+    await setDefaultLineStep1();
+  }
+
+  ///find SquareBox(num is zero) and set color -1
+  Future<void> setDefaultLineStep1() async {
+    for(int i = 0 ; i < puzzle.length ; i++) {
+      for(int j = 0 ; j < puzzle[i].length ; j++) {
+        if(puzzle[i][j].num == 0) {
+          if(i != 0 && j != 0) {
+            puzzle[i - 1][j].down = -1;
+            puzzle[i][j].down = -1;
+            puzzle[i][j - 1].right = -1;
+            puzzle[i][j].right = -1;
+          }
+          else if(i == 0 && j != 0) {
+            puzzle[i][j].up = -1;
+            puzzle[i][j].down = -1;
+            puzzle[i][j - 1].right = -1;
+            puzzle[i][j].right = -1;
+          }
+          else if(i != 0 && j == 0) {
+            puzzle[i - 1][j].down = -1;
+            puzzle[i][j].down = -1;
+            puzzle[i][j].left = -1;
+            puzzle[i][j].right = -1;
+          }
+          else {
+            puzzle[i][j].up = -1;
+            puzzle[i][j].down = -1;
+            puzzle[i][j].left = -1;
+            puzzle[i][j].right = -1;
+          }
+        }
+      }  
+    }
+
+    await setDefaultLineStep2();
+  }
+
+  ///내부 라인인 경우 상|하|좌|우 중 3개의 -1이 인접하면 해당 라인이 -1
+  ///
+  ///테두리 라인인 경우 상|하|좌|우 중 2개의 -1이 인접하면 해당 라인이 -1
+  ///
+  /// 모서리 라인인 경우 상|하|좌|우 중 1~2개의 -1이 인접하면 해당 라인이 -1
+  Future<void> setDefaultLineStep2() async {
+    int value = 0;
+
+    for (int i = 0; i < puzzle.length; i++) {
+      for (int j = 0; j < puzzle[i].length; j++) {
+        if(i > 0 && j > 0) {
+          //puzzle[i][j].down
+          {
+            value = 0;
+            //check left
+            value = max(puzzle[i][j - 1].down, puzzle[i][j - 1].right);
+            if(i + 1 < puzzle.length) {
+              value = max(value, puzzle[i + 1][j - 1].right);
+            }
+            //check right
+            if(value == 0) {
+              value = puzzle[i][j].right;
+              if(i + 1 < puzzle.length) {
+                value = max(value, puzzle[i + 1][j].right);
+              }
+              if(j + 1 < puzzle[i].length) {
+                value = max(value, puzzle[i][j + 1].down);
+              }
+            }
+
+            if(puzzle[i][j].down == 0) {
+              puzzle[i][j].down = value;
+            }
+          }
+          //puzzle[i][j].right
+          {
+            value = 0;
+            //check up
+            value = max(puzzle[i - 1][j].down, puzzle[i - 1][j].right);
+            if(j + 1 < puzzle[i].length) {
+              value = max(value, puzzle[i - 1][j + 1].down);
+            }
+            //check down
+            if(value == 0) {
+              value = puzzle[i][j].down;
+              if(i + 1 < puzzle.length) {
+                value = max(value, puzzle[i + 1][j].right);
+              }
+              if(j + 1 < puzzle[i].length) {
+                value = max(value, puzzle[i][j + 1].down);
+              }
+            }
+
+            if(puzzle[i][j].right == 0) {
+              puzzle[i][j].right = value;
+            }
+          }
+        }
+        else if(i == 0 && j != 0) {
+          //puzzle[i][j].up
+          {
+            value = 0;
+            //left
+            value = max(puzzle[i][j - 1].up, puzzle[i][j - 1].right);
+            //right
+            if(value == 0) {
+              if(j + 1 < puzzle[i].length) {
+                value = max(puzzle[i][j].right, puzzle[i][j + 1].up);
+              }
+              else {
+                value = puzzle[i][j].right;
+              }
+            }
+            if(puzzle[i][j].up == 0) {
+              puzzle[i][j].up = value;
+            }
+          }
+          //puzzle[i][j].down
+          {
+            value = 0;
+            //left
+            value = max(puzzle[i][j - 1].right, max(puzzle[i][j - 1].down, puzzle[i + 1][j - 1].right));
+            if(value == 0){
+              //right
+              if(j + 1 < puzzle[i].length) {
+                value = max(puzzle[i][j + 1].down, max(puzzle[i][j].right, puzzle[i + 1][j].right));
+              }
+              else {
+                value = max(puzzle[i][j].right, puzzle[i + 1][j].right);
+              }
+            }
+            if(puzzle[i][j].down == 0) {
+              puzzle[i][j].down = value;
+            }
+          }
+          //puzzle[i][j].right
+          {
+            value = 0;
+            //up
+            if(j + 1 < puzzle[i].length) {
+              value = max(puzzle[i][j].up, puzzle[i][j + 1].up);
+            }
+            else {
+              value = puzzle[i][j].up;
+            }
+            //down
+            if(value == 0) {
+              value = max(puzzle[i][j].down, puzzle[i + 1][j].right);
+              if(j + 1 < puzzle[i].length) {
+                value = max(value, puzzle[i][j + 1].down);
+              }
+            }
+            if(puzzle[i][j].right == 0) {
+              puzzle[i][j].right = value;
+            }
+          }
+        }
+        else if(i != 0 && j == 0) {
+          //puzzle[i][j].left
+          {
+            value = 0;
+            //up
+            value = max(puzzle[i - 1][j].left, puzzle[i - 1][j].down);
+            //down
+            if(value == 0) {
+              if(i + 1 < puzzle.length) {
+                value = max(puzzle[i][j].down, puzzle[i + 1][j].left);
+              }
+              else {
+                value = puzzle[i][j].down;
+              }
+            }
+
+            if(puzzle[i][j].left == 0) {
+              puzzle[i][j].left = value;
+            }
+          }
+          //puzzle[i][j].right
+          {
+            value = 0;
+            //up
+            value = max(max(puzzle[i - 1][j].down, puzzle[i - 1][j].right), puzzle[i - 1][j + 1].down);
+            //down
+            if(value == 0) {
+              if(i + 1 < puzzle.length) {
+                value = max(puzzle[i + 1][j].right, max(puzzle[i][j].down, puzzle[i][j + 1].down));
+              }
+              else {
+                value = max(puzzle[i][j].down, puzzle[i][j + 1].down);
+              }
+            }
+
+            if(puzzle[i][j].right == 0) {
+              puzzle[i][j].right = value;
+            }
+          }
+          //puzzle[i][j].down
+          {
+            value = 0;
+            //left
+            value = puzzle[i][j].left;
+            if(i + 1 < puzzle.length) {
+              value = max(value, puzzle[i + 1][j].left);
+            }
+            //right
+            if(value == 0) {
+              value = max(puzzle[i][j].right, puzzle[i][j + 1].down);
+              if(i + 1 < puzzle.length) {
+                value = max(value, puzzle[i + 1][j].right);
+              }
+            }
+
+            if(puzzle[i][j].down == 0) {
+              puzzle[i][j].down = value;
+            }
+          }
+        }
+        else {
+          //i == 0 && j == 0
+          //puzzle[i][j].up
+          if(puzzle[i][j].left == -1 || (puzzle[i][j].right == -1 && puzzle[i][j + 1].up == -1)) {
+            puzzle[i][j].up = -1;
+          }
+          //puzzle[i][j].left
+          if(puzzle[i][j].up == -1 || (puzzle[i][j].down == -1 && puzzle[i + 1][j].left == -1)) {
+            puzzle[i][j].left = -1;
+          }
+          //puzzle[i][j].down
+          if((puzzle[i][j].left == -1 && puzzle[i + 1][j].left == -1)
+              || (puzzle[i][j].right == -1 && puzzle[i][j + 1].down == -1 && puzzle[i + 1][j].right == -1)) {
+            puzzle[i][j].down = -1;
+          }
+          //puzzle[i][j].right
+          if((puzzle[i][j].up == -1 && puzzle[i][j + 1].up == -1)
+            || (puzzle[i][j].down == -1 && puzzle[i][j + 1].down == -1 && puzzle[i + 1][j].right == -1)) {
+            puzzle[i][j].right = -1;
+          }
+        }
+      }
+    }
+
+    notifyListeners();
   }
 }

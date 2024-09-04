@@ -30,20 +30,35 @@ class GameUI {
   final GlobalKey<PopupMenuButtonState<int>> _menuKey = GlobalKey<PopupMenuButtonState<int>>();
   List<String> labelState = ["save", "save", "save"]; //R, G, B
 
+  Future<void> exitGame() async {
+    //when back button click, set class {UserInfo}
+    String key = "${MainUI.getProgressKey()}_continue";
+    //print("key : $key");  //square_small_0
+    await squareProvider.removeHintLine();
+    await readSquare.savePuzzle(key);
+    await squareProvider.saveDoValue();
+    await squareProvider.saveDoSubmit();
+    // ignore: use_build_context_synchronously
+    Navigator.pop(context);
+  }
+
+  Future<void> pauseGame() async {
+    //when back button click, set class {UserInfo}
+    String key = "${MainUI.getProgressKey()}_continue";
+    //print("key : $key");  //square_small_0
+    await squareProvider.removeHintLine();
+    await readSquare.savePuzzle(key);
+    await squareProvider.saveDoValue();
+    await squareProvider.saveDoSubmit();
+  }
+
   AppBar getGameAppBar(BuildContext context, Color appbarColor, Color iconColor) {
     return AppBar(
       backgroundColor: appbarColor,
       foregroundColor: iconColor,
       leading: InkWell(
         onTap: () async {
-          //when back button click, set class {UserInfo}
-          String key = "${MainUI.getProgressKey()}_continue";
-          //print("key : $key");  //square_small_0
-          await readSquare.savePuzzle(key);
-          await squareProvider.saveDoValue();
-          await squareProvider.saveDoSubmit();
-          // ignore: use_build_context_synchronously
-          Navigator.pop(context);
+          await exitGame();
         },
         child: Icon(Icons.keyboard_backspace, color: iconColor,),
       ),
@@ -239,8 +254,11 @@ class GameUI {
   }
 
   Future<void> saveData(String label) async {
+    await squareProvider.removeHintLine();
     readSquare.savePuzzle("${MainUI.getProgressKey()}_$label");
     await squareProvider.controlDo(save: true, key: "${MainUI.getProgressKey()}_${label}_do");
+    //await squareProvider.saveDoValue();
+    await squareProvider.saveDoSubmit(color: label);
 
     switch(label) {
       case "Red":
@@ -254,7 +272,8 @@ class GameUI {
         break;
     }
   }
-  void loadData(String label) async {
+  Future<void> loadData(String label) async {
+    await squareProvider.removeHintLine();
     List<List<int>> value = await readSquare.loadPuzzle("${MainUI.getProgressKey()}_$label");
     squareProvider.loadLabel(value);
     await squareProvider.controlDo(load: true, key: "${MainUI.getProgressKey()}_${label}_do");

@@ -90,56 +90,27 @@ class ReadSquare {
       for(int j = 0 ; j < puzzle[i].length ; j++) {
         //down, right
         if(i != 0 && j != 0) {
-          //start from 0,0
-          //1,1 => R(3,2)&D(4,1)
-          //2,5 => R(5,6)&D(6,5)  //3,2 => R(7,3)&D(8,2)
-          if(puzzle[i][j].down != 0) {
-            lineData[(i + 1) * 2][j] = puzzle[i][j].down;
-          }
-          if(puzzle[i][j].right != 0) {
-            lineData[(i * 2) + 1][j + 1] = puzzle[i][j].right;
-          }
-        }
-        //up, down, right
-        else if(j != 0) {
-          if(puzzle[i][j].up != 0) {
-            lineData[i][j] = puzzle[i][j].up;
-          }
-          if(puzzle[i][j].down != 0) {
-            lineData[i + 2][j] = puzzle[i][j].down;
-          }
-          if(puzzle[i][j].right != 0) {
-            lineData[i + 1][j + 1] = puzzle[i][j].right;
-          }
+          lineData[(i + 1) * 2][j] = puzzle[i][j].down;
+          lineData[(i * 2) + 1][j + 1] = puzzle[i][j].right;
         }
         //down, left, right
         else if(i != 0) {
-          if(puzzle[i][j].down != 0) {
-            //1=>4, 2=>6, 3=>8 //x*2+2
-            lineData[i * 2 + 2][j] = puzzle[i][j].down;
-          }
-          //2=>5, 3=>7
-          if(puzzle[i][j].left != 0) {
-            lineData[i * 2 + 1][j] = puzzle[i][j].left;
-          }
-          if(puzzle[i][j].right != 0) {
-            lineData[i * 2 + 1][j + 1] = puzzle[i][j].right;
-          }
+          lineData[i * 2 + 2][j] = puzzle[i][j].down;
+          lineData[i * 2 + 1][j] = puzzle[i][j].left;
+          lineData[i * 2 + 1][j + 1] = puzzle[i][j].right;
+        }
+        //up, down, right
+        else if(j != 0) {
+          lineData[i][j] = puzzle[i][j].up;
+          lineData[i + 2][j] = puzzle[i][j].down;
+          lineData[i + 1][j + 1] = puzzle[i][j].right;
         }
         //up, down, left, right
         else {
-          if(puzzle[i][j].up != 0) {
-            lineData[i][j] = puzzle[i][j].up;
-          }
-          if(puzzle[i][j].down != 0) {
-            lineData[i + 2][j] = puzzle[i][j].down;
-          }
-          if(puzzle[i][j].left != 0) {
-            lineData[i + 1][j] = puzzle[i][j].left;
-          }
-          if(puzzle[i][j].right != 0) {
-            lineData[i + 1][j + 1] = puzzle[i][j].right;
-          }
+          lineData[i][j] = puzzle[i][j].up;
+          lineData[i + 2][j] = puzzle[i][j].down;
+          lineData[i + 1][j] = puzzle[i][j].left;
+          lineData[i + 1][j + 1] = puzzle[i][j].right;
         }
       }
     }
@@ -152,20 +123,34 @@ class ReadSquare {
       for (int j = 0; j < puzzle[i].length; j++) {
         //down, right
         if (i != 0 && j != 0) {
-          puzzle[i][j].down = submit[(i + 1) * 2][j];
-          puzzle[i][j].right = submit[(i * 2) + 1][j + 1];
+          puzzle[i][j].down = submit[i * 2 + 2][j];
+          puzzle[i][j].right = submit[i * 2 + 1][j + 1];
+
+          //apply to SquareBox Instance
+          puzzle[i][j].setColor(submit[i * 2 + 2][j], "down");
+          puzzle[i][j].setColor(submit[i * 2 + 1][j + 1], "right");
         }
         //up, down, right
-        else if (j != 0) {
+        else if (i == 0 && j != 0) {
           puzzle[i][j].up = submit[i][j];
           puzzle[i][j].down = submit[i + 2][j];
           puzzle[i][j].right = submit[i + 1][j + 1];
+
+          //apply to SquareBox Instance
+          puzzle[i][j].setColor(submit[i][j], "up");
+          puzzle[i][j].setColor(submit[i + 2][j], "down");
+          puzzle[i][j].setColor(submit[i + 1][j + 1], "right");
         }
         //down, left, right
-        else if (i != 0) {
+        else if (i != 0 && j == 0) {
           puzzle[i][j].down = submit[i * 2 + 2][j];
           puzzle[i][j].left = submit[i * 2 + 1][j];
           puzzle[i][j].right = submit[i * 2 + 1][j + 1];
+
+          //apply to SquareBox Instance
+          puzzle[i][j].setColor(submit[i * 2 + 2][j], "down");
+          puzzle[i][j].setColor(submit[i * 2 + 1][j], "left");
+          puzzle[i][j].setColor(submit[i * 2 + 1][j + 1], "right");
         }
         //up, down, left, right
         else {
@@ -173,6 +158,12 @@ class ReadSquare {
           puzzle[i][j].down = submit[i + 2][j];
           puzzle[i][j].left = submit[i + 1][j];
           puzzle[i][j].right = submit[i + 1][j + 1];
+
+          //apply to SquareBox Instance
+          puzzle[i][j].setColor(submit[i][j], "");
+          puzzle[i][j].setColor(submit[i + 2][j], "");
+          puzzle[i][j].setColor(submit[i + 1][j], "");
+          puzzle[i][j].setColor(submit[i + 1][j + 1], "");
         }
       }
     }
