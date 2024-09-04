@@ -118,7 +118,7 @@ class ReadSquare {
     return lineData;
   }
 
-  void writeSubmit(List<List<SquareBox>> puzzle, List<List<int>> submit) {
+  Future<void> writeSubmit(List<List<SquareBox>> puzzle, List<List<int>> submit) async {
     for (int i = 0; i < puzzle.length; i++) {
       for (int j = 0; j < puzzle[i].length; j++) {
         //down, right

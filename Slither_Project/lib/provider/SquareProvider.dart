@@ -51,14 +51,17 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  void restart() {
+  Future<void> restart() async {
     for(int i = 0 ; i < submit.length ; i++) {
       for(int j = 0 ; j < submit[i].length ; j++) {
         submit[i][j] = 0;
       }
     }
 
-    readSquare.writeSubmit(puzzle, submit);
+    await clearLineForStart();
+    await resetDo();
+    notifyListeners();
+    submit = await readSquare.readSubmit(puzzle);
     notifyListeners();
   }
 
@@ -681,6 +684,13 @@ class SquareProvider with ChangeNotifier {
       // ignore: avoid_print
       print(e);
     }
+  }
+
+  Future<void> resetDo() async {
+    doPointer = -1;
+    doIndex = -1;
+    doSubmit = [];
+    _isUpdating = 0;
   }
 
   void printSubmit() {
@@ -1690,7 +1700,7 @@ class SquareProvider with ChangeNotifier {
     }
   }
 
-  void clearLineForStart() {
+  Future<void> clearLineForStart() async {
     for(int i = 0 ; i < puzzle.length ; i++) {
       for(int j = 0 ; j < puzzle[i].length ; j++) {
         if(i != 0 && j != 0) {
@@ -1716,11 +1726,11 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
-    setDefaultLineStep1();
+    await setDefaultLineStep1();
   }
 
   ///find SquareBox(num is zero) and set color -1
-  void setDefaultLineStep1() {
+  Future<void> setDefaultLineStep1() async {
     for(int i = 0 ; i < puzzle.length ; i++) {
       for(int j = 0 ; j < puzzle[i].length ; j++) {
         if(puzzle[i][j].num == 0) {
@@ -1752,7 +1762,7 @@ class SquareProvider with ChangeNotifier {
       }  
     }
 
-    setDefaultLineStep2();
+    await setDefaultLineStep2();
   }
 
   ///내부 라인인 경우 상|하|좌|우 중 3개의 -1이 인접하면 해당 라인이 -1
@@ -1760,7 +1770,7 @@ class SquareProvider with ChangeNotifier {
   ///테두리 라인인 경우 상|하|좌|우 중 2개의 -1이 인접하면 해당 라인이 -1
   ///
   /// 모서리 라인인 경우 상|하|좌|우 중 1~2개의 -1이 인접하면 해당 라인이 -1
-  void setDefaultLineStep2() {
+  Future<void> setDefaultLineStep2() async {
     int value = 0;
 
     for (int i = 0; i < puzzle.length; i++) {
@@ -1955,5 +1965,7 @@ class SquareProvider with ChangeNotifier {
         }
       }
     }
+
+    notifyListeners();
   }
 }
