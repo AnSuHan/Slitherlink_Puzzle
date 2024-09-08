@@ -13,6 +13,7 @@ class UserInfo {
     "use_KeyInput" : true,
     "enable_extract" : false,
     "debug_snackBar" : true,
+    "loadTestAnswer" : true,      //class Answer - getTestSquare()
   };
 
   static bool authState = false;

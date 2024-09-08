@@ -16,9 +16,10 @@ class GameSceneSquare extends StatefulWidget {
   //to access to parameter with Navigator push, variable should be final
   final bool isContinue;
   final String loadKey;
+  final bool testMode;
 
   const GameSceneSquare({
-    Key? key, required this.isContinue, required this.loadKey
+    Key? key, required this.isContinue, required this.loadKey, this.testMode = false
   }) : super(key: key);
 
   @override
@@ -110,7 +111,15 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     //print("loadKey : ${widget.loadKey}");
     isComplete = false;
 
-    if(widget.isContinue) {
+    //load test answer
+    if(widget.testMode && widget.loadKey.split("_")[3].compareTo("test") == 0) {
+      answer = await readSquare.loadPuzzle(widget.loadKey);
+
+      submit = List.generate(answer.length, (row) =>
+          List.filled(answer[row].length, 0),
+      );
+    }
+    else if(widget.isContinue) {
       answer = await readSquare.loadPuzzle(widget.loadKey);
 
       submit = await readSquare.loadPuzzle("${widget.loadKey}_continue");

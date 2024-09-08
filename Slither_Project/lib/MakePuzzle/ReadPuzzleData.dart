@@ -27,6 +27,10 @@ class ReadPuzzleData {
 
   Future<List<List<bool>>> readData(String keyName, {bool isContinue = false}) async {
     List<String> tokens = keyName.split("_");
+    //load test
+    if(tokens[tokens.length - 1].compareTo("test") == 0) {
+      return await answer.getTestSquare();
+    }
     if(tokens[0].compareTo("square") == 0) {
       if(tokens[1].compareTo("small") == 0) {
         int index = int.parse(tokens[2]);

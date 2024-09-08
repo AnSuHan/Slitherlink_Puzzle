@@ -59,6 +59,12 @@ class ReadSquare {
     //get submit data
     //read from SharedPreference
     else {
+      //load test data
+      if(key.split("_")[3].compareTo("test") == 0) {
+        data = await read.readData(key);
+        //printData();
+        return data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
+      }
       final ExtractData prefs = ExtractData();
       String? temp = (await prefs.getDataFromLocal(key)) ?.toString();
 
