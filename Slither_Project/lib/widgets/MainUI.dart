@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
+import '../Front/HowToPlay.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../User/Authentication.dart';
 import '../User/UserInfo.dart';
@@ -96,6 +97,10 @@ class MainUI {
         PopupMenuItem<String>(
           value: 'account',
           child: Text(appLocalizations.translate('MainUI_menuAccount')),
+        ),
+        PopupMenuItem<String>(
+          value: 'how',
+          child: Text(appLocalizations.translate('MainUI_menuHowToPlay')),
         ),
         PopupMenuItem<String>(
           value: 'setting',
@@ -690,6 +695,14 @@ class MainUI {
           },
         );
 
+        break;
+      case "how":
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const HowToPlay(),
+            )
+        );
         break;
     }
   }
