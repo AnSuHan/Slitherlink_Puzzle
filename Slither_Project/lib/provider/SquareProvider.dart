@@ -745,19 +745,24 @@ class SquareProvider with ChangeNotifier {
 
     Set<int> nearColor = {};
     int lineValue = 0; //new line's value
+    String pos = "";
 
     if (down != null) {
       nearColor = getNearColor(row, column, "down");
       lineValue = down;
+      pos = "down";
     } else if (right != null) {
       nearColor = getNearColor(row, column, "right");
       lineValue = right;
+      pos = "right";
     } else if (up != null) {
       nearColor = getNearColor(row, column, "up");
       lineValue = up;
+      pos = "up";
     } else if (left != null) {
       nearColor = getNearColor(row, column, "left");
       lineValue = left;
+      pos = "left";
     }
     //print("nearColor : $nearColor, lineValue : $lineValue");
 
@@ -775,6 +780,8 @@ class SquareProvider with ChangeNotifier {
       else if (left != null) {
         puzzle[row][column].left = lineValue;
       }
+
+      await findBlockEnableDisable(row, column, pos, enable: true);
     }
     //random line color
     else if(nearColor.isEmpty) {
@@ -819,6 +826,7 @@ class SquareProvider with ChangeNotifier {
         await refreshSubmit();
         notifyListeners();
         await setDo();
+        await findBlockEnableDisable(row, column, pos, disable: true);
         return;
       }
 
@@ -857,6 +865,7 @@ class SquareProvider with ChangeNotifier {
     _isUpdating = 2;
     notifyListeners();
     await setDo();
+    await findBlockEnableDisable(row, column, pos, disable: true);
   }
 
   ///SquareBoxProvider List's index
@@ -1980,5 +1989,194 @@ class SquareProvider with ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  ///**********************************************************************************
+  ///**********************************************************************************
+  ///************************** change interacted line color **************************
+  ///**********************************************************************************
+  ///**********************************************************************************
+  Future<void> findBlockEnableDisable(int row, int column, String pos, {bool enable = false, bool disable = false}) async {
+    //print("clicked box : $row, $column, $pos");
+    int rowMin = max(0, min(puzzle.length - 1, row - 1));
+    int rowMax = min(puzzle.length - 1, row + 1);
+    int colMin = max(0, min(puzzle[row].length - 1, column - 1));
+    int colMax = min(puzzle[row].length - 1, column + 1);
+    //print("rowMin : $rowMin, rowMax : $rowMax, colMin : $colMin, colMax : $colMax");
+    if(pos.compareTo("right") == 0) {
+      colMin++;
+    }
+
+    for(int i = rowMin ; i <= rowMax ; i++) {
+      for(int j = colMin ; j <= colMax ; j++) {
+        if(puzzle[i][j].num <= getLineCount(i, j)) {
+          disable ? setLineDisable(i, j) :
+            enable ? setLineEnable(i, j) : null;
+        }
+      }
+    }
+
+    notifyListeners();
+    readSquare.readSubmit(puzzle);
+  }
+
+  int getLineCount(int row, int col) {
+    int count = 0;
+
+    if(row != 0 && col != 0) {
+      count = [
+        puzzle[row - 1][col].down,
+        puzzle[row][col].down,
+        puzzle[row][col - 1].right,
+        puzzle[row][col].right
+      ].where((value) => value > 0).length;
+    }
+    else if(row != 0 && col == 0) {
+      count = [
+        puzzle[row - 1][col].down,
+        puzzle[row][col].down,
+        puzzle[row][col].left,
+        puzzle[row][col].right
+      ].where((value) => value > 0).length;
+    }
+    else if(row == 0 && col != 0) {
+      count = [
+        puzzle[row][col].up,
+        puzzle[row][col].down,
+        puzzle[row][col - 1].right,
+        puzzle[row][col].right
+      ].where((value) => value > 0).length;
+    }
+    else {
+      count = [
+        puzzle[row][col].up,
+        puzzle[row][col].down,
+        puzzle[row][col].left,
+        puzzle[row][col].right
+      ].where((value) => value > 0).length;
+    }
+
+    return count;
+  }
+
+  void setLineDisable(int row, int col) {
+    print("call setLineDisable");
+    if(row != 0 && col != 0) {
+      if (puzzle[row - 1][col].down == 0) {
+        puzzle[row - 1][col].down = -1;
+      }
+      if (puzzle[row][col].down == 0) {
+        puzzle[row][col].down = -1;
+      }
+      if (puzzle[row][col - 1].right == 0) {
+        puzzle[row][col - 1].right = -1;
+      }
+      if (puzzle[row][col].right == 0) {
+        puzzle[row][col].right = -1;
+      }
+    }
+    else if(row != 0 && col == 0) {
+      if (puzzle[row - 1][col].down == 0) {
+        puzzle[row - 1][col].down = -1;
+      }
+      if (puzzle[row][col].down == 0) {
+        puzzle[row][col].down = -1;
+      }
+      if (puzzle[row][col].left == 0) {
+        puzzle[row][col].left = -1;
+      }
+      if (puzzle[row][col].right == 0) {
+        puzzle[row][col].right = -1;
+      }
+    }
+    else if(row == 0 && col != 0) {
+      if (puzzle[row][col].up == 0) {
+        puzzle[row][col].up = -1;
+      }
+      if (puzzle[row][col].down == 0) {
+        puzzle[row][col].down = -1;
+      }
+      if (puzzle[row][col - 1].right == 0) {
+        puzzle[row][col - 1].right = -1;
+      }
+      if (puzzle[row][col].right == 0) {
+        puzzle[row][col].right = -1;
+      }
+    }
+    else {
+      if (puzzle[row][col].up == 0) {
+        puzzle[row][col].up = -1;
+      }
+      if (puzzle[row][col].down == 0) {
+        puzzle[row][col].down = -1;
+      }
+      if (puzzle[row][col].left == 0) {
+        puzzle[row][col].left = -1;
+      }
+      if (puzzle[row][col].right == 0) {
+        puzzle[row][col].right = -1;
+      }
+    }
+  }
+
+  ///TODO : 함수의 호출 조건이 올바르지 않아 수정 필요
+  void setLineEnable(int row, int col) {
+    print("call setLineEnable");
+    if(row != 0 && col != 0) {
+      if (puzzle[row - 1][col].down == -1) {
+        puzzle[row - 1][col].down = 0;
+      }
+      if (puzzle[row][col].down == -1) {
+        puzzle[row][col].down = 0;
+      }
+      if (puzzle[row][col - 1].right == -1) {
+        puzzle[row][col - 1].right = 0;
+      }
+      if (puzzle[row][col].right == -1) {
+        puzzle[row][col].right = 0;
+      }
+    }
+    else if(row != 0 && col == 0) {
+      if (puzzle[row - 1][col].down == -1) {
+        puzzle[row - 1][col].down = 0;
+      }
+      if (puzzle[row][col].down == -1) {
+        puzzle[row][col].down = 0;
+      }
+      if (puzzle[row][col].left == -1) {
+        puzzle[row][col].left = 0;
+      }
+      if (puzzle[row][col].right == -1) {
+        puzzle[row][col].right = 0;
+      }
+    }
+    else if(row == 0 && col != 0) {
+      if (puzzle[row][col].up == -1) {
+        puzzle[row][col].up = 0;
+      }
+      if (puzzle[row][col].down == -1) {
+        puzzle[row][col].down = 0;
+      }
+      if (puzzle[row][col - 1].right == -1) {
+        puzzle[row][col - 1].right = 0;
+      }
+      if (puzzle[row][col].right == -1) {
+        puzzle[row][col].right = 0;
+      }
+    }
+    else {
+      if (puzzle[row][col].up == -1) {
+        puzzle[row][col].up = 0;
+      }
+      if (puzzle[row][col].down == -1) {
+        puzzle[row][col].down = 0;
+      }
+      if (puzzle[row][col].left == -1) {
+        puzzle[row][col].left = 0;
+      }
+      if (puzzle[row][col].right == -1) {
+        puzzle[row][col].right = 0;
+      }
+    }
   }
 }

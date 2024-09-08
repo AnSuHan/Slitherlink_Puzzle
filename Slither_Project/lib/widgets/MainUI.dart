@@ -968,7 +968,7 @@ class MainUI {
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
         //for debug
         if(selectedMode.compareTo("debug") == 0) {
-          print("debug key : $progressKey");
+          //print("debug key : $progressKey");
           // ignore: use_build_context_synchronously
           changeScene(context, "${progressKey}_test");
           return;
