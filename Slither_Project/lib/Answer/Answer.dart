@@ -20,6 +20,7 @@ class Answer {
       if(showCycle) {
         checkDuplicateAll();
         checkCycleSquareAll();
+        checkCycleSquareTest();
       }
     });
   }
@@ -119,6 +120,19 @@ class Answer {
       // ignore: avoid_print
       print("check square_${size[i]} Cycle : $squareCycle");
     }
+  }
+
+  void checkCycleSquareTest() {
+    List<List<List<bool>>> testAnswer = squareSmallTestAnswer.map((list2D) => list2D.map((list1D) => List<bool>.from(list1D)).toList()).toList();
+    List<bool> squareCycle = [];
+
+    //check cycle
+    int index;  //each puzzle
+    for(index = 0 ; index < testAnswer.length ; index++) {
+      squareCycle.add(checkCycleSquare(testAnswer[index]));
+    }
+    // ignore: avoid_print
+    print("check square_test Cycle : $squareCycle");
   }
 
   bool checkCycleSquare(List<List<bool>> squareAnswer) {
