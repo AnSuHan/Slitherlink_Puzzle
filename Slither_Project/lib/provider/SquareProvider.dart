@@ -1773,12 +1773,17 @@ class SquareProvider with ChangeNotifier {
     await setDefaultLineStep2();
   }
 
+  Future<void> setDefaultLineStep2() async {
+    await setDefaultLineStep2Inner();
+    await setDefaultLineStep2Inner();
+  }
+
   ///내부 라인인 경우 상|하|좌|우 중 3개의 -1이 인접하면 해당 라인이 -1
   ///
   ///테두리 라인인 경우 상|하|좌|우 중 2개의 -1이 인접하면 해당 라인이 -1
   ///
   /// 모서리 라인인 경우 상|하|좌|우 중 1~2개의 -1이 인접하면 해당 라인이 -1
-  Future<void> setDefaultLineStep2() async {
+  Future<void> setDefaultLineStep2Inner() async {
     int value = 0;
 
     for (int i = 0; i < puzzle.length; i++) {
