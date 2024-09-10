@@ -2037,6 +2037,7 @@ class SquareProvider with ChangeNotifier {
     }
 
     notifyListeners();
+    await checkCurrentPath();
     submit = await readSquare.readSubmit(puzzle);
     //print("changedList : $changedList");
 
@@ -2151,6 +2152,48 @@ class SquareProvider with ChangeNotifier {
             if(value < 0 && puzzle[i][j].down == 0) {
               puzzle[i][j].down = -1;
             }
+            value = 0;
+            //left
+            if(i + 1 < puzzle.length) {
+              if([puzzle[i][j - 1].down, puzzle[i][j - 1].right, puzzle[i + 1][j - 1].right]
+                  .where((value) => value > 0).length >= 2) {
+                if(puzzle[i][j].down == 0){
+                  puzzle[i][j].down = -1;
+                  value++;
+                }
+              }
+            }
+            else if(puzzle[i][j - 1].down > 0 && puzzle[i][j - 1].right > 0) {
+              if(puzzle[i][j].down == 0){
+                puzzle[i][j].down = -1;
+                value++;
+              }
+            }
+            //right
+            if(value == 0) {
+              if((i + 1 < puzzle.length) && (j + 1 < puzzle[i].length)) {
+                if([puzzle[i][j].right, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+              else if((i + 1 < puzzle.length) && !(j + 1 < puzzle[i].length)) {
+                if(puzzle[i][j].right > 0 && puzzle[i + 1][j].right > 0) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+              else if(!(i + 1 < puzzle.length) && (j + 1 < puzzle[i].length)) {
+                if(puzzle[i][j].right > 0 && puzzle[i][j + 1].down > 0) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+            }
           }
           //puzzle[i][j].right
           {
@@ -2174,6 +2217,48 @@ class SquareProvider with ChangeNotifier {
             if(value < 0 && puzzle[i][j].right == 0) {
               puzzle[i][j].right = -1;
             }
+            value = 0;
+            //up
+            if(j + 1 < puzzle[i].length) {
+              if([puzzle[i - 1][j].down, puzzle[i - 1][j].right, puzzle[i - 1][j + 1].down]
+                  .where((value) => value > 0).length >= 2) {
+                if(puzzle[i][j].right == 0){
+                  puzzle[i][j].right = -1;
+                  value++;
+                }
+              }
+            }
+            else if(puzzle[i - 1][j].down > 0 && puzzle[i - 1][j].right > 0) {
+              if(puzzle[i][j].right == 0){
+                puzzle[i][j].right = -1;
+                value++;
+              }
+            }
+            //down
+            if(value == 0) {
+              if((i + 1 < puzzle.length) && (j + 1 < puzzle[i].length)) {
+                if([puzzle[i][j].down, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+              else if((i + 1 < puzzle.length) && !(j + 1 < puzzle[i].length)) {
+                if(puzzle[i][j].down > 0 && puzzle[i + 1][j].right > 0) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+              else if(!(i + 1 < puzzle.length) && (j + 1 < puzzle[i].length)) {
+                if(puzzle[i][j].down > 0 && puzzle[i][j + 1].down > 0) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+            }
           }
         }
         else if(i == 0 && j != 0) {
@@ -2194,6 +2279,20 @@ class SquareProvider with ChangeNotifier {
             if(value < 0 && puzzle[i][j].up == 0) {
               puzzle[i][j].up = -1;
             }
+            //left
+            if(puzzle[i][j - 1].up > 0 && puzzle[i][j - 1].right > 0) {
+              if(puzzle[i][j].up == 0){
+                puzzle[i][j].up = -1;
+              }
+            }
+            //right
+            else if(j + 1 < puzzle[i].length){
+               if(puzzle[i][j].right > 0 && puzzle[i][j + 1].up > 0) {
+                 if(puzzle[i][j].up == 0){
+                  puzzle[i][j].up = -1;
+                }
+              }
+            }
           }
           //puzzle[i][j].down
           {
@@ -2211,6 +2310,31 @@ class SquareProvider with ChangeNotifier {
             }
             if(value < 0 && puzzle[i][j].down == 0) {
               puzzle[i][j].down = -1;
+            }
+            //left
+            if([puzzle[i][j -1].right, puzzle[i][j - 1].down, puzzle[i + 1][j - 1].right]
+                .where((value) => value > 0).length >= 2) {
+              if(puzzle[i][j].down == 0){
+                puzzle[i][j].down = -1;
+              }
+            }
+            //right
+            else {
+              if(j + 1 < puzzle[i].length) {
+                if([puzzle[i][j].right, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+              else {
+                if(puzzle[i][j].right > 0 && puzzle[i + 1][j].right > 0) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
             }
           }
           //puzzle[i][j].right
@@ -2233,6 +2357,32 @@ class SquareProvider with ChangeNotifier {
             if(value < 0 && puzzle[i][j].right == 0) {
               puzzle[i][j].right = -1;
             }
+            //up
+            if(j + 1 < puzzle[i].length) {
+              if(puzzle[i][j].up > 0 && puzzle[i][j + 1].up > 0) {
+                if(puzzle[i][j].right == 0){
+                  puzzle[i][j].right = -1;
+                }
+              }
+            }
+            //down
+            else {
+              if(j + 1 < puzzle[i].length) {
+                if([puzzle[i][j].down, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+              else {
+                if(puzzle[i][j].down > 0 && puzzle[i + 1][j].right > 0) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+            }
           }
         }
         else if(i != 0 && j == 0) {
@@ -2254,6 +2404,20 @@ class SquareProvider with ChangeNotifier {
             if(value < 0 && puzzle[i][j].left == 0) {
               puzzle[i][j].left = -1;
             }
+            //up
+            if(puzzle[i - 1][j].left > 0 && puzzle[i - 1][j].down > 0) {
+              if(puzzle[i][j].left == 0){
+                puzzle[i][j].left = -1;
+              }
+            }
+            //down
+            else if(i + 1 < puzzle.length) {
+              if(puzzle[i][j].down > 0 && puzzle[i + 1][j].left > 0) {
+                if(puzzle[i][j].left == 0){
+                  puzzle[i][j].left = -1;
+                }
+              }
+            }
           }
           //puzzle[i][j].right
           {
@@ -2272,6 +2436,31 @@ class SquareProvider with ChangeNotifier {
 
             if(value < 0 && puzzle[i][j].right == 0) {
               puzzle[i][j].right = -1;
+            }
+            //up
+            if([puzzle[i - 1][j].down, puzzle[i - 1][j].right, puzzle[i - 1][j + 1].down]
+                .where((value) => value > 0).length >= 2) {
+              if(puzzle[i][j].right == 0){
+                puzzle[i][j].right = -1;
+              }
+            }
+            //down
+            else {
+              if(i + 1 < puzzle.length) {
+                if([puzzle[i][j].down, puzzle[i][j + 1].down, puzzle[i + 1][j].right]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+              else {
+                if(puzzle[i][j].down > 0 && puzzle[i][j + 1].down > 0) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
             }
           }
           //puzzle[i][j].down
@@ -2293,6 +2482,30 @@ class SquareProvider with ChangeNotifier {
             if(value < 0 && puzzle[i][j].down == 0) {
               puzzle[i][j].down = -1;
             }
+            //left
+            if(i + 1 < puzzle.length) {
+              if(puzzle[i][j].left > 0 && puzzle[i + 1][j].left > 0) {
+                if(puzzle[i][j].down == 0){
+                  puzzle[i][j].down = -1;
+                }
+              }
+            }
+            //right
+            else {
+              if(i + 1 < puzzle.length) {
+                if([puzzle[i][j].right, puzzle[i][j + 1].down, puzzle[i + 1][j].right]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+              else if(puzzle[i][j].right > 0 && puzzle[i][j + 1].down > 0) {
+                if(puzzle[i][j].down == 0){
+                  puzzle[i][j].down = -1;
+                }
+              }
+            }
           }
         }
         else {
@@ -2301,25 +2514,62 @@ class SquareProvider with ChangeNotifier {
           if(puzzle[i][j].left == -1 || (puzzle[i][j].right == -1 && puzzle[i][j + 1].up == -1)) {
             puzzle[i][j].up = -1;
           }
+          else if(puzzle[i][j].right > 0 && puzzle[i][j + 1].up > 0) {
+            if(puzzle[i][j].up == 0) {
+              puzzle[i][j].up = -1;
+            }
+          }
           //puzzle[i][j].left
           if(puzzle[i][j].up == -1 || (puzzle[i][j].down == -1 && puzzle[i + 1][j].left == -1)) {
             puzzle[i][j].left = -1;
+          }
+          else if(puzzle[i][j].down > 0 && puzzle[i + 1][j].left > 0) {
+            if(puzzle[i][j].left == 0){
+              puzzle[i][j].left = -1;
+            }
           }
           //puzzle[i][j].down
           if((puzzle[i][j].left == -1 && puzzle[i + 1][j].left == -1)
               || (puzzle[i][j].right == -1 && puzzle[i][j + 1].down == -1 && puzzle[i + 1][j].right == -1)) {
             puzzle[i][j].down = -1;
           }
+          //left
+          else if(puzzle[i][j].left > 0 && puzzle[i + 1][j].left > 0) {
+            if(puzzle[i][j].down == 0){
+              puzzle[i][j].down = -1;
+            }
+          }
+          //right
+          else if([puzzle[i][j].right, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+              .where((value) => value > 0).length >= 2) {
+            if(puzzle[i][j].down == 0){
+              puzzle[i][j].down = -1;
+            }
+          }
           //puzzle[i][j].right
           if((puzzle[i][j].up == -1 && puzzle[i][j + 1].up == -1)
               || (puzzle[i][j].down == -1 && puzzle[i][j + 1].down == -1 && puzzle[i + 1][j].right == -1)) {
             puzzle[i][j].right = -1;
+          }
+          //up
+          else if(puzzle[i][j].up > 0 && puzzle[i][j + 1].up > 0) {
+            if(puzzle[i][j].right == 0){
+              puzzle[i][j].right = -1;
+            }
+          }
+          //down
+          else if([puzzle[i][j].down, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+              .where((value) => value > 0).length >= 2) {
+            if(puzzle[i][j].right == 0){
+              puzzle[i][j].right = -1;
+            }
           }
         }
       }
     }
 
     notifyListeners();
+    submit = await readSquare.readSubmit(puzzle);
   }
 
   int getLineCount(int row, int col) {
