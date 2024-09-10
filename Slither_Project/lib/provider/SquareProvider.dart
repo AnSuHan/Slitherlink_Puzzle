@@ -2000,7 +2000,10 @@ class SquareProvider with ChangeNotifier {
   ///************************** change interacted line color **************************
   ///**********************************************************************************
   ///**********************************************************************************
-  Future<void> findBlockEnableDisable(int row, int column, String pos, {bool enable = false, bool disable = false}) async {
+  Future<void> findBlockEnableDisable(
+      int row, int column, String pos,
+      {bool enable = false, bool disable = false, List<List<int>>? changedList}
+    ) async {
     //print("clicked box : $row, $column, $pos");
     int rowMin = max(0, min(puzzle.length - 1, row - 1));
     int rowMax = min(puzzle.length - 1, row + 1);
@@ -2011,26 +2014,43 @@ class SquareProvider with ChangeNotifier {
       colMin++;
     }
 
-    bool flag = false;
+    bool isChanged = false; //변경 사항이 있는가
+    changedList ??= [];
 
-    //TODO : 클릭한 라인 뿐 아니라 변경되는 라인이 있으면, 그에 영향을 받는 라인 전체를 다시 검사
-    do {
-      for(int i = rowMin ; i <= rowMax ; i++) {
-        for(int j = colMin ; j <= colMax ; j++) {
-          if(enable) {
-            setLineEnable(i, j);
+    for(int i = rowMin ; i <= rowMax ; i++) {
+      for(int j = colMin ; j <= colMax ; j++) {
+        if(enable) {
+          isChanged = setLineEnable(i, j);
+          if(isChanged) {
+            changedList.add([i, j]);
           }
-          else if(puzzle[i][j].num <= getLineCount(i, j)) {
-            if(disable) {
-              setLineDisable(i, j);
+        }
+        else if(puzzle[i][j].num <= getLineCount(i, j)) {
+          if(disable) {
+            isChanged = setLineDisable(i, j);
+            if(isChanged) {
+              changedList.add([i, j]);
             }
           }
         }
       }
-    } while(flag);
+    }
 
     notifyListeners();
-    readSquare.readSubmit(puzzle);
+    submit = await readSquare.readSubmit(puzzle);
+    //print("changedList : $changedList");
+
+    //클릭한 라인 뿐 아니라 변경된 라인이 있으면, 그에 영향을 받는 라인 전체를 다시 검사
+    while(changedList.isNotEmpty) {
+      findBlockEnableDisable(
+          changedList[0][0], changedList[0][1],
+          pos, enable: false, disable: true, changedList: changedList
+      );
+      changedList.removeAt(0);
+
+      notifyListeners();
+      submit = await readSquare.readSubmit(puzzle);
+    }
   }
 
   int getLineCount(int row, int col) {
@@ -2072,121 +2092,161 @@ class SquareProvider with ChangeNotifier {
     return count;
   }
 
-  void setLineDisable(int row, int col) {
+  bool setLineDisable(int row, int col) {
+    bool isChanged = false;
+
     if(row != 0 && col != 0) {
       if (puzzle[row - 1][col].down == 0) {
         puzzle[row - 1][col].down = -1;
+        isChanged = true;
       }
       if (puzzle[row][col].down == 0) {
         puzzle[row][col].down = -1;
+        isChanged = true;
       }
       if (puzzle[row][col - 1].right == 0) {
         puzzle[row][col - 1].right = -1;
+        isChanged = true;
       }
       if (puzzle[row][col].right == 0) {
         puzzle[row][col].right = -1;
+        isChanged = true;
       }
     }
     else if(row != 0 && col == 0) {
       if (puzzle[row - 1][col].down == 0) {
         puzzle[row - 1][col].down = -1;
+        isChanged = true;
       }
       if (puzzle[row][col].down == 0) {
         puzzle[row][col].down = -1;
+        isChanged = true;
       }
       if (puzzle[row][col].left == 0) {
         puzzle[row][col].left = -1;
+        isChanged = true;
       }
       if (puzzle[row][col].right == 0) {
         puzzle[row][col].right = -1;
+        isChanged = true;
       }
     }
     else if(row == 0 && col != 0) {
       if (puzzle[row][col].up == 0) {
         puzzle[row][col].up = -1;
+        isChanged = true;
       }
       if (puzzle[row][col].down == 0) {
         puzzle[row][col].down = -1;
+        isChanged = true;
       }
       if (puzzle[row][col - 1].right == 0) {
         puzzle[row][col - 1].right = -1;
+        isChanged = true;
       }
       if (puzzle[row][col].right == 0) {
         puzzle[row][col].right = -1;
+        isChanged = true;
       }
     }
     else {
       if (puzzle[row][col].up == 0) {
         puzzle[row][col].up = -1;
+        isChanged = true;
       }
       if (puzzle[row][col].down == 0) {
         puzzle[row][col].down = -1;
+        isChanged = true;
       }
       if (puzzle[row][col].left == 0) {
         puzzle[row][col].left = -1;
+        isChanged = true;
       }
       if (puzzle[row][col].right == 0) {
         puzzle[row][col].right = -1;
+        isChanged = true;
       }
     }
+
+    return isChanged;
   }
 
-  void setLineEnable(int row, int col) {
+  bool setLineEnable(int row, int col) {
+    bool isChanged = false;
+
     if(row != 0 && col != 0) {
       if (puzzle[row - 1][col].down == -1) {
         puzzle[row - 1][col].down = 0;
+        isChanged = true;
       }
       if (puzzle[row][col].down == -1) {
         puzzle[row][col].down = 0;
+        isChanged = true;
       }
       if (puzzle[row][col - 1].right == -1) {
         puzzle[row][col - 1].right = 0;
+        isChanged = true;
       }
       if (puzzle[row][col].right == -1) {
         puzzle[row][col].right = 0;
+        isChanged = true;
       }
     }
     else if(row != 0 && col == 0) {
       if (puzzle[row - 1][col].down == -1) {
         puzzle[row - 1][col].down = 0;
+        isChanged = true;
       }
       if (puzzle[row][col].down == -1) {
         puzzle[row][col].down = 0;
+        isChanged = true;
       }
       if (puzzle[row][col].left == -1) {
         puzzle[row][col].left = 0;
+        isChanged = true;
       }
       if (puzzle[row][col].right == -1) {
         puzzle[row][col].right = 0;
+        isChanged = true;
       }
     }
     else if(row == 0 && col != 0) {
       if (puzzle[row][col].up == -1) {
         puzzle[row][col].up = 0;
+        isChanged = true;
       }
       if (puzzle[row][col].down == -1) {
         puzzle[row][col].down = 0;
+        isChanged = true;
       }
       if (puzzle[row][col - 1].right == -1) {
         puzzle[row][col - 1].right = 0;
+        isChanged = true;
       }
       if (puzzle[row][col].right == -1) {
         puzzle[row][col].right = 0;
+        isChanged = true;
       }
     }
     else {
       if (puzzle[row][col].up == -1) {
         puzzle[row][col].up = 0;
+        isChanged = true;
       }
       if (puzzle[row][col].down == -1) {
         puzzle[row][col].down = 0;
+        isChanged = true;
       }
       if (puzzle[row][col].left == -1) {
         puzzle[row][col].left = 0;
+        isChanged = true;
       }
       if (puzzle[row][col].right == -1) {
         puzzle[row][col].right = 0;
+        isChanged = true;
       }
     }
+
+    return isChanged;
   }
 }

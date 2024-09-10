@@ -84,7 +84,7 @@ class ReadSquare {
     }
   }
 
-
+  ///this method's return should be saved to submit in provider
   Future<List<List<int>>> readSubmit(List<List<SquareBox>> puzzle) async {
     lineData = List.generate(puzzle.length * 2 + 1, (row) =>
         List.filled(row % 2 == 0 ? puzzle[0].length : puzzle[0].length + 1, 0),
