@@ -781,7 +781,11 @@ class SquareProvider with ChangeNotifier {
         puzzle[row][column].left = lineValue;
       }
 
+      _isUpdating = 2;
+      notifyListeners();
+      await setDo();
       await findBlockEnableDisable(row, column, pos, enable: true);
+      return;
     }
     //random line color
     else if(nearColor.isEmpty) {
@@ -2007,14 +2011,23 @@ class SquareProvider with ChangeNotifier {
       colMin++;
     }
 
-    for(int i = rowMin ; i <= rowMax ; i++) {
-      for(int j = colMin ; j <= colMax ; j++) {
-        if(puzzle[i][j].num <= getLineCount(i, j)) {
-          disable ? setLineDisable(i, j) :
-            enable ? setLineEnable(i, j) : null;
+    bool flag = false;
+
+    //TODO : 클릭한 라인 뿐 아니라 변경되는 라인이 있으면, 그에 영향을 받는 라인 전체를 다시 검사
+    do {
+      for(int i = rowMin ; i <= rowMax ; i++) {
+        for(int j = colMin ; j <= colMax ; j++) {
+          if(enable) {
+            setLineEnable(i, j);
+          }
+          else if(puzzle[i][j].num <= getLineCount(i, j)) {
+            if(disable) {
+              setLineDisable(i, j);
+            }
+          }
         }
       }
-    }
+    } while(flag);
 
     notifyListeners();
     readSquare.readSubmit(puzzle);
@@ -2060,7 +2073,6 @@ class SquareProvider with ChangeNotifier {
   }
 
   void setLineDisable(int row, int col) {
-    print("call setLineDisable");
     if(row != 0 && col != 0) {
       if (puzzle[row - 1][col].down == 0) {
         puzzle[row - 1][col].down = -1;
@@ -2119,9 +2131,7 @@ class SquareProvider with ChangeNotifier {
     }
   }
 
-  ///TODO : 함수의 호출 조건이 올바르지 않아 수정 필요
   void setLineEnable(int row, int col) {
-    print("call setLineEnable");
     if(row != 0 && col != 0) {
       if (puzzle[row - 1][col].down == -1) {
         puzzle[row - 1][col].down = 0;
