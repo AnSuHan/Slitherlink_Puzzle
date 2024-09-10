@@ -2062,7 +2062,63 @@ class SquareProvider with ChangeNotifier {
   }
 
   Future<void> checkMaxLine() async {
-    int value = 0;
+    int count = 0;
+
+    for (int i = 0; i < puzzle.length; i++) {
+      for (int j = 0; j < puzzle[i].length; j++) {
+        count = 0;
+
+        if(i > 0 && j > 0) {
+          count = [puzzle[i - 1][j].down, puzzle[i][j].down, puzzle[i][j - 1].right, puzzle[i][j].right]
+              .where((value) => value >= 1)
+              .length;
+
+          if(count >= puzzle[i][j].num) {
+            if(puzzle[i - 1][j].down == 0) puzzle[i - 1][j].down = -1;
+            if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
+            if(puzzle[i][j - 1].right == 0) puzzle[i][j - 1].right = -1;
+            if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
+          }
+        }
+        else if(i == 0 && j != 0) {
+          count = [puzzle[i][j].up, puzzle[i][j].down, puzzle[i][j - 1].right, puzzle[i][j].right]
+              .where((value) => value >= 1)
+              .length;
+
+          if(count >= puzzle[i][j].num) {
+            if(puzzle[i][j].up == 0) puzzle[i][j].up = -1;
+            if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
+            if(puzzle[i][j - 1].right == 0) puzzle[i][j - 1].right = -1;
+            if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
+          }
+        }
+        else if(i != 0 && j == 0) {
+          count = [puzzle[i - 1][j].down, puzzle[i][j].down, puzzle[i][j].left, puzzle[i][j].right]
+              .where((value) => value >= 1)
+              .length;
+
+          if(count >= puzzle[i][j].num) {
+            if(puzzle[i - 1][j].down == 0) puzzle[i - 1][j].down = -1;
+            if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
+            if(puzzle[i][j].left == 0) puzzle[i][j].left = -1;
+            if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
+          }
+        }
+        else {
+          //i == 0 && j == 0
+          count = [puzzle[i][j].up, puzzle[i][j].down, puzzle[i][j].left, puzzle[i][j].right]
+              .where((value) => value >= 1)
+              .length;
+
+          if(count >= puzzle[i][j].num) {
+            if(puzzle[i][j].up == 0) puzzle[i][j].up = -1;
+            if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
+            if(puzzle[i][j].left == 0) puzzle[i][j].left = -1;
+            if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
+          }
+        }
+      }
+    }
 
     notifyListeners();
   }
