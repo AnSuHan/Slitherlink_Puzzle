@@ -1025,56 +1025,55 @@ class SquareProvider with ChangeNotifier {
     //[row, col, pos]
     ///rtValue는 값을 now로 변경해야 할 목록
     List<dynamic> rtValue = [];
-    int normal = 0;
 
     //same as getNearColor except for comparing color
     if(row != 0 && col != 0) {
       switch(pos) {
         case "down":
         //use.add(puzzle[row][col - 1].down);
-          if(puzzle[row][col - 1].down != normal && puzzle[row][col - 1].down != now) {
+          if(puzzle[row][col - 1].down > 0 && puzzle[row][col - 1].down != now) {
             rtValue.add([row, col - 1, "down"]);
           }
-          if (puzzle[row][col - 1].right != normal && puzzle[row][col - 1].right != now) {
+          if (puzzle[row][col - 1].right > 0 && puzzle[row][col - 1].right != now) {
             rtValue.add([row, col - 1, "right"]);
           }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
+          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
           if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col - 1].right != normal && puzzle[row + 1][col - 1].right != now) {
+            if (puzzle[row + 1][col - 1].right > 0 && puzzle[row + 1][col - 1].right != now) {
               rtValue.add([row + 1, col - 1, "right"]);
             }
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
               rtValue.add([row + 1, col, "right"]);
             }
           }
           if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+            if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
               rtValue.add([row, col + 1, "down"]);
             }
           }
           break;
         case "right":
-          if (puzzle[row - 1][col].right != normal && puzzle[row - 1][col].right != now) {
+          if (puzzle[row - 1][col].right > 0 && puzzle[row - 1][col].right != now) {
             rtValue.add([row - 1, col, "right"]);
           }
-          if (puzzle[row - 1][col].down != normal && puzzle[row - 1][col].down != now) {
+          if (puzzle[row - 1][col].down > 0 && puzzle[row - 1][col].down != now) {
             rtValue.add([row - 1, col, "down"]);
           }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != now) {
+          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
           if (puzzle[row].length > col + 1) {
-            if (puzzle[row - 1][col + 1].down != normal && puzzle[row - 1][col + 1].down != now) {
+            if (puzzle[row - 1][col + 1].down > 0 && puzzle[row - 1][col + 1].down != now) {
               rtValue.add([row - 1, col + 1, "down"]);
             }
-            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+            if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
               rtValue.add([row, col + 1, "down"]);
             }
           }
           if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
               rtValue.add([row + 1, col, "right"]);
             }
           }
@@ -1084,62 +1083,62 @@ class SquareProvider with ChangeNotifier {
     else if (col != 0) {
       switch (pos) {
         case "up":
-          if (puzzle[row][col - 1].up != normal && puzzle[row][col - 1].up != now) {
+          if (puzzle[row][col - 1].up > 0 && puzzle[row][col - 1].up != now) {
             rtValue.add([row, col - 1, "up"]);
           }
-          if (puzzle[row][col - 1].right != normal && puzzle[row][col - 1].right != now) {
+          if (puzzle[row][col - 1].right > 0 && puzzle[row][col - 1].right != now) {
             rtValue.add([row, col - 1, "right"]);
           }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
+          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
           if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != now) {
+            if (puzzle[row][col + 1].up > 0 && puzzle[row][col + 1].up != now) {
               rtValue.add([row, col + 1, "up"]);
             }
           }
           break;
         case "down":
-          if (puzzle[row][col - 1].down != normal && puzzle[row][col - 1].down != now) {
+          if (puzzle[row][col - 1].down > 0 && puzzle[row][col - 1].down != now) {
             rtValue.add([row, col - 1, "down"]);
           }
-          if (puzzle[row][col - 1].right != normal && puzzle[row][col - 1].right != now) {
+          if (puzzle[row][col - 1].right > 0 && puzzle[row][col - 1].right != now) {
             rtValue.add([row, col - 1, "right"]);
           }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
+          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
           if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+            if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
               rtValue.add([row, col + 1, "down"]);
             }
           }
           if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col - 1].right != normal && puzzle[row + 1][col - 1].right != now) {
+            if (puzzle[row + 1][col - 1].right > 0 && puzzle[row + 1][col - 1].right != now) {
               rtValue.add([row + 1, col - 1, "right"]);
             }
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
               rtValue.add([row + 1, col, "right"]);
             }
           }
           break;
         case "right":
-          if (puzzle[row][col].up != normal && puzzle[row][col].up != now) {
+          if (puzzle[row][col].up > 0 && puzzle[row][col].up != now) {
             rtValue.add([row, col, "up"]);
           }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != now) {
+          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
           if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != now) {
+            if (puzzle[row][col + 1].up > 0 && puzzle[row][col + 1].up != now) {
               rtValue.add([row, col + 1, "up"]);
             }
-            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+            if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
               rtValue.add([row, col + 1, "down"]);
             }
           }
           if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
               rtValue.add([row + 1, col, "right"]);
             }
           }
@@ -1149,56 +1148,56 @@ class SquareProvider with ChangeNotifier {
     else if (row != 0) {
       switch (pos) {
         case "down":
-          if (puzzle[row][col].left != normal && puzzle[row][col].left != now) {
+          if (puzzle[row][col].left > 0 && puzzle[row][col].left != now) {
             rtValue.add([row, col, "left"]);
           }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
+          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
-          if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != now) {
+          if (puzzle[row + 1][col].left > 0 && puzzle[row + 1][col].left != now) {
             rtValue.add([row + 1, col, "left"]);
           }
-          if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+          if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
             rtValue.add([row + 1, col, "right"]);
           }
-          if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+          if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
             rtValue.add([row, col + 1, "down"]);
           }
           break;
         case "left":
-          if (puzzle[row - 1][col].left != normal && puzzle[row - 1][col].left != now) {
+          if (puzzle[row - 1][col].left > 0 && puzzle[row - 1][col].left != now) {
             rtValue.add([row - 1, col, "left"]);
           }
-          if (puzzle[row - 1][col].down != normal && puzzle[row - 1][col].down != now) {
+          if (puzzle[row - 1][col].down > 0 && puzzle[row - 1][col].down != now) {
             rtValue.add([row - 1, col, "down"]);
           }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != now) {
+          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
           if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != now) {
+            if (puzzle[row + 1][col].left > 0 && puzzle[row + 1][col].left != now) {
               rtValue.add([row + 1, col, "left"]);
             }
           }
           break;
         case "right":
-          if (puzzle[row - 1][col].right != normal && puzzle[row - 1][col].right != now) {
+          if (puzzle[row - 1][col].right > 0 && puzzle[row - 1][col].right != now) {
             rtValue.add([row - 1, col, "right"]);
           }
-          if (puzzle[row - 1][col].down != normal && puzzle[row - 1][col].down != now) {
+          if (puzzle[row - 1][col].down > 0 && puzzle[row - 1][col].down != now) {
             rtValue.add([row - 1, col, "down"]);
           }
-          if (puzzle[row - 1][col + 1].down != normal && puzzle[row - 1][col + 1].down != now) {
+          if (puzzle[row - 1][col + 1].down > 0 && puzzle[row - 1][col + 1].down != now) {
             rtValue.add([row - 1, col + 1, "down"]);
           }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != now) {
+          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
           if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
               rtValue.add([row + 1, col, "right"]);
             }
-            if (puzzle[row + 1][col + 1].down != normal && puzzle[row + 1][col + 1].down != now) {
+            if (puzzle[row + 1][col + 1].down > 0 && puzzle[row + 1][col + 1].down != now) {
               rtValue.add([row + 1, col + 1, "down"]);
             }
           }
@@ -1208,58 +1207,58 @@ class SquareProvider with ChangeNotifier {
     else {
       switch(pos) {
         case "up":
-          if (puzzle[row][col].left != normal && puzzle[row][col].left != now) {
+          if (puzzle[row][col].left > 0 && puzzle[row][col].left != now) {
             rtValue.add([row, col, "left"]);
           }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
+          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
-          if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != now) {
+          if (puzzle[row][col + 1].up > 0 && puzzle[row][col + 1].up != now) {
             rtValue.add([row, col + 1, "up"]);
           }
           break;
         case "down":
-          if (puzzle[row][col].left != normal && puzzle[row][col].left != now) {
+          if (puzzle[row][col].left > 0 && puzzle[row][col].left != now) {
             rtValue.add([row, col, "left"]);
           }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
+          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
-          if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != now) {
+          if (puzzle[row + 1][col].left > 0 && puzzle[row + 1][col].left != now) {
             rtValue.add([row + 1, col, "left"]);
           }
-          if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+          if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
             rtValue.add([row + 1, col, "right"]);
           }
-          if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+          if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
             rtValue.add([row, col + 1, "down"]);
           }
           break;
         case "left":
-          if (puzzle[row][col].up != normal && puzzle[row][col].up != now) {
+          if (puzzle[row][col].up > 0 && puzzle[row][col].up != now) {
             rtValue.add([row, col, "up"]);
           }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != now) {
+          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
-          if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != now) {
+          if (puzzle[row + 1][col].left > 0 && puzzle[row + 1][col].left != now) {
             rtValue.add([row + 1, col, "left"]);
           }
           break;
         case "right":
-          if (puzzle[row][col].up != normal && puzzle[row][col].up != now) {
+          if (puzzle[row][col].up > 0 && puzzle[row][col].up != now) {
             rtValue.add([row, col, "up"]);
           }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != now) {
+          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
-          if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != now) {
+          if (puzzle[row][col + 1].up > 0 && puzzle[row][col + 1].up != now) {
             rtValue.add([row, col + 1, "up"]);
           }
-          if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+          if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
             rtValue.add([row, col + 1, "down"]);
           }
-          if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+          if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
             rtValue.add([row + 1, col, "right"]);
           }
           break;
@@ -2055,7 +2054,7 @@ class SquareProvider with ChangeNotifier {
     }
   }
 
-  ///현재 기준 사용할 수 없는 라인을 -1로 변경
+  ///현재 submit 기준 사용할 수 없는 라인을 -1로 변경
   Future<void> checkCurrentPath() async {
     await checkMaxLine();
     await checkCurrentPathInner();
