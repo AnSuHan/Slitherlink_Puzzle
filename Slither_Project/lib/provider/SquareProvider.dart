@@ -159,6 +159,37 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  int getLineColorBox(int row, int column, String dir) {
+    int value = 0;
+
+    switch(dir) {
+      case "up":
+        value = puzzle[row][column].up;
+        break;
+      case "down":
+        value = puzzle[row][column].down;
+        break;
+      case "left":
+        value = puzzle[row][column].left;
+        break;
+      case "right":
+        value = puzzle[row][column].right;
+        break;
+    }
+    return value;
+  }
+
+  ///color => 0 : normal, 1 : highLight
+  void setBoxColor(int row, int column, int color) {
+    puzzle[row][column].boxColor = color;
+    refreshSubmit();
+    notifyListeners();
+  }
+
+  int getBoxColor(int row, int column) {
+    return puzzle[row][column].boxColor;
+  }
+
   ///submit 기준으로 동작하는 함수
   ///
   ///(SquareBox 기준 + dir 제공 : setLineColorBox)

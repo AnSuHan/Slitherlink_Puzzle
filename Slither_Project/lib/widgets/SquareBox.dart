@@ -18,6 +18,7 @@ class SquareBox extends StatefulWidget {
   //-1 : 비활성(미선택), -2 : 비활성(선택), -3 : 정답을 나타내는 힌트, -5 : 오답을 나타내는 힌트 
   var up = 0, down = 0, left = 0, right = 0;
   var num = 0;
+  var boxColor = 0; //0 : 일반, 1 : 강조(howToPlay에서만 사용)
 
   SquareBox({
     Key? key,
@@ -45,6 +46,10 @@ class SquareBox extends StatefulWidget {
         left = color;
         break;
     }
+  }
+
+  void setBoxColor(int color) {
+    boxColor = color;
   }
 }
 
@@ -107,12 +112,15 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
     var left = widget.left;
     var right = widget.right;
     var num = widget.num;
+    var boxColor = widget.boxColor;
 
     int row = widget.row;
     int column = widget.column;
 
     return Consumer<SquareProvider>(
       builder: (context, squareProvider, child) {
+        boxColor = squareProvider.getBoxColor(row, column);
+
         return Column(
           children: [
             !isFirstRow ? Container() : Row(
@@ -246,7 +254,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                 Container(
                   height: 50,
                   width: 50,
-                  color: settingColor["box"],
+                  color: boxColor == 0 ? settingColor["box"] : settingColor["boxHighLight"],
                   child: Center(
                     child: Text(num.toString(), style: TextStyle(color: settingColor["number"])),
                   ),

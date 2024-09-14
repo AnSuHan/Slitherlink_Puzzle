@@ -36,6 +36,7 @@ class ThemeColor {
     'appIcon': const Color(0xFF000000),       //GameUI
     'background': const Color(0xFFFFF0E3),    //GameSceneStateSquare
     'box': const Color(0xFFFFFFFF),           //SquareBoxState
+    'boxHighLight': const Color(0xFFFFCCBC),
     'number': const Color(0xFF000000),        //SquareBoxState
   };
 
@@ -44,6 +45,7 @@ class ThemeColor {
     'appIcon': const Color(0xFFFFFFFF),
     'background': const Color(0xFFFFEBE5),
     'box': const Color(0xFFFFCCBC),
+    'boxHighLight': const Color(0xFFFFCCBC),
     'number': const Color(0xFFBF360C),
   };
 
@@ -52,6 +54,7 @@ class ThemeColor {
     'appIcon': const Color(0xFFFFFFFF),
     'background': const Color(0xFFE3F2FD),
     'box': const Color(0xFFBBDEFB),
+    'boxHighLight': const Color(0xFFFFCCBC),
     'number': const Color(0xFF0D47A1),
   };
 
@@ -60,6 +63,7 @@ class ThemeColor {
     'appIcon': const Color(0xFFFFFFFF),
     'background': const Color(0xFFD7CCC8),
     'box': const Color(0xFFBCAAA4),
+    'boxHighLight': const Color(0xFFFFCCBC),
     'number': const Color(0xFF3E2723),
   };
 
@@ -68,6 +72,7 @@ class ThemeColor {
     'appIcon': const Color(0xFFFFFFFF),
     'background': const Color(0xFFEDE7F6),
     'box': const Color(0xFFD1C4E9),
+    'boxHighLight': const Color(0xFFFFCCBC),
     'number': const Color(0xFF512DA8),
   };
 
@@ -76,6 +81,7 @@ class ThemeColor {
     'appIcon': const Color(0xFFFFFFFF),
     'background': const Color(0xFFF8BBD0),
     'box': const Color(0xFFF48FB1),
+    'boxHighLight': const Color(0xFF81D4FA),
     'number': const Color(0xFFC2185B),
   };
 
@@ -84,6 +90,7 @@ class ThemeColor {
     'appIcon': const Color(0xFFFFFFFF),
     'background': const Color(0xFFE8F5E9),
     'box': const Color(0xFFC8E6C9),
+    'boxHighLight': const Color(0xFFFFCCBC),
     'number': const Color(0xFF1B5E20),
   };
 
@@ -92,6 +99,7 @@ class ThemeColor {
     'appIcon': const Color(0xFFFFFFFF),
     'background': const Color(0xFFFFE0B2),
     'box': const Color(0xFFFFCC80),
+    'boxHighLight': const Color(0xFF81D4FA),
     'number': const Color(0xFFE65100),
   };
 
@@ -100,6 +108,7 @@ class ThemeColor {
     'appIcon': const Color(0xFFFFFFFF),
     'background': const Color(0xFFE1F5FE),
     'box': const Color(0xFF81D4FA),
+    'boxHighLight': const Color(0xFFFFCCBC),
     'number': const Color(0xFF01579B),
   };
 
@@ -108,6 +117,7 @@ class ThemeColor {
     'appIcon': const Color(0xFFFFFFFF),
     'background': const Color(0xFFE8F5E9),
     'box': const Color(0xFFA5D6A7),
+    'boxHighLight': const Color(0xFF81D4FA),
     'number': const Color(0xFF2E7D32),
   };
 
@@ -116,6 +126,7 @@ class ThemeColor {
     'appIcon': const Color(0xFFFFFFFF),
     'background': const Color(0xFFF8BBD0),
     'box': const Color(0xFFF48FB1),
+    'boxHighLight': const Color(0xFF81D4FA),
     'number': const Color(0xFFC2185B),
   };
 
