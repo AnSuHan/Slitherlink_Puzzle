@@ -14,6 +14,7 @@ class UserInfo {
     "enable_extract" : false,
     "debug_snackBar" : true,
     "loadTestAnswer" : true,      //class Answer - getTestSquare()
+    "howToPlay_followSteps" : true,
   };
 
   static bool authState = false;

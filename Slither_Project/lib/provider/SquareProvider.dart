@@ -17,13 +17,13 @@ class SquareProvider with ChangeNotifier {
   late BuildContext context;
   final String loadKey;
 
-  final GameStateSquare gameStateSquare;
+  final GameStateSquare? gameStateSquare;
   bool shutdown = false;  //showdialog에서 ok를 눌러 GameSceneSquare을 닫아야 하는 경우
 
   SquareProvider({
     this.isContinue = false,
     required this.context,
-    required this.gameStateSquare,
+    this.gameStateSquare,
     required this.loadKey,
   }) {
     readSquare = ReadSquare(squareProvider: this, context: context);
@@ -40,7 +40,7 @@ class SquareProvider with ChangeNotifier {
   bool isContinue = false;
 
   ///Init
-  void init() async {
+  Future<void> init() async {
     //setting field
     puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
     squareField = await buildSquarePuzzleAnswer(answer, isContinue: isContinue);
@@ -86,7 +86,7 @@ class SquareProvider with ChangeNotifier {
         item = items.first;
       }
       //print("hint item : $item");
-      gameStateSquare.moveTo(gameStateSquare.getHintPos(item), 1.6);
+      //gameStateSquare.moveTo(gameStateSquare.getHintPos(item), 1.6);
 
       setLineColorBox(
           int.parse(item[0].toString()),
@@ -391,7 +391,10 @@ class SquareProvider with ChangeNotifier {
   }
 
   Future<void> showComplete(BuildContext context) async {
-    gameStateSquare.isComplete = true;
+    //for handling HowToPlay
+    if (gameStateSquare != null) {
+      gameStateSquare!.isComplete = true;
+    }
     UserInfo.clearPuzzle(loadKey);
 
     //delete sharedPreference key about label
