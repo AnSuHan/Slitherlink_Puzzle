@@ -174,11 +174,11 @@ class HowToPlayState extends State<HowToPlay> {
         if(_provider.getLineColorBox(1, 1, "right") > 0 && _provider.getLineColorBox(1, 1, "down") > 0 && _provider.getLineColorBox(0, 1, "down") > 0) {
           progressStep++;
         }
-        showStep0();
+        //showStep0();
         break;
       case 1:
         stepText = "1";
-        showStep1();
+        //showStep1();
         break;
       case 2:
         stepText = "2";

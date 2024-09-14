@@ -17,7 +17,7 @@ class SquareProvider with ChangeNotifier {
   late BuildContext context;
   final String loadKey;
 
-  final GameStateSquare? gameStateSquare;
+  final GameStateSquare? gameStateSquare;   //gameStateSquare == null => this is HowToPlay mode
   bool shutdown = false;  //showdialog에서 ok를 눌러 GameSceneSquare을 닫아야 하는 경우
 
   SquareProvider({
@@ -98,6 +98,10 @@ class SquareProvider with ChangeNotifier {
   }
 
   Future<void> removeHintLine() async {
+    //howToPlay에서는 힌트 라인을 지우지 않음
+    if(gameStateSquare == null) {
+      return;
+    }
     while(_isUpdating != 0) {
       Future.delayed(const Duration(milliseconds: 50));
       //print("wait in check : $_isUpdating");
@@ -818,6 +822,7 @@ class SquareProvider with ChangeNotifier {
       _isUpdating = 2;
       notifyListeners();
       await setDo();
+      ///TODO : howToPlay (2,1)에서 down을 -4로 설정하면 (2,0)이 모두 -1이 된다
       await findBlockEnableDisable(row, column, pos, enable: true);
       return;
     }
@@ -1114,7 +1119,7 @@ class SquareProvider with ChangeNotifier {
           break;
       }
     }
-    else if (col != 0) {
+    else if (row == 0 && col != 0) {
       switch (pos) {
         case "up":
           if (puzzle[row][col - 1].up > 0 && puzzle[row][col - 1].up != now) {
@@ -1179,7 +1184,7 @@ class SquareProvider with ChangeNotifier {
           break;
       }
     }
-    else if (row != 0) {
+    else if (row != 0 && col == 0) {
       switch (pos) {
         case "down":
           if (puzzle[row][col].left > 0 && puzzle[row][col].left != now) {
@@ -1227,12 +1232,12 @@ class SquareProvider with ChangeNotifier {
           if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
+          if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
+            rtValue.add([row, col + 1, "down"]);
+          }
           if (puzzle.length > row + 1) {
             if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
               rtValue.add([row + 1, col, "right"]);
-            }
-            if (puzzle[row + 1][col + 1].down > 0 && puzzle[row + 1][col + 1].down != now) {
-              rtValue.add([row + 1, col + 1, "down"]);
             }
           }
           break;
@@ -2159,6 +2164,7 @@ class SquareProvider with ChangeNotifier {
 
   Future<void> checkCurrentPathInner() async {
     int value = 0;
+    //print("${puzzle.length} ${puzzle[0].length} ${puzzle[1].length}");  //3, 4, 4
 
     for (int i = 0; i < puzzle.length; i++) {
       for (int j = 0; j < puzzle[i].length; j++) {
@@ -2295,6 +2301,7 @@ class SquareProvider with ChangeNotifier {
           }
         }
         else if(i == 0 && j != 0) {
+          //print("i $i, j $j");
           //puzzle[i][j].up
           {
             value = 0;
@@ -2399,7 +2406,7 @@ class SquareProvider with ChangeNotifier {
               }
             }
             //down
-            else {
+            if(puzzle[i][j].right == 0) {
               if(j + 1 < puzzle[i].length) {
                 if([puzzle[i][j].down, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
                     .where((value) => value > 0).length >= 2) {
@@ -2644,6 +2651,7 @@ class SquareProvider with ChangeNotifier {
     return count;
   }
 
+  ///현재 라인이 num 이상인 경우, 0으로 설정된 라인을 모두 -1로 변경
   bool setLineDisable(int row, int col) {
     bool isChanged = false;
 
