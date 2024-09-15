@@ -818,13 +818,6 @@ class SquareProvider with ChangeNotifier {
       else if (left != null) {
         puzzle[row][column].left = lineValue;
       }
-
-      _isUpdating = 2;
-      notifyListeners();
-      await setDo();
-      ///TODO : howToPlay (2,1)에서 down을 -4로 설정하면 (2,0)이 모두 -1이 된다
-      await findBlockEnableDisable(row, column, pos, enable: true);
-      return;
     }
     //random line color
     else if(nearColor.isEmpty) {
@@ -863,52 +856,47 @@ class SquareProvider with ChangeNotifier {
         else if (left != null) {
           puzzle[row][column].left = lineValue;
         }
-        //print("set $row, $column, $lineValue");
-
-        _isUpdating = 2;
-        await refreshSubmit();
-        notifyListeners();
-        await setDo();
-        await findBlockEnableDisable(row, column, pos, disable: true);
-        return;
       }
 
-      //print("standard color is $lineValue");
-      //1개 이상의 라인 색을 변경해야 하는 경우
-      if (down != null) {
-        puzzle[row][column].down = lineValue;
-        oldList = getOldColorList(row, column, "down", lineValue);
-      }
-      else if (right != null) {
-        puzzle[row][column].right = lineValue;
-        oldList = getOldColorList(row, column, "right", lineValue);
-      }
-      else if (up != null) {
-        puzzle[row][column].up = lineValue;
-        oldList = getOldColorList(row, column, "up", lineValue);
-      }
-      else if (left != null) {
-        puzzle[row][column].left = lineValue;
-        oldList = getOldColorList(row, column, "left", lineValue);
-      }
+      if(_isUpdating != 2) {
+        //print("standard color is $lineValue");
+        //1개 이상의 라인 색을 변경해야 하는 경우
+        if (down != null) {
+          puzzle[row][column].down = lineValue;
+          oldList = getOldColorList(row, column, "down", lineValue);
+        }
+        else if (right != null) {
+          puzzle[row][column].right = lineValue;
+          oldList = getOldColorList(row, column, "right", lineValue);
+        }
+        else if (up != null) {
+          puzzle[row][column].up = lineValue;
+          oldList = getOldColorList(row, column, "up", lineValue);
+        }
+        else if (left != null) {
+          puzzle[row][column].left = lineValue;
+          oldList = getOldColorList(row, column, "left", lineValue);
+        }
 
-      //print("\n★★★★★ oldList : $oldList\n");
+        //print("\n★★★★★ oldList : $oldList\n");
 
-      //change old list to new color
-      for(int i = 0 ; i < oldList.length ; i++) {
-        int oldRow = int.parse(oldList[i][0].toString());
-        int oldColumn = int.parse(oldList[i][1].toString());
-        String pos = oldList[i][2].toString();
+        //change old list to new color
+        for(int i = 0 ; i < oldList.length ; i++) {
+          int oldRow = int.parse(oldList[i][0].toString());
+          int oldColumn = int.parse(oldList[i][1].toString());
+          String pos = oldList[i][2].toString();
 
-        setLineColorBox(oldRow, oldColumn, pos, lineValue);
-        //print("set [$oldRow, $oldColumn, $pos, $lineValue]");
+          setLineColorBox(oldRow, oldColumn, pos, lineValue);
+          //print("set [$oldRow, $oldColumn, $pos, $lineValue]");
+        }
       }
     }
 
     _isUpdating = 2;
+    await refreshSubmit();
     notifyListeners();
     await setDo();
-    await findBlockEnableDisable(row, column, pos, disable: true);
+    await findBlockEnableDisable(row, column, pos);
   }
 
   ///SquareBoxProvider List's index
@@ -2040,21 +2028,25 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   Future<void> findBlockEnableDisable(
       int row, int column, String pos,
-      {bool enable = false, bool disable = false, List<List<int>>? changedList}
+      {bool enable = true, bool disable = true, List<List<int>>? changedList}
     ) async {
     //print("clicked box : $row, $column, $pos");
     int rowMin = max(0, min(puzzle.length - 1, row - 1));
     int rowMax = min(puzzle.length - 1, row + 1);
     int colMin = max(0, min(puzzle[row].length - 1, column - 1));
     int colMax = min(puzzle[row].length - 1, column + 1);
-    //print("rowMin : $rowMin, rowMax : $rowMax, colMin : $colMin, colMax : $colMax");
+
     if(pos.compareTo("right") == 0) {
       colMin++;
     }
+    colMax = min(colMax + 1, puzzle[row].length - 1);
+    //print("row : $rowMin - $rowMax, col : $colMin - $colMax, changedList : $changedList");
 
     bool isChanged = false; //변경 사항이 있는가
     changedList ??= [];
 
+    //지정된 범위에서 enable이 true인 경우, 모든 -1 값을 0으로 변경 => checkCurrentPath()에서 불필요한 라인은 -1로 재변경
+    //지정된 범위에서 squareBox가 puzzle.num 이상의 라인을 가지고 있을 때, 모든 0 값을 -1로 변경
     for(int i = rowMin ; i <= rowMax ; i++) {
       for(int j = colMin ; j <= colMax ; j++) {
         if(enable) {
@@ -2063,7 +2055,7 @@ class SquareProvider with ChangeNotifier {
             changedList.add([i, j]);
           }
         }
-        else if(puzzle[i][j].num <= getLineCount(i, j)) {
+        if(puzzle[i][j].num <= getLineCount(i, j)) {
           if(disable) {
             isChanged = setLineDisable(i, j);
             if(isChanged) {
@@ -2083,7 +2075,7 @@ class SquareProvider with ChangeNotifier {
     while(changedList.isNotEmpty) {
       findBlockEnableDisable(
           changedList[0][0], changedList[0][1],
-          pos, enable: false, disable: true, changedList: changedList
+          pos, enable: false, changedList: changedList
       );
       changedList.removeAt(0);
 
@@ -2162,9 +2154,11 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  ///-1이 되는 조건을 만족하면 -1로, 아니면 0으로 세팅
   Future<void> checkCurrentPathInner() async {
     int value = 0;
     //print("${puzzle.length} ${puzzle[0].length} ${puzzle[1].length}");  //3, 4, 4
+    List<int> inValid = [-1, -4];
 
     for (int i = 0; i < puzzle.length; i++) {
       for (int j = 0; j < puzzle[i].length; j++) {
@@ -2551,58 +2545,90 @@ class SquareProvider with ChangeNotifier {
         else {
           //i == 0 && j == 0
           //puzzle[i][j].up
-          if(puzzle[i][j].left == -1 || (puzzle[i][j].right == -1 && puzzle[i][j + 1].up == -1)) {
-            puzzle[i][j].up = -1;
-          }
-          else if(puzzle[i][j].right > 0 && puzzle[i][j + 1].up > 0) {
-            if(puzzle[i][j].up == 0) {
-              puzzle[i][j].up = -1;
+          {
+            value = 0;
+            if (inValid.contains(puzzle[i][j].left) ||
+                (inValid.contains(puzzle[i][j].right) &&
+                    inValid.contains(puzzle[i][j + 1].up))) {
+              value = -1;
+            } else if (puzzle[i][j].right > 0 && puzzle[i][j + 1].up > 0) {
+              if (puzzle[i][j].up == 0) {
+                value = -1;
+              }
             }
+            puzzle[i][j].up = value;
           }
           //puzzle[i][j].left
-          if(puzzle[i][j].up == -1 || (puzzle[i][j].down == -1 && puzzle[i + 1][j].left == -1)) {
-            puzzle[i][j].left = -1;
-          }
-          else if(puzzle[i][j].down > 0 && puzzle[i + 1][j].left > 0) {
-            if(puzzle[i][j].left == 0){
-              puzzle[i][j].left = -1;
+          {
+            value = 0;
+            if (inValid.contains(puzzle[i][j].up) ||
+                (inValid.contains(puzzle[i][j].down) &&
+                    inValid.contains(puzzle[i + 1][j].left))) {
+              value = -1;
+            } else if (puzzle[i][j].down > 0 && puzzle[i + 1][j].left > 0) {
+              if (puzzle[i][j].left == 0) {
+                value = -1;
+              }
             }
+            puzzle[i][j].left = value;
           }
           //puzzle[i][j].down
-          if((puzzle[i][j].left == -1 && puzzle[i + 1][j].left == -1)
-              || (puzzle[i][j].right == -1 && puzzle[i][j + 1].down == -1 && puzzle[i + 1][j].right == -1)) {
-            puzzle[i][j].down = -1;
-          }
-          //left
-          else if(puzzle[i][j].left > 0 && puzzle[i + 1][j].left > 0) {
-            if(puzzle[i][j].down == 0){
-              puzzle[i][j].down = -1;
+          {
+            value = 0;
+            if ((inValid.contains(puzzle[i][j].left) &&
+                    inValid.contains(puzzle[i + 1][j].left)) ||
+                (inValid.contains(puzzle[i][j].right) &&
+                    inValid.contains(puzzle[i][j + 1].down) &&
+                    inValid.contains(puzzle[i + 1][j].right))) {
+              value = -1;
             }
-          }
-          //right
-          else if([puzzle[i][j].right, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
-              .where((value) => value > 0).length >= 2) {
-            if(puzzle[i][j].down == 0){
-              puzzle[i][j].down = -1;
+            //left
+            else if (puzzle[i][j].left > 0 && puzzle[i + 1][j].left > 0) {
+              if (puzzle[i][j].down == 0) {
+                value = -1;
+              }
             }
+            //right
+            else if ([
+                  puzzle[i][j].right,
+                  puzzle[i + 1][j].right,
+                  puzzle[i][j + 1].down
+                ].where((value) => value > 0).length >=
+                2) {
+              if (puzzle[i][j].down == 0) {
+                value = -1;
+              }
+            }
+            puzzle[i][j].down = value;
           }
           //puzzle[i][j].right
-          if((puzzle[i][j].up == -1 && puzzle[i][j + 1].up == -1)
-              || (puzzle[i][j].down == -1 && puzzle[i][j + 1].down == -1 && puzzle[i + 1][j].right == -1)) {
-            puzzle[i][j].right = -1;
-          }
-          //up
-          else if(puzzle[i][j].up > 0 && puzzle[i][j + 1].up > 0) {
-            if(puzzle[i][j].right == 0){
-              puzzle[i][j].right = -1;
+          {
+            value = 0;
+            if ((inValid.contains(puzzle[i][j].up) &&
+                    inValid.contains(puzzle[i][j + 1].up)) ||
+                (inValid.contains(puzzle[i][j].down) &&
+                    inValid.contains(puzzle[i][j + 1].down) &&
+                    inValid.contains(puzzle[i + 1][j].right))) {
+              value = -1;
             }
-          }
-          //down
-          else if([puzzle[i][j].down, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
-              .where((value) => value > 0).length >= 2) {
-            if(puzzle[i][j].right == 0){
-              puzzle[i][j].right = -1;
+            //up
+            else if (puzzle[i][j].up > 0 && puzzle[i][j + 1].up > 0) {
+              if (puzzle[i][j].right == 0) {
+                value = -1;
+              }
             }
+            //down
+            else if ([
+                  puzzle[i][j].down,
+                  puzzle[i + 1][j].right,
+                  puzzle[i][j + 1].down
+                ].where((value) => value > 0).length >=
+                2) {
+              if (puzzle[i][j].right == 0) {
+                value = -1;
+              }
+            }
+            puzzle[i][j].right = value;
           }
         }
       }
@@ -2651,7 +2677,9 @@ class SquareProvider with ChangeNotifier {
     return count;
   }
 
-  ///현재 라인이 num 이상인 경우, 0으로 설정된 라인을 모두 -1로 변경
+  ///현재 라인이 num 이상인 경우 호출되는 함수
+  ///
+  ///0으로 남아 있는 라인을 모두 -1로 변경
   bool setLineDisable(int row, int col) {
     bool isChanged = false;
 
@@ -2731,6 +2759,9 @@ class SquareProvider with ChangeNotifier {
     return isChanged;
   }
 
+  ///enable이 true로 호출되는 경우 호출되는 함수
+  ///
+  ///findBlockEnableDisable의 checkCurrentPath()에서 다시 계산을 할 수 있도록 모든 -1 값을 0으로 변경
   bool setLineEnable(int row, int col) {
     bool isChanged = false;
 
