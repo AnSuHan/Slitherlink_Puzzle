@@ -98,6 +98,9 @@ class SquareProvider with ChangeNotifier {
   }
 
   Future<void> removeHintLine() async {
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      print("call removeHintLine : $_isUpdating");
+    }
     //howToPlay에서는 힌트 라인을 지우지 않음
     if(gameStateSquare == null) {
       return;
@@ -125,11 +128,14 @@ class SquareProvider with ChangeNotifier {
     return [answer.length, answer[0].length];
   }
 
-  ///메소드에서 필요할 때마다 호출 (_isUpdating != 0 && _isUpdating != 2)
+  ///메소드에서 필요할 때마다 호출 (_isUpdating가 0 또는 2인 경우에만 진행 가능)
   ///
   ///(updateSquareBox에서 호출하지 않음)
   Future<void> refreshSubmit() async {
-    //0이거나 2가 아닐 때만 통과
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      print("call refreshSubmit : $_isUpdating");
+    }
+    //0이거나 2일 때만 통과
     while(_isUpdating != 0 && _isUpdating != 2) {
       await Future.delayed(const Duration(milliseconds: 50));
     }
@@ -640,10 +646,16 @@ class SquareProvider with ChangeNotifier {
   }
 
   Future<void> setDo() async {
-    while(_isUpdating != 2) {
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      print("call setDo : $_isUpdating");
+    }
+    while(_isUpdating != 1) {
       await Future.delayed(const Duration(milliseconds: 50));
     }
-    _isUpdating = 3;
+    _isUpdating = 2;
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      print("update setDo : $_isUpdating");
+    }
 
     submit = await readSquare.readSubmit(puzzle);
     List<List<int>> lineData = submit.map((row) => List<int>.from(row)).toList();
@@ -660,7 +672,10 @@ class SquareProvider with ChangeNotifier {
       doIndex++;
       doPointer++;
     }
-    _isUpdating = 0;
+    _isUpdating = 3;
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      print("update setDo : $_isUpdating");
+    }
   }
 
   Future<void> undo() async {
@@ -775,15 +790,24 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   ///update `puzzle` variable
   Future<void> updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) async {
-    await removeHintLine();
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      print("==============================");
+      print("call updateSquareBox : $_isUpdating");
+    }
     while(_isUpdating != 0) {
       await Future.delayed(const Duration(milliseconds: 50));
+      print("_isUpdating $_isUpdating");
     }
+    await removeHintLine();
     _isUpdating = 1;
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      print("update updateSquareBox : $_isUpdating");
+    }
 
     Set<int> nearColor = {};
     int lineValue = 0; //new line's value
     String pos = "";
+    //print("up $up down $down left $left right $right");
 
     if (down != null) {
       nearColor = getNearColor(row, column, "down");
@@ -802,7 +826,7 @@ class SquareProvider with ChangeNotifier {
       lineValue = left;
       pos = "left";
     }
-    //print("nearColor : $nearColor, lineValue : $lineValue");
+    print("nearColor : $nearColor, lineValue : $lineValue");
 
     //forced line color
     if(lineValue <= 0) {
@@ -818,13 +842,6 @@ class SquareProvider with ChangeNotifier {
       else if (left != null) {
         puzzle[row][column].left = lineValue;
       }
-
-      submit = await readSquare.readSubmit(puzzle);
-      notifyListeners();
-      await setDo();
-      await findBlockEnableDisable(row, column, pos);
-      _isUpdating = 2;
-      return;
     }
     //random line color
     else if(nearColor.isEmpty) {
@@ -903,7 +920,15 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
     await setDo();
     await findBlockEnableDisable(row, column, pos);
-    _isUpdating = 2;
+    notifyListeners();
+    while(_isUpdating != 3) {
+      await Future.delayed(const Duration(milliseconds: 50));
+      print("_isUpdating $_isUpdating");
+    }
+    _isUpdating = 0;
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      print("update updateSquareBox : $_isUpdating");
+    }
   }
 
   ///SquareBoxProvider List's index
@@ -1300,6 +1325,9 @@ class SquareProvider with ChangeNotifier {
     }
 
     //print("end of getOldColorList : $rtValue");
+    if(rtValue.isEmpty) {
+      return [];
+    }
     //return rtValue;
     return getContinueOld(rtValue);
   }

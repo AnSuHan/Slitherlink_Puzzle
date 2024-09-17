@@ -15,6 +15,7 @@ class UserInfo {
     "debug_snackBar" : true,
     "loadTestAnswer" : true,      //class Answer - getTestSquare()
     "howToPlay_followSteps" : true,
+    "print_isUpdating" : false,
   };
 
   static bool authState = false;
