@@ -125,11 +125,11 @@ class SquareProvider with ChangeNotifier {
     return [answer.length, answer[0].length];
   }
 
-  ///메소드에서 필요할 때마다 호출
+  ///메소드에서 필요할 때마다 호출 (_isUpdating != 0 && _isUpdating != 2)
   ///
   ///(updateSquareBox에서 호출하지 않음)
   Future<void> refreshSubmit() async {
-    //0이거나 2일 때만 통과
+    //0이거나 2가 아닐 때만 통과
     while(_isUpdating != 0 && _isUpdating != 2) {
       await Future.delayed(const Duration(milliseconds: 50));
     }
@@ -818,6 +818,13 @@ class SquareProvider with ChangeNotifier {
       else if (left != null) {
         puzzle[row][column].left = lineValue;
       }
+
+      submit = await readSquare.readSubmit(puzzle);
+      notifyListeners();
+      await setDo();
+      await findBlockEnableDisable(row, column, pos);
+      _isUpdating = 2;
+      return;
     }
     //random line color
     else if(nearColor.isEmpty) {
@@ -858,7 +865,7 @@ class SquareProvider with ChangeNotifier {
         }
       }
 
-      if(_isUpdating != 2) {
+      if(_isUpdating == 1) {
         //print("standard color is $lineValue");
         //1개 이상의 라인 색을 변경해야 하는 경우
         if (down != null) {
@@ -892,11 +899,11 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
-    _isUpdating = 2;
-    await refreshSubmit();
+    submit = await readSquare.readSubmit(puzzle);
     notifyListeners();
     await setDo();
     await findBlockEnableDisable(row, column, pos);
+    _isUpdating = 2;
   }
 
   ///SquareBoxProvider List's index
