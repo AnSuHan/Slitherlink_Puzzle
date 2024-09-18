@@ -826,7 +826,7 @@ class SquareProvider with ChangeNotifier {
       lineValue = left;
       pos = "left";
     }
-    print("nearColor : $nearColor, lineValue : $lineValue");
+    //print("nearColor : $nearColor, lineValue : $lineValue");
 
     //forced line color
     if(lineValue <= 0) {
@@ -919,7 +919,7 @@ class SquareProvider with ChangeNotifier {
     submit = await readSquare.readSubmit(puzzle);
     notifyListeners();
     await setDo();
-    await findBlockEnableDisable(row, column, pos);
+    await findBlockEnableDisable(row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
     notifyListeners();
     while(_isUpdating != 3) {
       await Future.delayed(const Duration(milliseconds: 50));
@@ -2061,24 +2061,50 @@ class SquareProvider with ChangeNotifier {
   ///************************** change interacted line color **************************
   ///**********************************************************************************
   ///**********************************************************************************
+  ///row, column은 puzzle 기준
+  ///lineValue가 1이상 이면 disable = true, 0이하 이면 enable = true
   Future<void> findBlockEnableDisable(
       int row, int column, String pos,
-      {bool enable = true, bool disable = true, List<List<int>>? changedList}
+      {bool enable = false, bool disable = false, List<List<int>>? changedList}
     ) async {
     //print("clicked box : $row, $column, $pos");
+    //puzzle 기준
     int rowMin = max(0, min(puzzle.length - 1, row - 1));
     int rowMax = min(puzzle.length - 1, row + 1);
     int colMin = max(0, min(puzzle[row].length - 1, column - 1));
     int colMax = min(puzzle[row].length - 1, column + 1);
-
-    if(pos.compareTo("right") == 0) {
-      colMin++;
-    }
     colMax = min(colMax + 1, puzzle[row].length - 1);
+    //print("call findBlockEnableDisable($row $column $pos $enable $disable $changedList)");
     //print("row : $rowMin - $rowMax, col : $colMin - $colMax, changedList : $changedList");
 
     bool isChanged = false; //변경 사항이 있는가
     changedList ??= [];
+
+    ///TODO : (0,0)에서 문제 발생 {lineValue가 0일 때 클릭 불가, enable, disable 비정상 동작 등}
+    for(int i = 0 ; i <= rowMax ; i++) {
+      for(int j = 0 ; j <= colMax ; j++) {
+        isChanged = false;
+
+        if(disable && (puzzle[i][j].num <= getLineCount(i, j))) {
+          isChanged = setLineDisable(i, j);
+          if(isChanged) {
+            changedList.add([i, j]);
+          }
+        }
+        else if(enable) {
+          isChanged = setLineEnable(i, j);
+          //setLineEnable()를 통해 모든 -1값들을 0으로 변경 시킨 후, -1로 설정이 필요한 라인을 다시 계산
+          await checkCurrentPath();
+          if(isChanged) {
+            changedList.add([i, j]);
+          }
+        }
+      }
+    }
+
+
+    print("changedList $changedList");
+    return;
 
     //지정된 범위에서 enable이 true인 경우, 모든 -1 값을 0으로 변경 => checkCurrentPath()에서 불필요한 라인은 -1로 재변경
     //지정된 범위에서 squareBox가 puzzle.num 이상의 라인을 가지고 있을 때, 모든 0 값을 -1로 변경
@@ -2086,6 +2112,7 @@ class SquareProvider with ChangeNotifier {
       for(int j = colMin ; j <= colMax ; j++) {
         if(enable) {
           isChanged = setLineEnable(i, j);
+          print("call enable $i $j");
           if(isChanged) {
             changedList.add([i, j]);
           }
@@ -2093,6 +2120,7 @@ class SquareProvider with ChangeNotifier {
         if(puzzle[i][j].num <= getLineCount(i, j)) {
           if(disable) {
             isChanged = setLineDisable(i, j);
+            print("call disable $i $j");
             if(isChanged) {
               changedList.add([i, j]);
             }
@@ -2100,6 +2128,7 @@ class SquareProvider with ChangeNotifier {
         }
       }
     }
+    print("end for ==> ${submit[1][1]} ${puzzle[0][0].right}");
 
     notifyListeners();
     await checkCurrentPath();
@@ -2811,6 +2840,7 @@ class SquareProvider with ChangeNotifier {
       }
       if (puzzle[row][col - 1].right == -1) {
         puzzle[row][col - 1].right = 0;
+        print("enable-rowNot0 $row ${col - 1} right 0");
         isChanged = true;
       }
       if (puzzle[row][col].right == -1) {
@@ -2847,6 +2877,7 @@ class SquareProvider with ChangeNotifier {
       }
       if (puzzle[row][col - 1].right == -1) {
         puzzle[row][col - 1].right = 0;
+        print("enable-row0 $row ${col - 1} right 0");
         isChanged = true;
       }
       if (puzzle[row][col].right == -1) {
