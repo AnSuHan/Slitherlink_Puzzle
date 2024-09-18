@@ -2080,9 +2080,8 @@ class SquareProvider with ChangeNotifier {
     bool isChanged = false; //변경 사항이 있는가
     changedList ??= [];
 
-    ///TODO : (0,0)에서 문제 발생 {lineValue가 0일 때 클릭 불가, enable, disable 비정상 동작 등}
-    for(int i = 0 ; i <= rowMax ; i++) {
-      for(int j = 0 ; j <= colMax ; j++) {
+    for(int i = rowMin ; i <= rowMax ; i++) {
+      for(int j = colMin ; j <= colMax ; j++) {
         isChanged = false;
 
         if(disable && (puzzle[i][j].num <= getLineCount(i, j))) {
@@ -2099,54 +2098,14 @@ class SquareProvider with ChangeNotifier {
             changedList.add([i, j]);
           }
         }
+        notifyListeners();
+        submit = await readSquare.readSubmit(puzzle);
       }
     }
-
-
-    print("changedList $changedList");
-    return;
-
-    //지정된 범위에서 enable이 true인 경우, 모든 -1 값을 0으로 변경 => checkCurrentPath()에서 불필요한 라인은 -1로 재변경
-    //지정된 범위에서 squareBox가 puzzle.num 이상의 라인을 가지고 있을 때, 모든 0 값을 -1로 변경
-    for(int i = rowMin ; i <= rowMax ; i++) {
-      for(int j = colMin ; j <= colMax ; j++) {
-        if(enable) {
-          isChanged = setLineEnable(i, j);
-          print("call enable $i $j");
-          if(isChanged) {
-            changedList.add([i, j]);
-          }
-        }
-        if(puzzle[i][j].num <= getLineCount(i, j)) {
-          if(disable) {
-            isChanged = setLineDisable(i, j);
-            print("call disable $i $j");
-            if(isChanged) {
-              changedList.add([i, j]);
-            }
-          }
-        }
-      }
-    }
-    print("end for ==> ${submit[1][1]} ${puzzle[0][0].right}");
 
     notifyListeners();
-    await checkCurrentPath();
     submit = await readSquare.readSubmit(puzzle);
-    //print("changedList : $changedList");
-
-    //클릭한 라인 뿐 아니라 변경된 라인이 있으면, 그에 영향을 받는 라인 전체를 다시 검사
-    while(changedList.isNotEmpty) {
-      findBlockEnableDisable(
-          changedList[0][0], changedList[0][1],
-          pos, enable: false, changedList: changedList
-      );
-      changedList.removeAt(0);
-
-      notifyListeners();
-      await checkCurrentPath();
-      submit = await readSquare.readSubmit(puzzle);
-    }
+    //print("changedList $changedList");
   }
 
   ///현재 submit 기준 사용할 수 없는 라인을 -1로 변경
@@ -2620,7 +2579,9 @@ class SquareProvider with ChangeNotifier {
                 value = -1;
               }
             }
-            puzzle[i][j].up = value;
+            if(value != 0 && puzzle[i][j].up == 0) {
+              puzzle[i][j].up = value;
+            }
           }
           //puzzle[i][j].left
           {
@@ -2634,7 +2595,9 @@ class SquareProvider with ChangeNotifier {
                 value = -1;
               }
             }
-            puzzle[i][j].left = value;
+            if(value != 0 && puzzle[i][j].left == 0) {
+              puzzle[i][j].left = value;
+            }
           }
           //puzzle[i][j].down
           {
@@ -2663,7 +2626,9 @@ class SquareProvider with ChangeNotifier {
                 value = -1;
               }
             }
-            puzzle[i][j].down = value;
+            if(value != 0 && puzzle[i][j].down == 0) {
+              puzzle[i][j].down = value;
+            }
           }
           //puzzle[i][j].right
           {
@@ -2692,7 +2657,9 @@ class SquareProvider with ChangeNotifier {
                 value = -1;
               }
             }
-            puzzle[i][j].right = value;
+            if(value != 0 && puzzle[i][j].right == 0) {
+              puzzle[i][j].right = value;
+            }
           }
         }
       }
@@ -2840,7 +2807,6 @@ class SquareProvider with ChangeNotifier {
       }
       if (puzzle[row][col - 1].right == -1) {
         puzzle[row][col - 1].right = 0;
-        print("enable-rowNot0 $row ${col - 1} right 0");
         isChanged = true;
       }
       if (puzzle[row][col].right == -1) {
@@ -2877,7 +2843,6 @@ class SquareProvider with ChangeNotifier {
       }
       if (puzzle[row][col - 1].right == -1) {
         puzzle[row][col - 1].right = 0;
-        print("enable-row0 $row ${col - 1} right 0");
         isChanged = true;
       }
       if (puzzle[row][col].right == -1) {
