@@ -794,7 +794,7 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   ///**********************************************************************************
   ///update `puzzle` variable
-  Future<void> updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) async {
+  Future<void> updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right, Future<void> Function(int, int, String)? callback}) async {
     if(UserInfo.debugMode["print_isUpdating"]! || UserInfo.debugMode["print_methodName"]!) {
       // ignore: avoid_print
       print("==============================");
@@ -936,6 +936,11 @@ class SquareProvider with ChangeNotifier {
       print("_isUpdating $_isUpdating");
     }
     _isUpdating = 0;
+
+    //HowToPlay에서 step을 벗어나는 경우 처리
+    if(callback != null) {
+      await callback(row, column, pos);
+    }
     if(UserInfo.debugMode["print_isUpdating"]!) {
       // ignore: avoid_print
       print("update updateSquareBox : $_isUpdating");
@@ -1653,13 +1658,13 @@ class SquareProvider with ChangeNotifier {
 
       for(j = 0 ; j < width ; j++) {
         if(i == 0 && j == 0) {
-          temp.add(SquareBox(isFirstRow: true, isFirstColumn: true, row: i, column: j,));
+          temp.add(SquareBox(isFirstRow: true, isFirstColumn: true, row: i, column: j, isHowToPlay: gameStateSquare == null,));
         } else if(i == 0) {
-          temp.add(SquareBox(isFirstRow: true, row: i, column: j,));
+          temp.add(SquareBox(isFirstRow: true, row: i, column: j, isHowToPlay: gameStateSquare == null,));
         } else if(j == 0) {
-          temp.add(SquareBox(isFirstColumn: true, row: i, column: j,));
+          temp.add(SquareBox(isFirstColumn: true, row: i, column: j, isHowToPlay: gameStateSquare == null,));
         } else {
-          temp.add(SquareBox(row: i, column: j,));
+          temp.add(SquareBox(row: i, column: j, isHowToPlay: gameStateSquare == null,));
         }
       }
       puzzle.add(temp);

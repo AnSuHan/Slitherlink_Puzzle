@@ -26,7 +26,7 @@ class HowToPlayState extends State<HowToPlay> {
   //provider for using setState in other class
   late SquareProvider _provider;
   late ReadSquare readSquare;
-  String loadKey = "square_small_0_test";
+  final String loadKey = "square_small_0_test";
   late List<List<int>> answer;
   late List<List<int>> submit;
 
@@ -35,6 +35,13 @@ class HowToPlayState extends State<HowToPlay> {
   Timer? _timer;
   int progressStep = 0;
   String stepText = "";
+
+  List<List<dynamic>> step = [
+    [
+      [0, 1, "down"], [1, 1, "right"], [1, 1, "down"],    //step0
+      //step1
+    ]
+  ];
 
   @override
   void initState() {
@@ -48,7 +55,7 @@ class HowToPlayState extends State<HowToPlay> {
     readSquare = ReadSquare(squareProvider: _provider, context: context);
     loadPuzzle();
 
-    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       checkStep();
     });
   }
@@ -174,7 +181,7 @@ class HowToPlayState extends State<HowToPlay> {
         if(_provider.getLineColorBox(1, 1, "right") > 0 && _provider.getLineColorBox(1, 1, "down") > 0 && _provider.getLineColorBox(0, 1, "down") > 0) {
           progressStep++;
         }
-        //showStep0();
+        showStep0();
         break;
       case 1:
         stepText = "1";
@@ -189,6 +196,11 @@ class HowToPlayState extends State<HowToPlay> {
     }
 
     isOn = !isOn;
+  }
+
+  ///updateSquareBox()에서 콜백으로 등록하여 잘못된 라인 클릭 시 롤백
+  Future<void> rollback(int row, int col, String pos) async {
+    print("call rollback $row $col $pos");
   }
 
   void showStep0() {
