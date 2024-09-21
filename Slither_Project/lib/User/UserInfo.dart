@@ -16,6 +16,7 @@ class UserInfo {
     "loadTestAnswer" : true,      //class Answer - getTestSquare()
     "howToPlay_followSteps" : true,
     "print_isUpdating" : false,
+    "print_methodName" : false,
   };
 
   static bool authState = false;
