@@ -919,6 +919,7 @@ class SquareProvider with ChangeNotifier {
     submit = await readSquare.readSubmit(puzzle);
     notifyListeners();
     await setDo();
+    ///TODO : -4일 때도 enable 되도록 처리
     await findBlockEnableDisable(row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
     notifyListeners();
     while(_isUpdating != 3) {
@@ -2175,6 +2176,7 @@ class SquareProvider with ChangeNotifier {
     }
 
     notifyListeners();
+    submit = await readSquare.readSubmit(puzzle);
   }
 
   ///-1이 되는 조건을 만족하면 -1로, 아니면 0으로 세팅
@@ -2189,7 +2191,8 @@ class SquareProvider with ChangeNotifier {
           //puzzle[i][j].down
           {
             value = 0;
-            //check left
+            //handling heading to minus edge
+            //left
             value = max(puzzle[i][j - 1].down, puzzle[i][j - 1].right);
             if(i + 1 < puzzle.length) {
               value = max(value, puzzle[i + 1][j - 1].right);
@@ -2207,8 +2210,13 @@ class SquareProvider with ChangeNotifier {
 
             if(value < 0 && puzzle[i][j].down == 0) {
               puzzle[i][j].down = -1;
+              continue;
+            }
+            else if(value >= 0 && puzzle[i][j].down == -1) {
+              puzzle[i][j].down = 0;
             }
             value = 0;
+            //handling heading to positive edge
             //left
             if(i + 1 < puzzle.length) {
               if([puzzle[i][j - 1].down, puzzle[i][j - 1].right, puzzle[i + 1][j - 1].right]
@@ -2254,6 +2262,7 @@ class SquareProvider with ChangeNotifier {
           //puzzle[i][j].right
           {
             value = 0;
+            //handling heading to minus edge
             //check up
             value = max(puzzle[i - 1][j].down, puzzle[i - 1][j].right);
             if(j + 1 < puzzle[i].length) {
@@ -2272,8 +2281,13 @@ class SquareProvider with ChangeNotifier {
 
             if(value < 0 && puzzle[i][j].right == 0) {
               puzzle[i][j].right = -1;
+              continue;
+            }
+            else if(value >= 0 && puzzle[i][j].right == -1) {
+              puzzle[i][j].right = 0;
             }
             value = 0;
+            //handling heading to minus edge
             //up
             if(j + 1 < puzzle[i].length) {
               if([puzzle[i - 1][j].down, puzzle[i - 1][j].right, puzzle[i - 1][j + 1].down]
@@ -2322,6 +2336,7 @@ class SquareProvider with ChangeNotifier {
           //puzzle[i][j].up
           {
             value = 0;
+            //handling heading to minus edge
             //left
             value = max(puzzle[i][j - 1].up, puzzle[i][j - 1].right);
             //right
@@ -2335,7 +2350,12 @@ class SquareProvider with ChangeNotifier {
             }
             if(value < 0 && puzzle[i][j].up == 0) {
               puzzle[i][j].up = -1;
+              continue;
             }
+            else if(value >= 0 && puzzle[i][j].up == -1) {
+              puzzle[i][j].up = 0;
+            }
+            //handling heading to positive edge
             //left
             if(puzzle[i][j - 1].up > 0 && puzzle[i][j - 1].right > 0) {
               if(puzzle[i][j].up == 0){
@@ -2354,6 +2374,7 @@ class SquareProvider with ChangeNotifier {
           //puzzle[i][j].down
           {
             value = 0;
+            //handling heading to minus edge
             //left
             value = max(puzzle[i][j - 1].right, max(puzzle[i][j - 1].down, puzzle[i + 1][j - 1].right));
             if(value >= 0){
@@ -2367,7 +2388,12 @@ class SquareProvider with ChangeNotifier {
             }
             if(value < 0 && puzzle[i][j].down == 0) {
               puzzle[i][j].down = -1;
+              continue;
             }
+            else if(value >= 0 && puzzle[i][j].down == -1) {
+              puzzle[i][j].down = 0;
+            }
+            //handling heading to positive edge
             //left
             if([puzzle[i][j -1].right, puzzle[i][j - 1].down, puzzle[i + 1][j - 1].right]
                 .where((value) => value > 0).length >= 2) {
@@ -2397,6 +2423,7 @@ class SquareProvider with ChangeNotifier {
           //puzzle[i][j].right
           {
             value = 0;
+            //handling heading to minus edge
             //up
             if(j + 1 < puzzle[i].length) {
               value = max(puzzle[i][j].up, puzzle[i][j + 1].up);
@@ -2413,7 +2440,12 @@ class SquareProvider with ChangeNotifier {
             }
             if(value < 0 && puzzle[i][j].right == 0) {
               puzzle[i][j].right = -1;
+              continue;
             }
+            else if(value >= 0 && puzzle[i][j].right == -1) {
+              puzzle[i][j].right = 0;
+            }
+            //handling heading to positive edge
             //up
             if(j + 1 < puzzle[i].length) {
               if(puzzle[i][j].up > 0 && puzzle[i][j + 1].up > 0) {
@@ -2446,6 +2478,7 @@ class SquareProvider with ChangeNotifier {
           //puzzle[i][j].left
           {
             value = 0;
+            //handling heading to minus edge
             //up
             value = max(puzzle[i - 1][j].left, puzzle[i - 1][j].down);
             //down
@@ -2460,7 +2493,12 @@ class SquareProvider with ChangeNotifier {
 
             if(value < 0 && puzzle[i][j].left == 0) {
               puzzle[i][j].left = -1;
+              continue;
             }
+            else if(value >= 0 && puzzle[i][j].left == -1) {
+              puzzle[i][j].right = 0;
+            }
+            //handling heading to positive edge
             //up
             if(puzzle[i - 1][j].left > 0 && puzzle[i - 1][j].down > 0) {
               if(puzzle[i][j].left == 0){
@@ -2479,6 +2517,7 @@ class SquareProvider with ChangeNotifier {
           //puzzle[i][j].right
           {
             value = 0;
+            //handling heading to minus edge
             //up
             value = max(max(puzzle[i - 1][j].down, puzzle[i - 1][j].right), puzzle[i - 1][j + 1].down);
             //down
@@ -2493,7 +2532,12 @@ class SquareProvider with ChangeNotifier {
 
             if(value < 0 && puzzle[i][j].right == 0) {
               puzzle[i][j].right = -1;
+              continue;
             }
+            else if(value >= 0 && puzzle[i][j].right == -1) {
+              puzzle[i][j].right = 0;
+            }
+            //handling heading to positive edge
             //up
             if([puzzle[i - 1][j].down, puzzle[i - 1][j].right, puzzle[i - 1][j + 1].down]
                 .where((value) => value > 0).length >= 2) {
@@ -2523,6 +2567,7 @@ class SquareProvider with ChangeNotifier {
           //puzzle[i][j].down
           {
             value = 0;
+            //handling heading to minus edge
             //left
             value = puzzle[i][j].left;
             if(i + 1 < puzzle.length) {
@@ -2538,7 +2583,12 @@ class SquareProvider with ChangeNotifier {
 
             if(value < 0 && puzzle[i][j].down == 0) {
               puzzle[i][j].down = -1;
+              continue;
             }
+            else if(value >= 0 && puzzle[i][j].down == -1) {
+              puzzle[i][j].down = 0;
+            }
+            //handling heading to positive edge
             //left
             if(i + 1 < puzzle.length) {
               if(puzzle[i][j].left > 0 && puzzle[i + 1][j].left > 0) {
@@ -2570,11 +2620,14 @@ class SquareProvider with ChangeNotifier {
           //puzzle[i][j].up
           {
             value = 0;
+            //handling heading to minus edge
             if (inValid.contains(puzzle[i][j].left) ||
                 (inValid.contains(puzzle[i][j].right) &&
                     inValid.contains(puzzle[i][j + 1].up))) {
               value = -1;
-            } else if (puzzle[i][j].right > 0 && puzzle[i][j + 1].up > 0) {
+            }
+            //handling heading to positive edge
+            else if (puzzle[i][j].right > 0 && puzzle[i][j + 1].up > 0) {
               if (puzzle[i][j].up == 0) {
                 value = -1;
               }
@@ -2582,15 +2635,21 @@ class SquareProvider with ChangeNotifier {
             if(value != 0 && puzzle[i][j].up == 0) {
               puzzle[i][j].up = value;
             }
+            else if(value == 0 && puzzle[i][j].up == -1) {
+              puzzle[i][j].up = 0;
+            }
           }
           //puzzle[i][j].left
           {
             value = 0;
+            //handling heading to minus edge
             if (inValid.contains(puzzle[i][j].up) ||
                 (inValid.contains(puzzle[i][j].down) &&
                     inValid.contains(puzzle[i + 1][j].left))) {
               value = -1;
-            } else if (puzzle[i][j].down > 0 && puzzle[i + 1][j].left > 0) {
+            }
+            //handling heading to positive edge
+            else if (puzzle[i][j].down > 0 && puzzle[i + 1][j].left > 0) {
               if (puzzle[i][j].left == 0) {
                 value = -1;
               }
@@ -2598,10 +2657,14 @@ class SquareProvider with ChangeNotifier {
             if(value != 0 && puzzle[i][j].left == 0) {
               puzzle[i][j].left = value;
             }
+            else if(value == 0 && puzzle[i][j].left == -1) {
+              puzzle[i][j].left = 0;
+            }
           }
           //puzzle[i][j].down
           {
             value = 0;
+            //handling heading to minus edge
             if ((inValid.contains(puzzle[i][j].left) &&
                     inValid.contains(puzzle[i + 1][j].left)) ||
                 (inValid.contains(puzzle[i][j].right) &&
@@ -2609,12 +2672,14 @@ class SquareProvider with ChangeNotifier {
                     inValid.contains(puzzle[i + 1][j].right))) {
               value = -1;
             }
+            //handling heading to positive edge
             //left
             else if (puzzle[i][j].left > 0 && puzzle[i + 1][j].left > 0) {
               if (puzzle[i][j].down == 0) {
                 value = -1;
               }
             }
+            //handling heading to positive edge
             //right
             else if ([
                   puzzle[i][j].right,
@@ -2629,10 +2694,14 @@ class SquareProvider with ChangeNotifier {
             if(value != 0 && puzzle[i][j].down == 0) {
               puzzle[i][j].down = value;
             }
+            else if(value == 0 && puzzle[i][j].down == -1) {
+              puzzle[i][j].down = 0;
+            }
           }
           //puzzle[i][j].right
           {
             value = 0;
+            //handling heading to minus edge
             if ((inValid.contains(puzzle[i][j].up) &&
                     inValid.contains(puzzle[i][j + 1].up)) ||
                 (inValid.contains(puzzle[i][j].down) &&
@@ -2640,12 +2709,14 @@ class SquareProvider with ChangeNotifier {
                     inValid.contains(puzzle[i + 1][j].right))) {
               value = -1;
             }
+            //handling heading to positive edge
             //up
             else if (puzzle[i][j].up > 0 && puzzle[i][j + 1].up > 0) {
               if (puzzle[i][j].right == 0) {
                 value = -1;
               }
             }
+            //handling heading to positive edge
             //down
             else if ([
                   puzzle[i][j].down,
@@ -2659,6 +2730,9 @@ class SquareProvider with ChangeNotifier {
             }
             if(value != 0 && puzzle[i][j].right == 0) {
               puzzle[i][j].right = value;
+            }
+            else if(value == 0 && puzzle[i][j].right == -1) {
+              puzzle[i][j].right = 0;
             }
           }
         }
