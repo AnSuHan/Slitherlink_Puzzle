@@ -919,7 +919,6 @@ class SquareProvider with ChangeNotifier {
     submit = await readSquare.readSubmit(puzzle);
     notifyListeners();
     await setDo();
-    ///TODO : -4일 때도 enable 되도록 처리
     await findBlockEnableDisable(row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
     notifyListeners();
     while(_isUpdating != 3) {
@@ -2086,13 +2085,13 @@ class SquareProvider with ChangeNotifier {
         isChanged = false;
 
         if(disable && (puzzle[i][j].num <= getLineCount(i, j))) {
-          isChanged = setLineDisable(i, j);
+          isChanged = await setLineDisable(i, j);
           if(isChanged) {
             changedList.add([i, j]);
           }
         }
         else if(enable) {
-          isChanged = setLineEnable(i, j);
+          isChanged = await setLineEnable(i, j);
           //setLineEnable()를 통해 모든 -1값들을 0으로 변경 시킨 후, -1로 설정이 필요한 라인을 다시 계산
           await checkCurrentPath();
           if(isChanged) {
@@ -2116,6 +2115,7 @@ class SquareProvider with ChangeNotifier {
     await checkCurrentPathInner();
   }
 
+  ///각 박스마다 lineValue가 1이상인 값을 세고, 해당 박스의 num 이상인 경우 남은 0 라인을 -1로 변경
   Future<void> checkMaxLine() async {
     int count = 0;
 
@@ -2736,6 +2736,8 @@ class SquareProvider with ChangeNotifier {
             }
           }
         }
+
+        await checkMaxLine();
       }
     }
 
@@ -2785,7 +2787,10 @@ class SquareProvider with ChangeNotifier {
   ///현재 라인이 num 이상인 경우 호출되는 함수
   ///
   ///0으로 남아 있는 라인을 모두 -1로 변경
-  bool setLineDisable(int row, int col) {
+  ///
+  ///setLineDisable() 호출 직후 checkMaxLine()를 호출함
+  Future<bool> setLineDisable(int row, int col) async {
+    await checkMaxLine();
     bool isChanged = false;
 
     if(row != 0 && col != 0) {
@@ -2867,7 +2872,10 @@ class SquareProvider with ChangeNotifier {
   ///enable이 true로 호출되는 경우 호출되는 함수
   ///
   ///findBlockEnableDisable의 checkCurrentPath()에서 다시 계산을 할 수 있도록 모든 -1 값을 0으로 변경
-  bool setLineEnable(int row, int col) {
+  ///
+  ///setLineEnable() 호출 직후 checkMaxLine()를 호출함
+  Future<bool> setLineEnable(int row, int col) async {
+    await checkMaxLine();
     bool isChanged = false;
 
     if(row != 0 && col != 0) {
