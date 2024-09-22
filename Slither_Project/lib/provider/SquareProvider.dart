@@ -1,6 +1,7 @@
 // ignore_for_file: file_names
 import 'dart:math';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
@@ -925,10 +926,19 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
+    //HowToPlay에서 step을 벗어나는 경우 처리
+    if(callback != null) {
+      //check condition -> if it is wrong, rollback
+      await callback(row, column, pos);
+    }
+
     submit = await readSquare.readSubmit(puzzle);
     notifyListeners();
     await setDo();
-    await findBlockEnableDisable(row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
+    if(callback == null) {
+      await findBlockEnableDisable(
+          row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
+    }
     notifyListeners();
     while(_isUpdating != 3) {
       await Future.delayed(const Duration(milliseconds: 50));
@@ -937,10 +947,6 @@ class SquareProvider with ChangeNotifier {
     }
     _isUpdating = 0;
 
-    //HowToPlay에서 step을 벗어나는 경우 처리
-    if(callback != null) {
-      await callback(row, column, pos);
-    }
     if(UserInfo.debugMode["print_isUpdating"]!) {
       // ignore: avoid_print
       print("update updateSquareBox : $_isUpdating");
@@ -2126,6 +2132,10 @@ class SquareProvider with ChangeNotifier {
       print("call checkCurrentPath");
     }
     await checkMaxLine();
+    ///TODO : 수정 중
+    await checkCurrentPathSet();
+
+    return;
     await checkCurrentPathBackward();
     await checkCurrentPathForward();
   }
@@ -2196,6 +2206,319 @@ class SquareProvider with ChangeNotifier {
 
     notifyListeners();
     submit = await readSquare.readSubmit(puzzle);
+  }
+
+  ///-1로 설정된 라인들 부터 너비 우선 탐색으로 모든 연관 라인과 조건을 비교
+  ///
+  ///조건이 참이면 -1로 설정 후 set에 추가
+  Future<void> checkCurrentPathSet() async {
+    List<List<dynamic>> minusSet = findMinusOneLine();
+    List<List<dynamic>> nearSet = getMinusNearLine(minusSet);
+
+    print("nearSet $nearSet");
+  }
+
+  ///lineValue가 -1인 모든 라인을 찾아 반환
+  List<List<dynamic>> findMinusOneLine() {
+    List<List<dynamic>> rtValue = [];
+
+    for(int i = 0 ; i < puzzle.length ; i++) {
+      for(int j = 0 ; j < puzzle[i].length ; j++) {
+        if(i != 0 && j != 0) {
+          if(puzzle[i][j].down == -1) {
+            rtValue.add([i, j, "down"]);
+          }
+          if(puzzle[i][j].right == -1) {
+            rtValue.add([i, j, "right"]);
+          }
+        }
+        else if(i != 0 && j == 0) {
+          if(puzzle[i][j].left == -1) {
+            rtValue.add([i, j, "left"]);
+          }
+          if(puzzle[i][j].right == -1) {
+            rtValue.add([i, j, "right"]);
+          }
+          if(puzzle[i][j].down == -1) {
+            rtValue.add([i, j, "down"]);
+          }
+        }
+        else if(i == 0 && j != 0) {
+          if(puzzle[i][j].up == -1) {
+            rtValue.add([i, j, "up"]);
+          }
+          if(puzzle[i][j].down == -1) {
+            rtValue.add([i, j, "down"]);
+          }
+          if(puzzle[i][j].right == -1) {
+            rtValue.add([i, j, "right"]);
+          }
+        }
+        else {
+          if(puzzle[i][j].up == -1) {
+            rtValue.add([i, j, "up"]);
+          }
+          if(puzzle[i][j].down == -1) {
+            rtValue.add([i, j, "down"]);
+          }
+          if(puzzle[i][j].left == -1) {
+            rtValue.add([i, j, "left"]);
+          }
+          if(puzzle[i][j].right == -1) {
+            rtValue.add([i, j, "right"]);
+          }
+        }
+      }
+    }
+
+    return rtValue;
+  }
+
+  ///minusList와 인접한 모든 라인을 반환
+  List<List<dynamic>> getMinusNearLine(List<List<dynamic>> minusList) {
+    List<List<dynamic>> rtValue = [];   //중복을 가질 수 있음 //반환 전 중복 처리 필요
+    int row = 0, col = 0;
+    List<int> checkValue = [0];
+
+    //isHowToPlay
+    if(gameStateSquare == null) {
+      checkValue.add(-3);
+    }
+
+    for(int i = 0 ; i < minusList.length ; i++) {
+      row = int.parse(minusList[i][0].toString());
+      col = int.parse(minusList[i][1].toString());
+
+      switch(minusList[i][2].toString()) {
+        case "down":
+          if(row != 0 && col != 0) {
+            if(checkValue.contains(puzzle[row][col - 1].right)) {
+              rtValue.add([row, col - 1, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col - 1].down)) {
+              rtValue.add([row, col - 1, "down"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col - 1].right)) {
+              rtValue.add([row + 1, col - 1, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col].right)) {
+              rtValue.add([row, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].right)) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+            if(col + 1 < puzzle[row].length && checkValue.contains(puzzle[row][col + 1].down)) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          else if(row != 0 && col == 0) {
+            if(checkValue.contains(puzzle[row][col].left)) {
+              rtValue.add([row, col, "left"]);
+            }
+            if(checkValue.contains(puzzle[row][col].right)) {
+              rtValue.add([row, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col + 1].down)) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+            if(row + 1 < puzzle.length) {
+              if(checkValue.contains(puzzle[row + 1][col].left)) {
+                rtValue.add([row + 1, col, "left"]);
+              }
+              if(checkValue.contains(puzzle[row + 1][col].right)) {
+                rtValue.add([row + 1, col, "right"]);
+              }
+            }
+          }
+          else if(row == 0 && col != 0) {
+            if(checkValue.contains(puzzle[row][col - 1].right)) {
+              rtValue.add([row, col - 1, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col - 1].down)) {
+              rtValue.add([row, col - 1, "down"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col - 1].right)) {
+              rtValue.add([row + 1, col - 1, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col].right)) {
+              rtValue.add([row, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].right)) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+            if(col + 1 < puzzle[row].length && checkValue.contains(puzzle[row][col + 1].down)) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          else {
+            if(checkValue.contains(puzzle[row][col].left)) {
+              rtValue.add([row, col, "left"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].left)) {
+              rtValue.add([row + 1, col, "left"]);
+            }
+            if(checkValue.contains(puzzle[row][col].right)) {
+              rtValue.add([row, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].right)) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col + 1].down)) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          break;
+        case "right":
+          if(row != 0 && col != 0) {
+            if(checkValue.contains(puzzle[row - 1][col].right)) {
+              rtValue.add([row - 1, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row - 1][col].down)) {
+              rtValue.add([row - 1, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row][col].down)) {
+              rtValue.add([row, col, "down"]);
+            }
+            if(col + 1 < puzzle[row].length) {
+              if(checkValue.contains(puzzle[row - 1][col + 1].down)) {
+                rtValue.add([row - 1, col + 1, "down"]);
+              }
+              if(checkValue.contains(puzzle[row][col + 1].down)) {
+                rtValue.add([row, col + 1, "down"]);
+              }
+            }
+            if(row + 1 < puzzle.length) {
+              if(checkValue.contains(puzzle[row + 1][col].right)) {
+                rtValue.add([row + 1, col, "right"]);
+              }
+            }
+          }
+          else if(row == 0 && col != 0) {
+            if(checkValue.contains(puzzle[row][col].up)) {
+              rtValue.add([row, col, "up"]);
+            }
+            if(checkValue.contains(puzzle[row][col].down)) {
+              rtValue.add([row, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].right)) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+            if(col + 1 < puzzle[row].length) {
+              if(checkValue.contains(puzzle[row][col + 1].up)) {
+                rtValue.add([row, col + 1, "up"]);
+              }if(checkValue.contains(puzzle[row][col + 1].down)) {
+                rtValue.add([row, col + 1, "down"]);
+              }
+            }
+          }
+          else if(row != 0 && col == 0) {
+            if(checkValue.contains(puzzle[row - 1][col].right)) {
+              rtValue.add([row - 1, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row - 1][col].down)) {
+              rtValue.add([row - 1, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row - 1][col + 1].down)) {
+              rtValue.add([row - 1, col + 1, "down"]);
+            }
+            if(checkValue.contains(puzzle[row][col].down)) {
+              rtValue.add([row, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row][col + 1].down)) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+            if(row + 1 < puzzle.length && checkValue.contains(puzzle[row + 1][col].right)) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+          }
+          else {
+            if(checkValue.contains(puzzle[row][col].up)) {
+              rtValue.add([row, col, "up"]);
+            }
+            if(checkValue.contains(puzzle[row][col + 1].up)) {
+              rtValue.add([row, col + 1, "up"]);
+            }
+            if(checkValue.contains(puzzle[row][col].down)) {
+              rtValue.add([row, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row][col + 1].down)) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].right)) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+          }
+          break;
+        case "left":
+          if(row != 0) {
+            //row != 0 && col == 0
+            if(checkValue.contains(puzzle[row - 1][col].left)) {
+              rtValue.add([row - 1, col, "left"]);
+            }
+            if(checkValue.contains(puzzle[row - 1][col].down)) {
+              rtValue.add([row - 1, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row][col].down)) {
+              rtValue.add([row, col, "down"]);
+            }
+            if(i + 1 < puzzle.length && checkValue.contains(puzzle[row + 1][col].left)) {
+              rtValue.add([row + 1, col, "left"]);
+            }
+          }
+          else {
+            //row == 0 && col == 0
+            if(checkValue.contains(puzzle[row][col].up)) {
+              rtValue.add([row, col, "up"]);
+            }
+            if(checkValue.contains(puzzle[row][col].down)) {
+              rtValue.add([row, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].left)) {
+              rtValue.add([row + 1, col, "left"]);
+            }
+          }
+          break;
+        case "up":
+          if(col != 0) {
+            //row == 0 && col != 0
+            if(checkValue.contains(puzzle[row][col - 1].right)) {
+              rtValue.add([row, col - 1, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col - 1].up)) {
+              rtValue.add([row, col - 1, "up"]);
+            }
+            if(checkValue.contains(puzzle[row][col].right)) {
+              rtValue.add([row, col, "right"]);
+            }
+            if(col + 1 < puzzle[row].length && checkValue.contains(puzzle[row][col + 1].up)) {
+              rtValue.add([row, col + 1, "up"]);
+            }
+          }
+          else {
+            //row == 0 && col == 0
+            if(checkValue.contains(puzzle[row][col].left)) {
+              rtValue.add([row, col, "left"]);
+            }
+            if(checkValue.contains(puzzle[row][col].right)) {
+              rtValue.add([row, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col + 1].up)) {
+              rtValue.add([row, col + 1, "up"]);
+            }
+          }
+          break;
+      }
+    }
+
+    List<List<dynamic>> set = [];
+    //중복 제거
+    for(var item in rtValue) {
+      if(!set.any((element) => const DeepCollectionEquality().equals(element, item))) {
+        set.add(item);
+      }
+    }
+
+    return set.toList();
   }
 
   ///현재 lineValue가 0또는 1인 라인에 대해
