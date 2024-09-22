@@ -56,7 +56,7 @@ class HowToPlayState extends State<HowToPlay> {
     loadPuzzle();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      checkStep();
+      showStep();
     });
   }
 
@@ -174,7 +174,7 @@ class HowToPlayState extends State<HowToPlay> {
 
   bool isOn = true;
 
-  void checkStep() {
+  void showStep() {
     switch(progressStep) {
       case 0:
         stepText = "0";
@@ -198,9 +198,20 @@ class HowToPlayState extends State<HowToPlay> {
     isOn = !isOn;
   }
 
+  Future<void> checkStep(int row, int col, String pos) async {
+    bool right = step[progressStep].any(
+            (element) => element[0] == row && element[1] == col && element[2] == pos
+    );
+
+    if(!right) {
+      await rollback(row, col, pos);
+    }
+  }
+
   ///updateSquareBox()에서 콜백으로 등록하여 잘못된 라인 클릭 시 롤백
   Future<void> rollback(int row, int col, String pos) async {
-    print("call rollback $row $col $pos");
+    _provider.setLineColorBox(row, col, pos, 0);
+    _provider.findBlockEnableDisable(row, col, pos, enable: true, isMax: true);
   }
 
   void showStep0() {

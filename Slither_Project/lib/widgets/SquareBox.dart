@@ -170,7 +170,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                         callback: widget.isHowToPlay ? (int row, int col, String pos) async {
                           final howToPlayState = context.findAncestorStateOfType<HowToPlayState>();
                           if (howToPlayState != null) {
-                            howToPlayState.rollback(row, col, pos);
+                            howToPlayState.checkStep(row, col, pos);
                           }
                         } : null
                       );
@@ -240,7 +240,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                         callback: widget.isHowToPlay ? (int row, int col, String pos) async {
                           final howToPlayState = context.findAncestorStateOfType<HowToPlayState>();
                           if (howToPlayState != null) {
-                            howToPlayState.rollback(row, col, pos);
+                            howToPlayState.checkStep(row, col, pos);
                           }
                         } : null
                       );
@@ -304,7 +304,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                         callback: widget.isHowToPlay ? (int row, int col, String pos) async {
                           final howToPlayState = context.findAncestorStateOfType<HowToPlayState>();
                           if (howToPlayState != null) {
-                            howToPlayState.rollback(row, col, pos);
+                            howToPlayState.checkStep(row, col, pos);
                           }
                         } : null
                       );
@@ -378,7 +378,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                         callback: widget.isHowToPlay ? (int row, int col, String pos) async {
                           final howToPlayState = context.findAncestorStateOfType<HowToPlayState>();
                           if (howToPlayState != null) {
-                            howToPlayState.rollback(row, col, pos);
+                            howToPlayState.checkStep(row, col, pos);
                           }
                         } : null
                       );
