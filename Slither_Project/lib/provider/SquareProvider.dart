@@ -2213,9 +2213,11 @@ class SquareProvider with ChangeNotifier {
   ///조건이 참이면 -1로 설정 후 set에 추가
   Future<void> checkCurrentPathSet() async {
     List<List<dynamic>> minusSet = findMinusOneLine();
+    print("minusSet $minusSet");
     List<List<dynamic>> nearSet = getMinusNearLine(minusSet);
-
     print("nearSet $nearSet");
+    List<List<dynamic>> notCheckedLine = checkLineValid(nearSet);
+    print("notCheckedLine $notCheckedLine");
   }
 
   ///lineValue가 -1인 모든 라인을 찾아 반환
@@ -2519,6 +2521,273 @@ class SquareProvider with ChangeNotifier {
     }
 
     return set.toList();
+  }
+
+  ///nearList가 valid 한지 검사하고 inValid면 -1로 설정
+  ///
+  ///valid 하다면 마지막에 모아서 다시 검사하여 모든 라인의 상태가 변경되지 않을 때까지 반복
+  List<List<dynamic>> checkLineValid(List<List<dynamic>> nearList) {
+    List<List<dynamic>> validLine = [];
+    int row = 0, col = 0;
+    String pos = "";
+    bool isValid = true;
+    List<int> inValid = [-1, -4];
+
+    for(int i = 0 ; i < nearList.length ; i++) {
+      row = int.parse(nearList[i][0].toString());
+      col = int.parse(nearList[i][1].toString());
+      pos = nearList[i][2].toString();
+      isValid = true;
+
+      if(row != 0 && col != 0) {
+        switch(pos) {
+          case "down":
+            //negative condition
+            if((inValid.contains(puzzle[row][col - 1].right) && inValid.contains(puzzle[row][col - 1].down) && (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].right)))
+                || (inValid.contains(puzzle[row][col].right) && (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].right)) && (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row][col + 1].down)))
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if(
+                ((puzzle[row][col - 1].right > 0 ? 1 : 0 +
+                puzzle[row][col - 1].down > 0 ? 1 : 0 +
+                (row + 1 < puzzle.length && puzzle[row + 1][col].right > 0 ? 1 : 0)) >= 2)
+                || ((puzzle[row][col].right > 0 ? 1 : 0 +
+                    (row + 1 < puzzle.length && puzzle[row + 1][col].right > 0 ? 1 : 0) +
+                    (col + 1 < puzzle[row].length && puzzle[row][col + 1].down > 0 ? 1 : 0)) >= 2)
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            break;
+          case "right":
+            //negative condition
+            if((inValid.contains(puzzle[row - 1][col].down) && inValid.contains(puzzle[row - 1][col].right) && (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row - 1][col + 1].down)))
+                || (inValid.contains(puzzle[row][col].down) && (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].right)) && (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row][col + 1].down)))) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if(puzzle[row - 1][col].right > 0 &&
+                puzzle[row - 1][col].down > 0 &&
+                (col + 1 >= puzzle[row].length || puzzle[row - 1][col + 1].down > 0)
+                || (puzzle[row][col].down > 0 &&
+                    (
+                        (col + 1 < puzzle[row].length && row + 1 < puzzle.length && (puzzle[row + 1][col].right > 0 || puzzle[row][col + 1].down > 0)) ||
+                        (col + 1 >= puzzle[row].length && row + 1 < puzzle.length && puzzle[row + 1][col].right > 0) ||
+                        (col + 1 < puzzle[row].length && row + 1 >= puzzle.length && puzzle[row][col + 1].down > 0)
+                    ))
+            ) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            break;
+        }
+      }
+      else if(row == 0 && col != 0) {
+        switch(pos) {
+          case "down":
+            //negative condition
+            if((inValid.contains(puzzle[row][col - 1].right) && inValid.contains(puzzle[row][col - 1].down) && inValid.contains(puzzle[row + 1][col - 1].right))
+                || ((inValid.contains(puzzle[row][col].right) ? 1 : 0) +
+                    (inValid.contains(puzzle[row + 1][col].right) ? 1 : 0) +
+                    ((col + 1 >= puzzle[row].length) || (inValid.contains(puzzle[row][col + 1].down)) ? 1 : 0) >= 2)
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if(
+                ((puzzle[row][col - 1].right > 0 ? 1 : 0) +
+                (puzzle[row][col - 1].down > 0 ? 1 : 0) +
+                (puzzle[row + 1][col - 1].right > 0 ? 1 : 0) >= 2)
+                || ((puzzle[row][col].right > 0 ? 1 : 0) +
+                    (puzzle[row + 1][col].right > 0 ? 1 : 0) +
+                    ((col + 1 < puzzle[row].length && puzzle[row][col + 1].down > 0) ? 1 : 0) >= 2)
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            break;
+          case "right":
+            //negative condition
+            if((inValid.contains(puzzle[row][col].up)) && (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row][col + 1].up))
+                || (inValid.contains(puzzle[row][col].down) &&
+                    inValid.contains(puzzle[row + 1][col].right) &&
+                    (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row][col + 1].down)))
+            ) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if((puzzle[row][col].up > 0 && (col + 1 < puzzle[row].length && puzzle[row][col + 1].up > 0))
+                || ((puzzle[row][col].down > 0 ? 1 : 0) +
+                    (puzzle[row + 1][col].right > 0 ? 1 : 0) +
+                    ((col + 1 >= puzzle[row].length || puzzle[row][col + 1].down > 0) ? 1 : 0) >= 2)
+            ) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            break;
+          case "up":
+            //negative condition
+            if((inValid.contains(puzzle[row][col - 1].up) && inValid.contains(puzzle[row][col - 1].right))
+                || (inValid.contains(puzzle[row][col].right) && (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row][col + 1].up)))
+            ) {
+              puzzle[row][col].up = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if((puzzle[row][col - 1].up > 0 && puzzle[row][col - 1].right > 0)
+                || (col + 1 < puzzle[row].length && puzzle[row][col].right > 0 && puzzle[row][col + 1].up > 0)
+            ) {
+              puzzle[row][col].up = -1;
+              isValid = false;
+            }
+            break;
+        }
+      }
+      else if(row != 0 && col == 0) {
+        switch(pos) {
+          case "down":
+            //negative condition
+            if((inValid.contains(puzzle[row][col].left) && (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].left)))
+                || (inValid.contains(puzzle[row][col].right) &&
+                    inValid.contains(puzzle[row][col + 1].down) &&
+                    (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].right)))
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if((row + 1 < puzzle.length && puzzle[row][col].left > 0 && puzzle[row + 1][col].left > 0)
+                || ((puzzle[row][col].right > 0 ? 1 : 0 +
+                    puzzle[row][col + 1].down > 0 ? 1 : 0 +
+                    (row + 1 >= puzzle.length || puzzle[row + 1][col].right > 0 ? 1 : 0)) >= 2)
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            break;
+          case "right":
+            //negative condition
+            if((inValid.contains(puzzle[row - 1][col].down) && inValid.contains(puzzle[row - 1][col].right) && inValid.contains(puzzle[row - 1][col + 1].down))
+                || (inValid.contains(puzzle[row][col].down) &&
+                    inValid.contains(puzzle[row][col + 1].down) &&
+                    (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].right)))
+            ) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if(((puzzle[row - 1][col].right > 0 ? 1 : 0 +
+                puzzle[row - 1][col].down > 0 ? 1 : 0 +
+                puzzle[row - 1][col + 1].down > 0 ? 1 : 0) >= 2)
+                || (puzzle[row][col].down > 0 ? 1 : 0 +
+                    puzzle[row][col + 1].down > 0 ? 1 : 0 +
+                    ((row + 1 < puzzle.length && puzzle[row + 1][col].right > 0) ? 1 : 0)) >= 2) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            break;
+          case "left":
+            //negative condition
+            if((inValid.contains(puzzle[row - 1][col].left) && inValid.contains(puzzle[row - 1][col].down))
+              || (inValid.contains(puzzle[row][col].down)
+                  && (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].left)))
+            ) {
+              puzzle[row][col].left = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if((puzzle[row - 1][col].left > 0 && puzzle[row - 1][col].down > 0)
+                || (puzzle[row][col].down > 0 && row + 1 < puzzle.length && puzzle[row + 1][col].left > 0)
+            ) {
+              puzzle[row][col].left = -1;
+              isValid = false;
+            }
+            break;
+        }
+      }
+      else {
+        switch(pos) {
+          case "down":
+            //negative condition
+            if((inValid.contains(puzzle[row][col].left) && inValid.contains(puzzle[row][col + 1].left))
+                || (inValid.contains(puzzle[row][col].right) && inValid.contains(puzzle[row][col + 1].down) && inValid.contains(puzzle[row + 1][col].right))
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if((puzzle[row][col].left > 0 && puzzle[row + 1][col].left > 0)
+                || ((puzzle[row][col].right > 0 ? 1 : 0) +
+                    (puzzle[row][col + 1].down > 0 ? 1 : 0) +
+                    (puzzle[row + 1][col].right > 0 ? 1 : 0) >= 2)
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            break;
+          case "right":
+            //negative condition
+            if((inValid.contains(puzzle[row][col].up) && inValid.contains(puzzle[row][col + 1].up))
+              || (inValid.contains(puzzle[row][col].down) && inValid.contains(puzzle[row][col + 1].down) && inValid.contains(puzzle[row + 1][col].right))
+            ) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if((puzzle[row][col].up > 0 && puzzle[row][col + 1].up > 0)
+                || ((puzzle[row][col].down > 0 ? 1 : 0) +
+                    (puzzle[row][col + 1].down > 0 ? 1 : 0) +
+                    (puzzle[row + 1][col].right > 0 ? 1 : 0) >= 2)
+            ) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            break;
+          case "up":
+            //negative condition
+            if(inValid.contains(puzzle[row][col].left) ||
+                (inValid.contains(puzzle[row][col].right) && inValid.contains(puzzle[row][col + 1].up))
+            ) {
+              puzzle[row][col].up = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if(puzzle[row][col].right > 0 && puzzle[row][col + 1].up > 0) {
+              puzzle[row][col].up = -1;
+              isValid = false;
+            }
+            break;
+          case "left":
+            //negative condition
+            if(inValid.contains(puzzle[row][col].up) ||
+                (inValid.contains(puzzle[row][col].down) && inValid.contains(puzzle[row + 1][col].left))
+            ) {
+              puzzle[row][col].left = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if(puzzle[row][col].down > 0 && puzzle[row + 1][col].left > 0) {
+              puzzle[row][col].left = -1;
+              isValid = false;
+            }
+            break;
+        }
+      }
+
+      //재검사 목록 생성
+      if(isValid) {
+        validLine.add(nearList[i]);
+      }
+    }
+
+
+    return validLine;
   }
 
   ///현재 lineValue가 0또는 1인 라인에 대해
