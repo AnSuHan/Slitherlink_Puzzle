@@ -788,7 +788,7 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
   }
 
-
+  ///TODO : howToPlay에서는 정상적으로 동작하나, release에서는 비정상 동작함
   ///**********************************************************************************
   ///**********************************************************************************
   ///****************************** about color ******************************
@@ -2132,12 +2132,7 @@ class SquareProvider with ChangeNotifier {
       print("call checkCurrentPath");
     }
     await checkMaxLine();
-    ///TODO : 수정 중
     await checkCurrentPathSet();
-
-    return;
-    await checkCurrentPathBackward();
-    await checkCurrentPathForward();
   }
 
   ///각 박스마다 lineValue가 1이상인 값을 세고, 해당 박스의 num 이상인 경우 남은 0 라인을 -1로 변경
@@ -2213,14 +2208,26 @@ class SquareProvider with ChangeNotifier {
   ///조건이 참이면 -1로 설정 후 set에 추가
   Future<void> checkCurrentPathSet() async {
     List<List<dynamic>> minusSet = findMinusOneLine();
-    print("minusSet $minusSet");
-    List<List<dynamic>> nearSet = getMinusNearLine(minusSet);
-    print("nearSet $nearSet");
-    List<List<dynamic>> notCheckedLine = checkLineValid(nearSet);
-    print("notCheckedLine $notCheckedLine");
+    //print("minusSet $minusSet");
+    List<List<dynamic>> nearSet, needCheckLine = [];
+    int needCheckLength = 0, prevCheckLength = 0;
+
+    do {
+      //save previous length whether needCheckLine list is extended
+      prevCheckLength = needCheckLength;
+
+      nearSet = getMinusNearLine(minusSet);
+      needCheckLine = checkLineValid(nearSet);
+      needCheckLength = needCheckLine.length;
+
+      //prepare next repeat
+      minusSet = needCheckLine;
+    } while (needCheckLength > prevCheckLength);
   }
 
   ///lineValue가 -1인 모든 라인을 찾아 반환
+  ///
+  ///puzzle 변수를 직접 조작하지 않음
   List<List<dynamic>> findMinusOneLine() {
     List<List<dynamic>> rtValue = [];
 
@@ -2277,6 +2284,8 @@ class SquareProvider with ChangeNotifier {
   }
 
   ///minusList와 인접한 모든 라인을 반환
+  ///
+  ///puzzle 변수를 직접 조작하지 않음
   List<List<dynamic>> getMinusNearLine(List<List<dynamic>> minusList) {
     List<List<dynamic>> rtValue = [];   //중복을 가질 수 있음 //반환 전 중복 처리 필요
     int row = 0, col = 0;
@@ -2300,14 +2309,16 @@ class SquareProvider with ChangeNotifier {
             if(checkValue.contains(puzzle[row][col - 1].down)) {
               rtValue.add([row, col - 1, "down"]);
             }
-            if(checkValue.contains(puzzle[row + 1][col - 1].right)) {
-              rtValue.add([row + 1, col - 1, "right"]);
-            }
             if(checkValue.contains(puzzle[row][col].right)) {
               rtValue.add([row, col, "right"]);
             }
-            if(checkValue.contains(puzzle[row + 1][col].right)) {
-              rtValue.add([row + 1, col, "right"]);
+            if(row + 1 < puzzle.length) {
+              if(checkValue.contains(puzzle[row + 1][col - 1].right)) {
+                rtValue.add([row + 1, col - 1, "right"]);
+              }
+              if(checkValue.contains(puzzle[row + 1][col].right)) {
+                rtValue.add([row + 1, col, "right"]);
+              }
             }
             if(col + 1 < puzzle[row].length && checkValue.contains(puzzle[row][col + 1].down)) {
               rtValue.add([row, col + 1, "down"]);
@@ -2526,6 +2537,8 @@ class SquareProvider with ChangeNotifier {
   ///nearList가 valid 한지 검사하고 inValid면 -1로 설정
   ///
   ///valid 하다면 마지막에 모아서 다시 검사하여 모든 라인의 상태가 변경되지 않을 때까지 반복
+  ///
+  ///puzzle 변수를 직접 조작함
   List<List<dynamic>> checkLineValid(List<List<dynamic>> nearList) {
     List<List<dynamic>> validLine = [];
     int row = 0, col = 0;
