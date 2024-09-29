@@ -35,12 +35,17 @@ class HowToPlayState extends State<HowToPlay> {
   Timer? _timer;
   int progressStep = 0;
   String stepText = "";
+  int lineColor = 0;
 
   List<List<dynamic>> step = [
-    [
-      [0, 1, "down"], [1, 1, "right"], [1, 1, "down"],    //step0
-      //step1
-    ]
+    //step0
+    [[0, 1, "down"], [1, 1, "right"], [1, 1, "down"]],
+    //step1
+    [[0, 0, "right"], [0, 1, "up"], [2, 0, "right"], [2, 1, "down"]],
+    [[0, 2, "up"]],
+    [[0, 3, "up"], [0, 3, "right"], [2, 2, "down"], [2, 2, "right"]],
+    [[1, 3, "down"], [1, 3, "right"]],
+    []
   ];
 
   @override
@@ -185,13 +190,37 @@ class HowToPlayState extends State<HowToPlay> {
         break;
       case 1:
         stepText = "1";
-        //showStep1();
+        if(_provider.getLineColorBox(0, 0, "right") > 0 && _provider.getLineColorBox(0, 1, "up") > 0 && _provider.getLineColorBox(2, 0, "right") > 0 && _provider.getLineColorBox(2, 1, "down") > 0) {
+          progressStep++;
+        }
+        showStep1();
         break;
       case 2:
         stepText = "2";
+        if(_provider.getLineColorBox(0, 2, "up") > 0) {
+          progressStep++;
+        }
+        showStep2();
         break;
       case 3:
         stepText = "3";
+        if(_provider.getLineColorBox(0, 3, "up") > 0 && _provider.getLineColorBox(0, 3, "right") > 0 && _provider.getLineColorBox(2, 2, "down") > 0 && _provider.getLineColorBox(2, 2, "right") > 0) {
+          progressStep++;
+        }
+        showStep3();
+        break;
+      case 4:
+        stepText = "4";
+        if(_provider.getLineColorBox(1, 3, "down") > 0 && _provider.getLineColorBox(1, 3, "right") > 0) {
+          progressStep++;
+        }
+        showStep4();
+        break;
+      //condition of end
+      case 5:
+        stepText = "5";
+        showStepEnd();
+        _timer?.cancel();
         break;
     }
 
@@ -204,13 +233,27 @@ class HowToPlayState extends State<HowToPlay> {
     );
 
     if(!right) {
-      await rollback(row, col, pos);
+      //0이 아닌 다른 색으로 rollback
+      bool found = false;
+      for(int i = 0; i < progressStep && !found; i++) {
+        found = step[i].any(
+                (element) => element[0] == row && element[1] == col && element[2] == pos
+        );
+      }
+
+      await rollback(row, col, pos, found ? lineColor : 0);
+    }
+    else {
+      if(lineColor == 0) {
+        lineColor = _provider.getLineColorBox(row, col, pos);
+      }
+      _provider.findBlockEnableDisable(row, col, pos, enable: true, isMax: true);
     }
   }
 
   ///updateSquareBox()에서 콜백으로 등록하여 잘못된 라인 클릭 시 롤백
-  Future<void> rollback(int row, int col, String pos) async {
-    _provider.setLineColorBox(row, col, pos, 0);
+  Future<void> rollback(int row, int col, String pos, int color) async {
+    _provider.setLineColorBox(row, col, pos, color);
     _provider.findBlockEnableDisable(row, col, pos, enable: true, isMax: true);
   }
 
@@ -236,7 +279,6 @@ class HowToPlayState extends State<HowToPlay> {
         break;
     }
   }
-
   void showStep1() {
     _provider.setBoxColor(1, 1, 0);
     _provider.setBoxColor(0, 1, 1);
@@ -267,6 +309,71 @@ class HowToPlayState extends State<HowToPlay> {
         _provider.setLineColorBox(2, 1, "down", isOn ? -3 : 0);
         break;
     }
+  }
+  void showStep2() {
+    _provider.setBoxColor(0, 1, 0);
+    _provider.setBoxColor(2, 1, 0);
+    _provider.setBoxColor(0, 2, 1);
+
+    switch(_provider.getLineColorBox(0, 2, "up")) {
+      case 0:
+      case -3:
+        _provider.setLineColorBox(0, 2, "up", isOn ? -3 : 0);
+        break;
+    }
+  }
+  void showStep3() {
+    _provider.setBoxColor(0, 2, 0);
+    _provider.setBoxColor(0, 3, 1);
+    _provider.setBoxColor(2, 2, 1);
+
+    switch(_provider.getLineColorBox(0, 3, "up")) {
+      case 0:
+      case -3:
+        _provider.setLineColorBox(0, 3, "up", isOn ? -3 : 0);
+        break;
+    }
+    switch(_provider.getLineColorBox(0, 3, "right")) {
+      case 0:
+      case -3:
+        _provider.setLineColorBox(0, 3, "right", isOn ? -3 : 0);
+        break;
+    }
+    switch(_provider.getLineColorBox(2, 2, "down")) {
+      case 0:
+      case -3:
+        _provider.setLineColorBox(2, 2, "down", isOn ? -3 : 0);
+        break;
+    }
+    switch(_provider.getLineColorBox(2, 2, "right")) {
+      case 0:
+      case -3:
+        _provider.setLineColorBox(2, 2, "right", isOn ? -3 : 0);
+        break;
+    }
+  }
+  void showStep4() {
+    _provider.setBoxColor(0, 3, 0);
+    _provider.setBoxColor(2, 2, 0);
+    _provider.setBoxColor(1, 3, 1);
+    _provider.setBoxColor(2, 3, 1);
+
+    switch(_provider.getLineColorBox(1, 3, "down")) {
+      case 0:
+      case -3:
+        _provider.setLineColorBox(1, 3, "down", isOn ? -3 : 0);
+        break;
+    }
+    switch(_provider.getLineColorBox(1, 3, "right")) {
+      case 0:
+      case -3:
+        _provider.setLineColorBox(1, 3, "right", isOn ? -3 : 0);
+        break;
+    }
+  }
+  void showStepEnd() {
+    _provider.setBoxColor(1, 3, 0);
+    _provider.setBoxColor(2, 3, 0);
   }
 }
 
