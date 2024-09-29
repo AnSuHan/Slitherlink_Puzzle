@@ -935,10 +935,8 @@ class SquareProvider with ChangeNotifier {
     submit = await readSquare.readSubmit(puzzle);
     notifyListeners();
     await setDo();
-    if(callback == null) {
-      await findBlockEnableDisable(
-          row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
-    }
+    await findBlockEnableDisable(
+        row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
     notifyListeners();
     while(_isUpdating != 3) {
       await Future.delayed(const Duration(milliseconds: 50));
@@ -2085,6 +2083,9 @@ class SquareProvider with ChangeNotifier {
   ///**********************************************************************************
   ///row, column은 puzzle 기준
   ///lineValue가 1이상 이면 disable = true, 0이하 이면 enable = true
+  ///
+  ///TODO : howToPlay에서는 문제 없지만, release에서는 계산량이 너무 많아 시간이 오래 걸린다 (계산은 정상적으로 진행됨)
+  ///TODO : 계산량을 줄이는 방법을 howToPlay 브랜치 merge 이후 모색할 예정
   Future<void> findBlockEnableDisable(
       int row, int column, String pos,
       {bool enable = false, bool disable = false, bool isMax = false}
@@ -2583,15 +2584,17 @@ class SquareProvider with ChangeNotifier {
               isValid = false;
             }
             //positive condition
-            else if(puzzle[row - 1][col].right > 0 &&
-                puzzle[row - 1][col].down > 0 &&
-                (col + 1 >= puzzle[row].length || puzzle[row - 1][col + 1].down > 0)
-                || (puzzle[row][col].down > 0 &&
-                    (
-                        (col + 1 < puzzle[row].length && row + 1 < puzzle.length && (puzzle[row + 1][col].right > 0 || puzzle[row][col + 1].down > 0)) ||
-                        (col + 1 >= puzzle[row].length && row + 1 < puzzle.length && puzzle[row + 1][col].right > 0) ||
-                        (col + 1 < puzzle[row].length && row + 1 >= puzzle.length && puzzle[row][col + 1].down > 0)
-                    ))
+            else if(
+                ((puzzle[row - 1][col].right > 0 ? 1 : 0) +
+                (puzzle[row - 1][col].down > 0 ? 1 : 0) +
+                ((col + 1 < puzzle[row].length && puzzle[row - 1][col + 1].down > 0) ? 1 : 0)) >= 2
+                ||
+                (
+                  (col + 1 < puzzle[row].length && row + 1 < puzzle.length && (puzzle[row][col].down > 0 ? 1 : 0 + puzzle[row + 1][col].right > 0 ? 1 : 0 + puzzle[row][col + 1].down > 0 ? 1 : 0) >= 2) ||
+                  (col + 1 >= puzzle[row].length && row + 1 < puzzle.length && (puzzle[row][col].down > 0 && puzzle[row + 1][col].right > 0)) ||
+                  (col + 1 < puzzle[row].length && row + 1 >= puzzle.length && (puzzle[row][col].down > 0 && puzzle[row][col + 1].down > 0))
+                  //col + 1 >= puzzle[row].length && row + 1 >= puzzle.length 조건은 positive에서 체크하지 않음
+                )
             ) {
               puzzle[row][col].right = -1;
               isValid = false;
@@ -2604,9 +2607,9 @@ class SquareProvider with ChangeNotifier {
           case "down":
             //negative condition
             if((inValid.contains(puzzle[row][col - 1].right) && inValid.contains(puzzle[row][col - 1].down) && inValid.contains(puzzle[row + 1][col - 1].right))
-                || ((inValid.contains(puzzle[row][col].right) ? 1 : 0) +
-                    (inValid.contains(puzzle[row + 1][col].right) ? 1 : 0) +
-                    ((col + 1 >= puzzle[row].length) || (inValid.contains(puzzle[row][col + 1].down)) ? 1 : 0) >= 2)
+                || (inValid.contains(puzzle[row][col].right) &&
+                    inValid.contains(puzzle[row + 1][col].right) &&
+                    (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row][col + 1].down)))
             ) {
               puzzle[row][col].down = -1;
               isValid = false;
@@ -2638,7 +2641,7 @@ class SquareProvider with ChangeNotifier {
             else if((puzzle[row][col].up > 0 && (col + 1 < puzzle[row].length && puzzle[row][col + 1].up > 0))
                 || ((puzzle[row][col].down > 0 ? 1 : 0) +
                     (puzzle[row + 1][col].right > 0 ? 1 : 0) +
-                    ((col + 1 >= puzzle[row].length || puzzle[row][col + 1].down > 0) ? 1 : 0) >= 2)
+                    ((col + 1 < puzzle[row].length && puzzle[row][col + 1].down > 0) ? 1 : 0) >= 2)
             ) {
               puzzle[row][col].right = -1;
               isValid = false;
@@ -2678,7 +2681,7 @@ class SquareProvider with ChangeNotifier {
             else if((row + 1 < puzzle.length && puzzle[row][col].left > 0 && puzzle[row + 1][col].left > 0)
                 || ((puzzle[row][col].right > 0 ? 1 : 0 +
                     puzzle[row][col + 1].down > 0 ? 1 : 0 +
-                    (row + 1 >= puzzle.length || puzzle[row + 1][col].right > 0 ? 1 : 0)) >= 2)
+                    (row + 1 < puzzle.length && puzzle[row + 1][col].right > 0 ? 1 : 0)) >= 2)
             ) {
               puzzle[row][col].down = -1;
               isValid = false;
@@ -2709,7 +2712,8 @@ class SquareProvider with ChangeNotifier {
             //negative condition
             if((inValid.contains(puzzle[row - 1][col].left) && inValid.contains(puzzle[row - 1][col].down))
               || (inValid.contains(puzzle[row][col].down)
-                  && (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].left)))
+                  && (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].left))
+                )
             ) {
               puzzle[row][col].left = -1;
               isValid = false;
