@@ -115,11 +115,11 @@ class HowToPlayState extends State<HowToPlay> {
                           Column(
                             children: [
                               SizedBox(
-                                height: screenSize.height * 0.2,
+                                height: screenSize.height * 0.05,
                               ),
                               ..._provider.getSquareField().map((widget) => Padding(
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: screenSize.width * 0.2,
+                                  horizontal: screenSize.width * 0.05,
                                 ),
                                 child: Container(
                                   color: ThemeColor().getColor()["background"],
@@ -127,9 +127,26 @@ class HowToPlayState extends State<HowToPlay> {
                                 )),
                               ),
                               SizedBox(
+                                height: screenSize.height * 0.1,
+                              ),
+                              Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: screenSize.width * 0.05,
+                                ),
+                                child: Text(
+                                  stepText,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                  ),
+                                  textAlign: TextAlign.start,
+                                  softWrap: true,
+                                  maxLines: null,
+                                  overflow: TextOverflow.visible,
+                                ),
+                              ),
+                              SizedBox(
                                 height: screenSize.height * 0.2,
                               ),
-                              Text(stepText),
                             ],
                           )
                         ]
@@ -225,6 +242,8 @@ class HowToPlayState extends State<HowToPlay> {
     }
 
     isOn = !isOn;
+    stepText = AppLocalizations.of(context)!.translate("howToPlay_Step$progressStep");
+    setState(() {});
   }
 
   Future<void> checkStep(int row, int col, String pos) async {

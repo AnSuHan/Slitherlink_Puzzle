@@ -54,5 +54,11 @@
   "clear" : "clear",
   "red": "red",
   "blue": "blue",
-  "green": "green"
+  "green": "green",
+  "howToPlay_Step0": "First, click on the shining lines around the colored boxes to color in the number of lines indicated on each box. However, the left line is not the correct answer because the box on the left has a '0', meaning all lines of that box cannot be colored. Therefore, since the colored box has a '3' on it, click on the remaining lines to ensure all 3 lines are colored!",
+  "howToPlay_Step1": "Step 2: Now, take a look at the colored boxes. Each box has one inactive line and already colored lines. The box marked '3' must have a total of 3 colored lines, so color in the remaining two lines to match the number!",
+  "howToPlay_Step2": "Step 3: Next, you need to check the direction that the colored boxes should connect to. Since you need to continue the left line, please click on the upper line!",
+  "howToPlay_Step3": "Step 4: Now, you need to follow the lines you've already clicked. Each box has two lines remaining, so click on the remaining lines to complete the connection.",
+  "howToPlay_Step4": "Step 5: This is the final step! Click on the remaining lines in the two colored boxes and create one large cycle to solve the puzzle.",
+  "howToPlay_Step5": "Congratulations! You have completed the tutorial."
 }
