@@ -3,6 +3,7 @@ import 'dart:async';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:slitherlink_project/l10n/app_localizations.dart';
 
@@ -22,6 +23,7 @@ class HowToPlay extends StatefulWidget {
 
 class HowToPlayState extends State<HowToPlay> {
   late PageController controller;
+  final FocusNode _focusNode = FocusNode();
 
   //provider for using setState in other class
   late SquareProvider _provider;
@@ -63,6 +65,7 @@ class HowToPlayState extends State<HowToPlay> {
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       showStep();
     });
+    _focusNode.requestFocus();
   }
 
   void loadPuzzle() async {
@@ -84,112 +87,125 @@ class HowToPlayState extends State<HowToPlay> {
   void dispose() {
     controller.dispose();
     _timer?.cancel();
+    _focusNode.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (context) => _provider,
-      child : Consumer<SquareProvider>(
-          builder: (context, provider, child) {
-            _provider = provider;
-            screenSize = MediaQuery.of(context).size;
+    return RawKeyboardListener(
+      focusNode: _focusNode,
+      onKey: (event) {
+        if(event is RawKeyDownEvent) {
+          if(UserInfo.debugMode["use_KeyInput"]!) {
+            if(event.logicalKey == LogicalKeyboardKey.keyW) {
+              _provider.printSubmit();
+            }
+          }
+        }
+      },
+      child: ChangeNotifierProvider(
+        create: (context) => _provider,
+        child : Consumer<SquareProvider>(
+            builder: (context, provider, child) {
+              _provider = provider;
+              screenSize = MediaQuery.of(context).size;
 
-            return Scaffold(
-              appBar: AppBar(
-                leading: IconButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                  },
-                  icon: const Icon(Icons.keyboard_backspace),
+              return Scaffold(
+                appBar: AppBar(
+                  leading: IconButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    icon: const Icon(Icons.keyboard_backspace),
+                  ),
+                  title: Text(AppLocalizations.of(context)!.translate("MainUI_menuHowToPlay")),
+                  centerTitle: true,
                 ),
-                title: Text(AppLocalizations.of(context)!.translate("MainUI_menuHowToPlay")),
-                centerTitle: true,
-              ),
-              body: Column(
-                  children: UserInfo.debugMode["howToPlay_followSteps"]!
-                      //show interactive howToPlay
-                      ? _provider.getSquareField().isNotEmpty
+                body: Column(
+                    children: UserInfo.debugMode["howToPlay_followSteps"]!
+                    //show interactive howToPlay
+                        ? _provider.getSquareField().isNotEmpty
                         ? [
-                          Column(
-                            children: [
-                              SizedBox(
-                                height: screenSize.height * 0.05,
-                              ),
-                              ..._provider.getSquareField().map((widget) => Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: screenSize.width * 0.05,
-                                ),
-                                child: Container(
-                                  color: ThemeColor().getColor()["background"],
-                                  child: widget,
-                                )),
-                              ),
-                              SizedBox(
-                                height: screenSize.height * 0.1,
-                              ),
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: screenSize.width * 0.05,
-                                ),
-                                child: Text(
-                                  stepText,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                  ),
-                                  textAlign: TextAlign.start,
-                                  softWrap: true,
-                                  maxLines: null,
-                                  overflow: TextOverflow.visible,
-                                ),
-                              ),
-                              SizedBox(
-                                height: screenSize.height * 0.2,
-                              ),
-                            ],
-                          )
-                        ]
-                      //loading
-                      : [
-                        Expanded(
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                            children: const [CircularProgressIndicator()],
+                      Column(
+                        children: [
+                          SizedBox(
+                            height: screenSize.height * 0.05,
                           ),
-                        ),
-                      ]
-                      : [
-                        Expanded(
-                          child: ScrollConfiguration(
-                            behavior: AllowAllInputScrollBehavior(),
-                            child: PageView(
-                              scrollDirection: Axis.horizontal,
-                              controller: controller,
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              dragStartBehavior: DragStartBehavior.start,
-
-                              children: [
-                                Container(
-                                  margin: EdgeInsets.all(20),
-                                  color: Colors.red,
-                                ),
-                                Container(
-                                  margin: EdgeInsets.all(20),
-                                  color: Colors.green,
-                                ),
-                                Container(
-                                  margin: EdgeInsets.all(20),
-                                  color: Colors.blue,
-                                ),
-                              ],
+                          ..._provider.getSquareField().map((widget) => Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenSize.width * 0.05,
+                              ),
+                              child: Container(
+                                color: ThemeColor().getColor()["background"],
+                                child: widget,
+                              )),
+                          ),
+                          SizedBox(
+                            height: screenSize.height * 0.1,
+                          ),
+                          Padding(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: screenSize.width * 0.05,
+                            ),
+                            child: Text(
+                              stepText,
+                              style: const TextStyle(
+                                fontSize: 16,
+                              ),
+                              textAlign: TextAlign.start,
+                              softWrap: true,
+                              maxLines: null,
+                              overflow: TextOverflow.visible,
                             ),
                           ),
-                        ),]
-              ),
-            );
-          }
+                          SizedBox(
+                            height: screenSize.height * 0.2,
+                          ),
+                        ],
+                      )
+                    ]
+                    //loading
+                        : [
+                      Expanded(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: const [CircularProgressIndicator()],
+                        ),
+                      ),
+                    ]
+                        : [
+                      Expanded(
+                        child: ScrollConfiguration(
+                          behavior: AllowAllInputScrollBehavior(),
+                          child: PageView(
+                            scrollDirection: Axis.horizontal,
+                            controller: controller,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            dragStartBehavior: DragStartBehavior.start,
+
+                            children: [
+                              Container(
+                                margin: const EdgeInsets.all(20),
+                                color: Colors.red,
+                              ),
+                              Container(
+                                margin: const EdgeInsets.all(20),
+                                color: Colors.green,
+                              ),
+                              Container(
+                                margin: const EdgeInsets.all(20),
+                                color: Colors.blue,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),]
+                ),
+              );
+            }
+        ),
       ),
     );
   }

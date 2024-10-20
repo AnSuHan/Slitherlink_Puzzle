@@ -762,6 +762,8 @@ class SquareProvider with ChangeNotifier {
 
   void printSubmit() {
     String temp = "";
+    // ignore: avoid_print
+    print("");
     for(int i = 0 ; i < submit.length ; i++) {
       for(int j = 0 ; j < submit[i].length ; j++) {
         temp += "${submit[i][j]} ";
@@ -788,7 +790,7 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  ///TODO : howToPlay에서는 정상적으로 동작하나, release에서는 비정상 동작함
+  ///TODO : 계산량이 너무 많아 정상적으로 사용하는 것이 불가하다
   ///**********************************************************************************
   ///**********************************************************************************
   ///****************************** about color ******************************
@@ -813,7 +815,6 @@ class SquareProvider with ChangeNotifier {
       // ignore: avoid_print
       print("update updateSquareBox : $_isUpdating");
     }
-
     Set<int> nearColor = {};
     int lineValue = 0; //new line's value
     String pos = "";
@@ -911,8 +912,10 @@ class SquareProvider with ChangeNotifier {
           puzzle[row][column].left = lineValue;
           oldList = getOldColorList(row, column, "left", lineValue);
         }
+        ///TODO : 특정 라인에서 색 변경이 정상적이지 못 함
 
-        //print("\n★★★★★ oldList : $oldList\n");
+        // ignore: avoid_print
+        print("★★★★★ oldList : $oldList");
 
         //change old list to new color
         for(int i = 0 ; i < oldList.length ; i++) {
@@ -939,7 +942,9 @@ class SquareProvider with ChangeNotifier {
         row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
     notifyListeners();
     while(_isUpdating != 3) {
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future.delayed(const        // ignore: avoid_print
+        // ignore: avoid_print
+ Duration(milliseconds: 50));
       // ignore: avoid_print
       print("_isUpdating $_isUpdating");
     }
