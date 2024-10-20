@@ -20,19 +20,22 @@ class Answer {
       if(showCycle) {
         checkDuplicateAll();
         checkCycleSquareAll();
+        checkCycleSquareTest();
       }
     });
   }
 
   List<List<List<bool>>> squareSmallAnswer = [];
+  List<List<List<bool>>> squareSmallTestAnswer = [];
 
   Future<void> initPuzzleAll() async {
     List<String> type = ["square"];
     List<String> size = ["small"];
+    bool loadTest = UserInfo.debugMode["loadTestAnswer"]!;
 
     for(int i = 0 ; i < type.length ; i++) {
       for(int j = 0 ; j < size.length ; j++) {
-        await initPuzzle(type[i], size[i]);
+        loadTest ? await initTestPuzzle(type[i], size[i]) : await initPuzzle(type[i], size[i]);
       }
     }
   }
@@ -63,6 +66,40 @@ class Answer {
     });
   }
 
+  //for using test answer
+  Future<void> initTestPuzzle(String type, String size) async {
+    String filename = "lib/Answer/";
+    switch(type) {
+      case "square":
+        switch(size) {
+          case "small":
+            filename += "Square_small.json";
+            break;
+        }
+        break;
+    }
+
+    String jsonString = await rootBundle.loadString(filename);
+    Map<String, dynamic> jsonData = jsonDecode(jsonString);
+
+    jsonData.forEach((key, value) {
+      if (!key.endsWith("_test")) {
+        // 데이터 변환: 1 -> true, 0 -> false
+        List<List<bool>> convertedList = (value as List)
+            .map((list) => (list as List)
+            .map((item) => item == 1 ? true : false).toList()).toList();
+        squareSmallAnswer.add(convertedList);
+      }
+      else {
+        // 데이터 변환: 1 -> true, 0 -> false
+        List<List<bool>> convertedList = (value as List)
+            .map((list) => (list as List)
+            .map((item) => item == 1 ? true : false).toList()).toList();
+        squareSmallTestAnswer.add(convertedList);
+      }
+    });
+  }
+
   void checkCycleSquareAll() {
     List<String> size = ["small"];
     List<List<List<bool>>> squareAnswer = [];
@@ -83,6 +120,19 @@ class Answer {
       // ignore: avoid_print
       print("check square_${size[i]} Cycle : $squareCycle");
     }
+  }
+
+  void checkCycleSquareTest() {
+    List<List<List<bool>>> testAnswer = squareSmallTestAnswer.map((list2D) => list2D.map((list1D) => List<bool>.from(list1D)).toList()).toList();
+    List<bool> squareCycle = [];
+
+    //check cycle
+    int index;  //each puzzle
+    for(index = 0 ; index < testAnswer.length ; index++) {
+      squareCycle.add(checkCycleSquare(testAnswer[index]));
+    }
+    // ignore: avoid_print
+    print("check square_test Cycle : $squareCycle");
   }
 
   bool checkCycleSquare(List<List<bool>> squareAnswer) {
@@ -226,6 +276,11 @@ class Answer {
       return squareSmallAnswer[index];
     }
     return [];
+  }
+
+  Future<List<List<bool>>> getTestSquare() async {
+    await _waitForInitialization();
+    return squareSmallTestAnswer[1];
   }
 
   Future<void> _waitForInitialization() async {

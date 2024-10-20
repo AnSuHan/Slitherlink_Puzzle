@@ -1,6 +1,7 @@
 // ignore_for_file: file_names
 import 'dart:math';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
@@ -17,13 +18,13 @@ class SquareProvider with ChangeNotifier {
   late BuildContext context;
   final String loadKey;
 
-  final GameStateSquare gameStateSquare;
+  final GameStateSquare? gameStateSquare;   //gameStateSquare == null => this is HowToPlay mode
   bool shutdown = false;  //showdialog에서 ok를 눌러 GameSceneSquare을 닫아야 하는 경우
 
   SquareProvider({
     this.isContinue = false,
     required this.context,
-    required this.gameStateSquare,
+    this.gameStateSquare,
     required this.loadKey,
   }) {
     readSquare = ReadSquare(squareProvider: this, context: context);
@@ -40,7 +41,7 @@ class SquareProvider with ChangeNotifier {
   bool isContinue = false;
 
   ///Init
-  void init() async {
+  Future<void> init() async {
     //setting field
     puzzle = initSquarePuzzle(answer[0].length, answer.length ~/ 2);
     squareField = await buildSquarePuzzleAnswer(answer, isContinue: isContinue);
@@ -86,7 +87,7 @@ class SquareProvider with ChangeNotifier {
         item = items.first;
       }
       //print("hint item : $item");
-      gameStateSquare.moveTo(gameStateSquare.getHintPos(item), 1.6);
+      //gameStateSquare.moveTo(gameStateSquare.getHintPos(item), 1.6);
 
       setLineColorBox(
           int.parse(item[0].toString()),
@@ -98,6 +99,14 @@ class SquareProvider with ChangeNotifier {
   }
 
   Future<void> removeHintLine() async {
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      // ignore: avoid_print
+      print("call removeHintLine : $_isUpdating");
+    }
+    //howToPlay에서는 힌트 라인을 지우지 않음
+    if(gameStateSquare == null) {
+      return;
+    }
     while(_isUpdating != 0) {
       Future.delayed(const Duration(milliseconds: 50));
       //print("wait in check : $_isUpdating");
@@ -121,10 +130,14 @@ class SquareProvider with ChangeNotifier {
     return [answer.length, answer[0].length];
   }
 
-  ///메소드에서 필요할 때마다 호출
+  ///메소드에서 필요할 때마다 호출 (_isUpdating가 0 또는 2인 경우에만 진행 가능)
   ///
   ///(updateSquareBox에서 호출하지 않음)
   Future<void> refreshSubmit() async {
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      // ignore: avoid_print
+      print("call refreshSubmit : $_isUpdating");
+    }
     //0이거나 2일 때만 통과
     while(_isUpdating != 0 && _isUpdating != 2) {
       await Future.delayed(const Duration(milliseconds: 50));
@@ -157,6 +170,37 @@ class SquareProvider with ChangeNotifier {
     }
     refreshSubmit();
     notifyListeners();
+  }
+
+  int getLineColorBox(int row, int column, String dir) {
+    int value = 0;
+
+    switch(dir) {
+      case "up":
+        value = puzzle[row][column].up;
+        break;
+      case "down":
+        value = puzzle[row][column].down;
+        break;
+      case "left":
+        value = puzzle[row][column].left;
+        break;
+      case "right":
+        value = puzzle[row][column].right;
+        break;
+    }
+    return value;
+  }
+
+  ///color => 0 : normal, 1 : highLight
+  void setBoxColor(int row, int column, int color) {
+    puzzle[row][column].boxColor = color;
+    refreshSubmit();
+    notifyListeners();
+  }
+
+  int getBoxColor(int row, int column) {
+    return puzzle[row][column].boxColor;
   }
 
   ///submit 기준으로 동작하는 함수
@@ -391,7 +435,10 @@ class SquareProvider with ChangeNotifier {
   }
 
   Future<void> showComplete(BuildContext context) async {
-    gameStateSquare.isComplete = true;
+    //for handling HowToPlay
+    if (gameStateSquare != null) {
+      gameStateSquare!.isComplete = true;
+    }
     UserInfo.clearPuzzle(loadKey);
 
     //delete sharedPreference key about label
@@ -602,10 +649,18 @@ class SquareProvider with ChangeNotifier {
   }
 
   Future<void> setDo() async {
-    while(_isUpdating != 2) {
+    if(UserInfo.debugMode["print_isUpdating"]! || UserInfo.debugMode["print_methodName"]!) {
+      // ignore: avoid_print
+      print("call setDo : $_isUpdating");
+    }
+    while(_isUpdating != 1) {
       await Future.delayed(const Duration(milliseconds: 50));
     }
-    _isUpdating = 3;
+    _isUpdating = 2;
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      // ignore: avoid_print
+      print("update setDo : $_isUpdating");
+    }
 
     submit = await readSquare.readSubmit(puzzle);
     List<List<int>> lineData = submit.map((row) => List<int>.from(row)).toList();
@@ -622,7 +677,11 @@ class SquareProvider with ChangeNotifier {
       doIndex++;
       doPointer++;
     }
-    _isUpdating = 0;
+    _isUpdating = 3;
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      // ignore: avoid_print
+      print("update setDo : $_isUpdating");
+    }
   }
 
   Future<void> undo() async {
@@ -703,6 +762,8 @@ class SquareProvider with ChangeNotifier {
 
   void printSubmit() {
     String temp = "";
+    // ignore: avoid_print
+    print("");
     for(int i = 0 ; i < submit.length ; i++) {
       for(int j = 0 ; j < submit[i].length ; j++) {
         temp += "${submit[i][j]} ";
@@ -729,35 +790,52 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
   }
 
-
+  ///TODO : 계산량이 너무 많아 정상적으로 사용하는 것이 불가하다
   ///**********************************************************************************
   ///**********************************************************************************
   ///****************************** about color ******************************
   ///**********************************************************************************
   ///**********************************************************************************
   ///update `puzzle` variable
-  Future<void> updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right}) async {
-    await removeHintLine();
+  Future<void> updateSquareBox(int row, int column, {int? up, int? down, int? left, int? right, Future<void> Function(int, int, String)? callback}) async {
+    if(UserInfo.debugMode["print_isUpdating"]! || UserInfo.debugMode["print_methodName"]!) {
+      // ignore: avoid_print
+      print("==============================");
+      // ignore: avoid_print
+      print("call updateSquareBox : $_isUpdating");
+    }
     while(_isUpdating != 0) {
       await Future.delayed(const Duration(milliseconds: 50));
+      // ignore: avoid_print
+      print("_isUpdating $_isUpdating");
     }
+    await removeHintLine();
     _isUpdating = 1;
-
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      // ignore: avoid_print
+      print("update updateSquareBox : $_isUpdating");
+    }
     Set<int> nearColor = {};
     int lineValue = 0; //new line's value
+    String pos = "";
+    //print("up $up down $down left $left right $right");
 
     if (down != null) {
       nearColor = getNearColor(row, column, "down");
       lineValue = down;
+      pos = "down";
     } else if (right != null) {
       nearColor = getNearColor(row, column, "right");
       lineValue = right;
+      pos = "right";
     } else if (up != null) {
       nearColor = getNearColor(row, column, "up");
       lineValue = up;
+      pos = "up";
     } else if (left != null) {
       nearColor = getNearColor(row, column, "left");
       lineValue = left;
+      pos = "left";
     }
     //print("nearColor : $nearColor, lineValue : $lineValue");
 
@@ -813,50 +891,69 @@ class SquareProvider with ChangeNotifier {
         else if (left != null) {
           puzzle[row][column].left = lineValue;
         }
-        //print("set $row, $column, $lineValue");
-
-        _isUpdating = 2;
-        await refreshSubmit();
-        notifyListeners();
-        await setDo();
-        return;
       }
 
-      //print("standard color is $lineValue");
-      //1개 이상의 라인 색을 변경해야 하는 경우
-      if (down != null) {
-        puzzle[row][column].down = lineValue;
-        oldList = getOldColorList(row, column, "down", lineValue);
-      }
-      else if (right != null) {
-        puzzle[row][column].right = lineValue;
-        oldList = getOldColorList(row, column, "right", lineValue);
-      }
-      else if (up != null) {
-        puzzle[row][column].up = lineValue;
-        oldList = getOldColorList(row, column, "up", lineValue);
-      }
-      else if (left != null) {
-        puzzle[row][column].left = lineValue;
-        oldList = getOldColorList(row, column, "left", lineValue);
-      }
+      if(_isUpdating == 1) {
+        //print("standard color is $lineValue");
+        //1개 이상의 라인 색을 변경해야 하는 경우
+        if (down != null) {
+          puzzle[row][column].down = lineValue;
+          oldList = getOldColorList(row, column, "down", lineValue);
+        }
+        else if (right != null) {
+          puzzle[row][column].right = lineValue;
+          oldList = getOldColorList(row, column, "right", lineValue);
+        }
+        else if (up != null) {
+          puzzle[row][column].up = lineValue;
+          oldList = getOldColorList(row, column, "up", lineValue);
+        }
+        else if (left != null) {
+          puzzle[row][column].left = lineValue;
+          oldList = getOldColorList(row, column, "left", lineValue);
+        }
+        ///TODO : 특정 라인에서 색 변경이 정상적이지 못 함
 
-      //print("\n★★★★★ oldList : $oldList\n");
+        // ignore: avoid_print
+        print("★★★★★ oldList : $oldList");
 
-      //change old list to new color
-      for(int i = 0 ; i < oldList.length ; i++) {
-        int oldRow = int.parse(oldList[i][0].toString());
-        int oldColumn = int.parse(oldList[i][1].toString());
-        String pos = oldList[i][2].toString();
+        //change old list to new color
+        for(int i = 0 ; i < oldList.length ; i++) {
+          int oldRow = int.parse(oldList[i][0].toString());
+          int oldColumn = int.parse(oldList[i][1].toString());
+          String pos = oldList[i][2].toString();
 
-        setLineColorBox(oldRow, oldColumn, pos, lineValue);
-        //print("set [$oldRow, $oldColumn, $pos, $lineValue]");
+          setLineColorBox(oldRow, oldColumn, pos, lineValue);
+          //print("set [$oldRow, $oldColumn, $pos, $lineValue]");
+        }
       }
     }
 
-    _isUpdating = 2;
+    //HowToPlay에서 step을 벗어나는 경우 처리
+    if(callback != null) {
+      //check condition -> if it is wrong, rollback
+      await callback(row, column, pos);
+    }
+
+    submit = await readSquare.readSubmit(puzzle);
     notifyListeners();
     await setDo();
+    await findBlockEnableDisable(
+        row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
+    notifyListeners();
+    while(_isUpdating != 3) {
+      await Future.delayed(const        // ignore: avoid_print
+        // ignore: avoid_print
+ Duration(milliseconds: 50));
+      // ignore: avoid_print
+      print("_isUpdating $_isUpdating");
+    }
+    _isUpdating = 0;
+
+    if(UserInfo.debugMode["print_isUpdating"]!) {
+      // ignore: avoid_print
+      print("update updateSquareBox : $_isUpdating");
+    }
   }
 
   ///SquareBoxProvider List's index
@@ -1012,181 +1109,180 @@ class SquareProvider with ChangeNotifier {
     //[row, col, pos]
     ///rtValue는 값을 now로 변경해야 할 목록
     List<dynamic> rtValue = [];
-    int normal = 0;
 
     //same as getNearColor except for comparing color
     if(row != 0 && col != 0) {
       switch(pos) {
         case "down":
         //use.add(puzzle[row][col - 1].down);
-          if(puzzle[row][col - 1].down != normal && puzzle[row][col - 1].down != now) {
+          if(puzzle[row][col - 1].down > 0 && puzzle[row][col - 1].down != now) {
             rtValue.add([row, col - 1, "down"]);
           }
-          if (puzzle[row][col - 1].right != normal && puzzle[row][col - 1].right != now) {
+          if (puzzle[row][col - 1].right > 0 && puzzle[row][col - 1].right != now) {
             rtValue.add([row, col - 1, "right"]);
           }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
+          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
           if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col - 1].right != normal && puzzle[row + 1][col - 1].right != now) {
+            if (puzzle[row + 1][col - 1].right > 0 && puzzle[row + 1][col - 1].right != now) {
               rtValue.add([row + 1, col - 1, "right"]);
             }
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
               rtValue.add([row + 1, col, "right"]);
             }
           }
           if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+            if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
               rtValue.add([row, col + 1, "down"]);
             }
           }
           break;
         case "right":
-          if (puzzle[row - 1][col].right != normal && puzzle[row - 1][col].right != now) {
+          if (puzzle[row - 1][col].right > 0 && puzzle[row - 1][col].right != now) {
             rtValue.add([row - 1, col, "right"]);
           }
-          if (puzzle[row - 1][col].down != normal && puzzle[row - 1][col].down != now) {
+          if (puzzle[row - 1][col].down > 0 && puzzle[row - 1][col].down != now) {
             rtValue.add([row - 1, col, "down"]);
           }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != now) {
+          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
           if (puzzle[row].length > col + 1) {
-            if (puzzle[row - 1][col + 1].down != normal && puzzle[row - 1][col + 1].down != now) {
+            if (puzzle[row - 1][col + 1].down > 0 && puzzle[row - 1][col + 1].down != now) {
               rtValue.add([row - 1, col + 1, "down"]);
             }
-            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+            if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
               rtValue.add([row, col + 1, "down"]);
             }
           }
           if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
               rtValue.add([row + 1, col, "right"]);
             }
           }
           break;
       }
     }
-    else if (col != 0) {
+    else if (row == 0 && col != 0) {
       switch (pos) {
         case "up":
-          if (puzzle[row][col - 1].up != normal && puzzle[row][col - 1].up != now) {
+          if (puzzle[row][col - 1].up > 0 && puzzle[row][col - 1].up != now) {
             rtValue.add([row, col - 1, "up"]);
           }
-          if (puzzle[row][col - 1].right != normal && puzzle[row][col - 1].right != now) {
+          if (puzzle[row][col - 1].right > 0 && puzzle[row][col - 1].right != now) {
             rtValue.add([row, col - 1, "right"]);
           }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
+          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
           if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != now) {
+            if (puzzle[row][col + 1].up > 0 && puzzle[row][col + 1].up != now) {
               rtValue.add([row, col + 1, "up"]);
             }
           }
           break;
         case "down":
-          if (puzzle[row][col - 1].down != normal && puzzle[row][col - 1].down != now) {
+          if (puzzle[row][col - 1].down > 0 && puzzle[row][col - 1].down != now) {
             rtValue.add([row, col - 1, "down"]);
           }
-          if (puzzle[row][col - 1].right != normal && puzzle[row][col - 1].right != now) {
+          if (puzzle[row][col - 1].right > 0 && puzzle[row][col - 1].right != now) {
             rtValue.add([row, col - 1, "right"]);
           }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
+          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
           if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+            if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
               rtValue.add([row, col + 1, "down"]);
             }
           }
           if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col - 1].right != normal && puzzle[row + 1][col - 1].right != now) {
+            if (puzzle[row + 1][col - 1].right > 0 && puzzle[row + 1][col - 1].right != now) {
               rtValue.add([row + 1, col - 1, "right"]);
             }
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
               rtValue.add([row + 1, col, "right"]);
             }
           }
           break;
         case "right":
-          if (puzzle[row][col].up != normal && puzzle[row][col].up != now) {
+          if (puzzle[row][col].up > 0 && puzzle[row][col].up != now) {
             rtValue.add([row, col, "up"]);
           }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != now) {
+          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
           if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != now) {
+            if (puzzle[row][col + 1].up > 0 && puzzle[row][col + 1].up != now) {
               rtValue.add([row, col + 1, "up"]);
             }
-            if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+            if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
               rtValue.add([row, col + 1, "down"]);
             }
           }
           if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
               rtValue.add([row + 1, col, "right"]);
             }
           }
           break;
       }
     }
-    else if (row != 0) {
+    else if (row != 0 && col == 0) {
       switch (pos) {
         case "down":
-          if (puzzle[row][col].left != normal && puzzle[row][col].left != now) {
+          if (puzzle[row][col].left > 0 && puzzle[row][col].left != now) {
             rtValue.add([row, col, "left"]);
           }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
+          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
-          if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != now) {
+          if (puzzle[row + 1][col].left > 0 && puzzle[row + 1][col].left != now) {
             rtValue.add([row + 1, col, "left"]);
           }
-          if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+          if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
             rtValue.add([row + 1, col, "right"]);
           }
-          if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+          if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
             rtValue.add([row, col + 1, "down"]);
           }
           break;
         case "left":
-          if (puzzle[row - 1][col].left != normal && puzzle[row - 1][col].left != now) {
+          if (puzzle[row - 1][col].left > 0 && puzzle[row - 1][col].left != now) {
             rtValue.add([row - 1, col, "left"]);
           }
-          if (puzzle[row - 1][col].down != normal && puzzle[row - 1][col].down != now) {
+          if (puzzle[row - 1][col].down > 0 && puzzle[row - 1][col].down != now) {
             rtValue.add([row - 1, col, "down"]);
           }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != now) {
+          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
           if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != now) {
+            if (puzzle[row + 1][col].left > 0 && puzzle[row + 1][col].left != now) {
               rtValue.add([row + 1, col, "left"]);
             }
           }
           break;
         case "right":
-          if (puzzle[row - 1][col].right != normal && puzzle[row - 1][col].right != now) {
+          if (puzzle[row - 1][col].right > 0 && puzzle[row - 1][col].right != now) {
             rtValue.add([row - 1, col, "right"]);
           }
-          if (puzzle[row - 1][col].down != normal && puzzle[row - 1][col].down != now) {
+          if (puzzle[row - 1][col].down > 0 && puzzle[row - 1][col].down != now) {
             rtValue.add([row - 1, col, "down"]);
           }
-          if (puzzle[row - 1][col + 1].down != normal && puzzle[row - 1][col + 1].down != now) {
+          if (puzzle[row - 1][col + 1].down > 0 && puzzle[row - 1][col + 1].down != now) {
             rtValue.add([row - 1, col + 1, "down"]);
           }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != now) {
+          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
+          if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
+            rtValue.add([row, col + 1, "down"]);
+          }
           if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
               rtValue.add([row + 1, col, "right"]);
-            }
-            if (puzzle[row + 1][col + 1].down != normal && puzzle[row + 1][col + 1].down != now) {
-              rtValue.add([row + 1, col + 1, "down"]);
             }
           }
           break;
@@ -1195,58 +1291,58 @@ class SquareProvider with ChangeNotifier {
     else {
       switch(pos) {
         case "up":
-          if (puzzle[row][col].left != normal && puzzle[row][col].left != now) {
+          if (puzzle[row][col].left > 0 && puzzle[row][col].left != now) {
             rtValue.add([row, col, "left"]);
           }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
+          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
-          if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != now) {
+          if (puzzle[row][col + 1].up > 0 && puzzle[row][col + 1].up != now) {
             rtValue.add([row, col + 1, "up"]);
           }
           break;
         case "down":
-          if (puzzle[row][col].left != normal && puzzle[row][col].left != now) {
+          if (puzzle[row][col].left > 0 && puzzle[row][col].left != now) {
             rtValue.add([row, col, "left"]);
           }
-          if (puzzle[row][col].right != normal && puzzle[row][col].right != now) {
+          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
             rtValue.add([row, col, "right"]);
           }
-          if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != now) {
+          if (puzzle[row + 1][col].left > 0 && puzzle[row + 1][col].left != now) {
             rtValue.add([row + 1, col, "left"]);
           }
-          if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+          if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
             rtValue.add([row + 1, col, "right"]);
           }
-          if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+          if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
             rtValue.add([row, col + 1, "down"]);
           }
           break;
         case "left":
-          if (puzzle[row][col].up != normal && puzzle[row][col].up != now) {
+          if (puzzle[row][col].up > 0 && puzzle[row][col].up != now) {
             rtValue.add([row, col, "up"]);
           }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != now) {
+          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
-          if (puzzle[row + 1][col].left != normal && puzzle[row + 1][col].left != now) {
+          if (puzzle[row + 1][col].left > 0 && puzzle[row + 1][col].left != now) {
             rtValue.add([row + 1, col, "left"]);
           }
           break;
         case "right":
-          if (puzzle[row][col].up != normal && puzzle[row][col].up != now) {
+          if (puzzle[row][col].up > 0 && puzzle[row][col].up != now) {
             rtValue.add([row, col, "up"]);
           }
-          if (puzzle[row][col].down != normal && puzzle[row][col].down != now) {
+          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
             rtValue.add([row, col, "down"]);
           }
-          if (puzzle[row][col + 1].up != normal && puzzle[row][col + 1].up != now) {
+          if (puzzle[row][col + 1].up > 0 && puzzle[row][col + 1].up != now) {
             rtValue.add([row, col + 1, "up"]);
           }
-          if (puzzle[row][col + 1].down != normal && puzzle[row][col + 1].down != now) {
+          if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
             rtValue.add([row, col + 1, "down"]);
           }
-          if (puzzle[row + 1][col].right != normal && puzzle[row + 1][col].right != now) {
+          if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
             rtValue.add([row + 1, col, "right"]);
           }
           break;
@@ -1254,6 +1350,9 @@ class SquareProvider with ChangeNotifier {
     }
 
     //print("end of getOldColorList : $rtValue");
+    if(rtValue.isEmpty) {
+      return [];
+    }
     //return rtValue;
     return getContinueOld(rtValue);
   }
@@ -1568,13 +1667,13 @@ class SquareProvider with ChangeNotifier {
 
       for(j = 0 ; j < width ; j++) {
         if(i == 0 && j == 0) {
-          temp.add(SquareBox(isFirstRow: true, isFirstColumn: true, row: i, column: j,));
+          temp.add(SquareBox(isFirstRow: true, isFirstColumn: true, row: i, column: j, isHowToPlay: gameStateSquare == null,));
         } else if(i == 0) {
-          temp.add(SquareBox(isFirstRow: true, row: i, column: j,));
+          temp.add(SquareBox(isFirstRow: true, row: i, column: j, isHowToPlay: gameStateSquare == null,));
         } else if(j == 0) {
-          temp.add(SquareBox(isFirstColumn: true, row: i, column: j,));
+          temp.add(SquareBox(isFirstColumn: true, row: i, column: j, isHowToPlay: gameStateSquare == null,));
         } else {
-          temp.add(SquareBox(row: i, column: j,));
+          temp.add(SquareBox(row: i, column: j, isHowToPlay: gameStateSquare == null,));
         }
       }
       puzzle.add(temp);
@@ -1773,12 +1872,17 @@ class SquareProvider with ChangeNotifier {
     await setDefaultLineStep2();
   }
 
+  Future<void> setDefaultLineStep2() async {
+    await setDefaultLineStep2Inner();
+    await setDefaultLineStep2Inner();
+  }
+
   ///내부 라인인 경우 상|하|좌|우 중 3개의 -1이 인접하면 해당 라인이 -1
   ///
   ///테두리 라인인 경우 상|하|좌|우 중 2개의 -1이 인접하면 해당 라인이 -1
   ///
   /// 모서리 라인인 경우 상|하|좌|우 중 1~2개의 -1이 인접하면 해당 라인이 -1
-  Future<void> setDefaultLineStep2() async {
+  Future<void> setDefaultLineStep2Inner() async {
     int value = 0;
 
     for (int i = 0; i < puzzle.length; i++) {
@@ -1975,5 +2079,2113 @@ class SquareProvider with ChangeNotifier {
     }
 
     notifyListeners();
+  }
+
+  ///**********************************************************************************
+  ///**********************************************************************************
+  ///************************** change interacted line color **************************
+  ///**********************************************************************************
+  ///**********************************************************************************
+  ///row, column은 puzzle 기준
+  ///lineValue가 1이상 이면 disable = true, 0이하 이면 enable = true
+  ///
+  ///TODO : howToPlay에서는 문제 없지만, release에서는 계산량이 너무 많아 시간이 오래 걸린다 (계산은 정상적으로 진행됨)
+  ///TODO : 계산량을 줄이는 방법을 howToPlay 브랜치 merge 이후 모색할 예정
+  Future<void> findBlockEnableDisable(
+      int row, int column, String pos,
+      {bool enable = false, bool disable = false, bool isMax = false}
+    ) async {
+    //print("clicked box : $row, $column, $pos");
+    //puzzle 기준
+    int rowMin = max(0, min(puzzle.length - 1, row - 1));
+    int rowMax = min(puzzle.length - 1, row + 1);
+    int colMin = max(0, min(puzzle[row].length - 1, column - 1));
+    int colMax = min(puzzle[row].length - 1, column + 1);
+    colMax = min(colMax + 1, puzzle[row].length - 1);
+
+    if(isMax) {
+      rowMin = 0;
+      rowMax = puzzle.length - 1;
+      colMin = 0;
+      colMax = puzzle[row].length - 1;
+    }
+    if(UserInfo.debugMode["print_methodName"]!) {
+      // ignore: avoid_print
+      print("call findBlockEnableDisable($row $column $pos $enable $disable)");
+      // ignore: avoid_print
+      print("row : $rowMin - $rowMax, col : $colMin - $colMax");
+    }
+
+    //await checkCurrentPath();
+
+    for(int i = rowMin ; i <= rowMax ; i++) {
+      for(int j = colMin ; j <= colMax ; j++) {
+        //범위 내 모든 라인을 활성화
+        await setLineEnable(i, j);
+      }
+    }
+
+    await checkCurrentPath();
+    notifyListeners();
+    submit = await readSquare.readSubmit(puzzle);
+    //print("changedList $changedList");
+  }
+
+  ///현재 submit 기준 사용할 수 없는 라인을 -1로 변경
+  Future<void> checkCurrentPath() async {
+    if(UserInfo.debugMode["print_methodName"]!) {
+      // ignore: avoid_print
+      print("call checkCurrentPath");
+    }
+    await checkMaxLine();
+    await checkCurrentPathSet();
+  }
+
+  ///각 박스마다 lineValue가 1이상인 값을 세고, 해당 박스의 num 이상인 경우 남은 0 라인을 -1로 변경
+  Future<void> checkMaxLine() async {
+    if(UserInfo.debugMode["print_methodName"]!) {
+      // ignore: avoid_print
+      print("call checkMaxLine");
+    }
+    int count = 0;
+
+    for (int i = 0; i < puzzle.length; i++) {
+      for (int j = 0; j < puzzle[i].length; j++) {
+        count = 0;
+
+        if(i > 0 && j > 0) {
+          count = [puzzle[i - 1][j].down, puzzle[i][j].down, puzzle[i][j - 1].right, puzzle[i][j].right]
+              .where((value) => value >= 1)
+              .length;
+
+          if(count >= puzzle[i][j].num) {
+            if(puzzle[i - 1][j].down == 0) puzzle[i - 1][j].down = -1;
+            if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
+            if(puzzle[i][j - 1].right == 0) puzzle[i][j - 1].right = -1;
+            if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
+          }
+        }
+        else if(i == 0 && j != 0) {
+          count = [puzzle[i][j].up, puzzle[i][j].down, puzzle[i][j - 1].right, puzzle[i][j].right]
+              .where((value) => value >= 1)
+              .length;
+
+          if(count >= puzzle[i][j].num) {
+            if(puzzle[i][j].up == 0) puzzle[i][j].up = -1;
+            if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
+            if(puzzle[i][j - 1].right == 0) puzzle[i][j - 1].right = -1;
+            if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
+          }
+        }
+        else if(i != 0 && j == 0) {
+          count = [puzzle[i - 1][j].down, puzzle[i][j].down, puzzle[i][j].left, puzzle[i][j].right]
+              .where((value) => value >= 1)
+              .length;
+
+          if(count >= puzzle[i][j].num) {
+            if(puzzle[i - 1][j].down == 0) puzzle[i - 1][j].down = -1;
+            if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
+            if(puzzle[i][j].left == 0) puzzle[i][j].left = -1;
+            if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
+          }
+        }
+        else {
+          //i == 0 && j == 0
+          count = [puzzle[i][j].up, puzzle[i][j].down, puzzle[i][j].left, puzzle[i][j].right]
+              .where((value) => value >= 1)
+              .length;
+
+          if(count >= puzzle[i][j].num) {
+            if(puzzle[i][j].up == 0) puzzle[i][j].up = -1;
+            if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
+            if(puzzle[i][j].left == 0) puzzle[i][j].left = -1;
+            if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
+          }
+        }
+      }
+    }
+
+    notifyListeners();
+    submit = await readSquare.readSubmit(puzzle);
+  }
+
+  ///-1로 설정된 라인들 부터 너비 우선 탐색으로 모든 연관 라인과 조건을 비교
+  ///
+  ///조건이 참이면 -1로 설정 후 set에 추가
+  Future<void> checkCurrentPathSet() async {
+    List<List<dynamic>> minusSet = findMinusOneLine();
+    //print("minusSet $minusSet");
+    List<List<dynamic>> nearSet, needCheckLine = [];
+    int needCheckLength = 0, prevCheckLength = 0;
+
+    do {
+      //save previous length whether needCheckLine list is extended
+      prevCheckLength = needCheckLength;
+
+      nearSet = getMinusNearLine(minusSet);
+      needCheckLine = checkLineValid(nearSet);
+      needCheckLength = needCheckLine.length;
+
+      //prepare next repeat
+      minusSet = needCheckLine;
+    } while (needCheckLength > prevCheckLength);
+  }
+
+  ///lineValue가 -1인 모든 라인을 찾아 반환
+  ///
+  ///puzzle 변수를 직접 조작하지 않음
+  List<List<dynamic>> findMinusOneLine() {
+    List<List<dynamic>> rtValue = [];
+
+    for(int i = 0 ; i < puzzle.length ; i++) {
+      for(int j = 0 ; j < puzzle[i].length ; j++) {
+        if(i != 0 && j != 0) {
+          if(puzzle[i][j].down == -1) {
+            rtValue.add([i, j, "down"]);
+          }
+          if(puzzle[i][j].right == -1) {
+            rtValue.add([i, j, "right"]);
+          }
+        }
+        else if(i != 0 && j == 0) {
+          if(puzzle[i][j].left == -1) {
+            rtValue.add([i, j, "left"]);
+          }
+          if(puzzle[i][j].right == -1) {
+            rtValue.add([i, j, "right"]);
+          }
+          if(puzzle[i][j].down == -1) {
+            rtValue.add([i, j, "down"]);
+          }
+        }
+        else if(i == 0 && j != 0) {
+          if(puzzle[i][j].up == -1) {
+            rtValue.add([i, j, "up"]);
+          }
+          if(puzzle[i][j].down == -1) {
+            rtValue.add([i, j, "down"]);
+          }
+          if(puzzle[i][j].right == -1) {
+            rtValue.add([i, j, "right"]);
+          }
+        }
+        else {
+          if(puzzle[i][j].up == -1) {
+            rtValue.add([i, j, "up"]);
+          }
+          if(puzzle[i][j].down == -1) {
+            rtValue.add([i, j, "down"]);
+          }
+          if(puzzle[i][j].left == -1) {
+            rtValue.add([i, j, "left"]);
+          }
+          if(puzzle[i][j].right == -1) {
+            rtValue.add([i, j, "right"]);
+          }
+        }
+      }
+    }
+
+    return rtValue;
+  }
+
+  ///minusList와 인접한 모든 라인을 반환
+  ///
+  ///puzzle 변수를 직접 조작하지 않음
+  List<List<dynamic>> getMinusNearLine(List<List<dynamic>> minusList) {
+    List<List<dynamic>> rtValue = [];   //중복을 가질 수 있음 //반환 전 중복 처리 필요
+    int row = 0, col = 0;
+    List<int> checkValue = [0];
+
+    //isHowToPlay
+    if(gameStateSquare == null) {
+      checkValue.add(-3);
+    }
+
+    for(int i = 0 ; i < minusList.length ; i++) {
+      row = int.parse(minusList[i][0].toString());
+      col = int.parse(minusList[i][1].toString());
+
+      switch(minusList[i][2].toString()) {
+        case "down":
+          if(row != 0 && col != 0) {
+            if(checkValue.contains(puzzle[row][col - 1].right)) {
+              rtValue.add([row, col - 1, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col - 1].down)) {
+              rtValue.add([row, col - 1, "down"]);
+            }
+            if(checkValue.contains(puzzle[row][col].right)) {
+              rtValue.add([row, col, "right"]);
+            }
+            if(row + 1 < puzzle.length) {
+              if(checkValue.contains(puzzle[row + 1][col - 1].right)) {
+                rtValue.add([row + 1, col - 1, "right"]);
+              }
+              if(checkValue.contains(puzzle[row + 1][col].right)) {
+                rtValue.add([row + 1, col, "right"]);
+              }
+            }
+            if(col + 1 < puzzle[row].length && checkValue.contains(puzzle[row][col + 1].down)) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          else if(row != 0 && col == 0) {
+            if(checkValue.contains(puzzle[row][col].left)) {
+              rtValue.add([row, col, "left"]);
+            }
+            if(checkValue.contains(puzzle[row][col].right)) {
+              rtValue.add([row, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col + 1].down)) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+            if(row + 1 < puzzle.length) {
+              if(checkValue.contains(puzzle[row + 1][col].left)) {
+                rtValue.add([row + 1, col, "left"]);
+              }
+              if(checkValue.contains(puzzle[row + 1][col].right)) {
+                rtValue.add([row + 1, col, "right"]);
+              }
+            }
+          }
+          else if(row == 0 && col != 0) {
+            if(checkValue.contains(puzzle[row][col - 1].right)) {
+              rtValue.add([row, col - 1, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col - 1].down)) {
+              rtValue.add([row, col - 1, "down"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col - 1].right)) {
+              rtValue.add([row + 1, col - 1, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col].right)) {
+              rtValue.add([row, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].right)) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+            if(col + 1 < puzzle[row].length && checkValue.contains(puzzle[row][col + 1].down)) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          else {
+            if(checkValue.contains(puzzle[row][col].left)) {
+              rtValue.add([row, col, "left"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].left)) {
+              rtValue.add([row + 1, col, "left"]);
+            }
+            if(checkValue.contains(puzzle[row][col].right)) {
+              rtValue.add([row, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].right)) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col + 1].down)) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+          }
+          break;
+        case "right":
+          if(row != 0 && col != 0) {
+            if(checkValue.contains(puzzle[row - 1][col].right)) {
+              rtValue.add([row - 1, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row - 1][col].down)) {
+              rtValue.add([row - 1, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row][col].down)) {
+              rtValue.add([row, col, "down"]);
+            }
+            if(col + 1 < puzzle[row].length) {
+              if(checkValue.contains(puzzle[row - 1][col + 1].down)) {
+                rtValue.add([row - 1, col + 1, "down"]);
+              }
+              if(checkValue.contains(puzzle[row][col + 1].down)) {
+                rtValue.add([row, col + 1, "down"]);
+              }
+            }
+            if(row + 1 < puzzle.length) {
+              if(checkValue.contains(puzzle[row + 1][col].right)) {
+                rtValue.add([row + 1, col, "right"]);
+              }
+            }
+          }
+          else if(row == 0 && col != 0) {
+            if(checkValue.contains(puzzle[row][col].up)) {
+              rtValue.add([row, col, "up"]);
+            }
+            if(checkValue.contains(puzzle[row][col].down)) {
+              rtValue.add([row, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].right)) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+            if(col + 1 < puzzle[row].length) {
+              if(checkValue.contains(puzzle[row][col + 1].up)) {
+                rtValue.add([row, col + 1, "up"]);
+              }if(checkValue.contains(puzzle[row][col + 1].down)) {
+                rtValue.add([row, col + 1, "down"]);
+              }
+            }
+          }
+          else if(row != 0 && col == 0) {
+            if(checkValue.contains(puzzle[row - 1][col].right)) {
+              rtValue.add([row - 1, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row - 1][col].down)) {
+              rtValue.add([row - 1, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row - 1][col + 1].down)) {
+              rtValue.add([row - 1, col + 1, "down"]);
+            }
+            if(checkValue.contains(puzzle[row][col].down)) {
+              rtValue.add([row, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row][col + 1].down)) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+            if(row + 1 < puzzle.length && checkValue.contains(puzzle[row + 1][col].right)) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+          }
+          else {
+            if(checkValue.contains(puzzle[row][col].up)) {
+              rtValue.add([row, col, "up"]);
+            }
+            if(checkValue.contains(puzzle[row][col + 1].up)) {
+              rtValue.add([row, col + 1, "up"]);
+            }
+            if(checkValue.contains(puzzle[row][col].down)) {
+              rtValue.add([row, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row][col + 1].down)) {
+              rtValue.add([row, col + 1, "down"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].right)) {
+              rtValue.add([row + 1, col, "right"]);
+            }
+          }
+          break;
+        case "left":
+          if(row != 0) {
+            //row != 0 && col == 0
+            if(checkValue.contains(puzzle[row - 1][col].left)) {
+              rtValue.add([row - 1, col, "left"]);
+            }
+            if(checkValue.contains(puzzle[row - 1][col].down)) {
+              rtValue.add([row - 1, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row][col].down)) {
+              rtValue.add([row, col, "down"]);
+            }
+            if(i + 1 < puzzle.length && checkValue.contains(puzzle[row + 1][col].left)) {
+              rtValue.add([row + 1, col, "left"]);
+            }
+          }
+          else {
+            //row == 0 && col == 0
+            if(checkValue.contains(puzzle[row][col].up)) {
+              rtValue.add([row, col, "up"]);
+            }
+            if(checkValue.contains(puzzle[row][col].down)) {
+              rtValue.add([row, col, "down"]);
+            }
+            if(checkValue.contains(puzzle[row + 1][col].left)) {
+              rtValue.add([row + 1, col, "left"]);
+            }
+          }
+          break;
+        case "up":
+          if(col != 0) {
+            //row == 0 && col != 0
+            if(checkValue.contains(puzzle[row][col - 1].right)) {
+              rtValue.add([row, col - 1, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col - 1].up)) {
+              rtValue.add([row, col - 1, "up"]);
+            }
+            if(checkValue.contains(puzzle[row][col].right)) {
+              rtValue.add([row, col, "right"]);
+            }
+            if(col + 1 < puzzle[row].length && checkValue.contains(puzzle[row][col + 1].up)) {
+              rtValue.add([row, col + 1, "up"]);
+            }
+          }
+          else {
+            //row == 0 && col == 0
+            if(checkValue.contains(puzzle[row][col].left)) {
+              rtValue.add([row, col, "left"]);
+            }
+            if(checkValue.contains(puzzle[row][col].right)) {
+              rtValue.add([row, col, "right"]);
+            }
+            if(checkValue.contains(puzzle[row][col + 1].up)) {
+              rtValue.add([row, col + 1, "up"]);
+            }
+          }
+          break;
+      }
+    }
+
+    List<List<dynamic>> set = [];
+    //중복 제거
+    for(var item in rtValue) {
+      if(!set.any((element) => const DeepCollectionEquality().equals(element, item))) {
+        set.add(item);
+      }
+    }
+
+    return set.toList();
+  }
+
+  ///nearList가 valid 한지 검사하고 inValid면 -1로 설정
+  ///
+  ///valid 하다면 마지막에 모아서 다시 검사하여 모든 라인의 상태가 변경되지 않을 때까지 반복
+  ///
+  ///puzzle 변수를 직접 조작함
+  List<List<dynamic>> checkLineValid(List<List<dynamic>> nearList) {
+    List<List<dynamic>> validLine = [];
+    int row = 0, col = 0;
+    String pos = "";
+    bool isValid = true;
+    List<int> inValid = [-1, -4];
+
+    for(int i = 0 ; i < nearList.length ; i++) {
+      row = int.parse(nearList[i][0].toString());
+      col = int.parse(nearList[i][1].toString());
+      pos = nearList[i][2].toString();
+      isValid = true;
+
+      if(row != 0 && col != 0) {
+        switch(pos) {
+          case "down":
+            //negative condition
+            if((inValid.contains(puzzle[row][col - 1].right) && inValid.contains(puzzle[row][col - 1].down) && (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].right)))
+                || (inValid.contains(puzzle[row][col].right) && (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].right)) && (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row][col + 1].down)))
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if(
+                ((puzzle[row][col - 1].right > 0 ? 1 : 0 +
+                puzzle[row][col - 1].down > 0 ? 1 : 0 +
+                (row + 1 < puzzle.length && puzzle[row + 1][col].right > 0 ? 1 : 0)) >= 2)
+                || ((puzzle[row][col].right > 0 ? 1 : 0 +
+                    (row + 1 < puzzle.length && puzzle[row + 1][col].right > 0 ? 1 : 0) +
+                    (col + 1 < puzzle[row].length && puzzle[row][col + 1].down > 0 ? 1 : 0)) >= 2)
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            break;
+          case "right":
+            //negative condition
+            if((inValid.contains(puzzle[row - 1][col].down) && inValid.contains(puzzle[row - 1][col].right) && (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row - 1][col + 1].down)))
+                || (inValid.contains(puzzle[row][col].down) && (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].right)) && (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row][col + 1].down)))) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if(
+                ((puzzle[row - 1][col].right > 0 ? 1 : 0) +
+                (puzzle[row - 1][col].down > 0 ? 1 : 0) +
+                ((col + 1 < puzzle[row].length && puzzle[row - 1][col + 1].down > 0) ? 1 : 0)) >= 2
+                ||
+                (
+                  (col + 1 < puzzle[row].length && row + 1 < puzzle.length && (puzzle[row][col].down > 0 ? 1 : 0 + puzzle[row + 1][col].right > 0 ? 1 : 0 + puzzle[row][col + 1].down > 0 ? 1 : 0) >= 2) ||
+                  (col + 1 >= puzzle[row].length && row + 1 < puzzle.length && (puzzle[row][col].down > 0 && puzzle[row + 1][col].right > 0)) ||
+                  (col + 1 < puzzle[row].length && row + 1 >= puzzle.length && (puzzle[row][col].down > 0 && puzzle[row][col + 1].down > 0))
+                  //col + 1 >= puzzle[row].length && row + 1 >= puzzle.length 조건은 positive에서 체크하지 않음
+                )
+            ) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            break;
+        }
+      }
+      else if(row == 0 && col != 0) {
+        switch(pos) {
+          case "down":
+            //negative condition
+            if((inValid.contains(puzzle[row][col - 1].right) && inValid.contains(puzzle[row][col - 1].down) && inValid.contains(puzzle[row + 1][col - 1].right))
+                || (inValid.contains(puzzle[row][col].right) &&
+                    inValid.contains(puzzle[row + 1][col].right) &&
+                    (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row][col + 1].down)))
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if(
+                ((puzzle[row][col - 1].right > 0 ? 1 : 0) +
+                (puzzle[row][col - 1].down > 0 ? 1 : 0) +
+                (puzzle[row + 1][col - 1].right > 0 ? 1 : 0) >= 2)
+                || ((puzzle[row][col].right > 0 ? 1 : 0) +
+                    (puzzle[row + 1][col].right > 0 ? 1 : 0) +
+                    ((col + 1 < puzzle[row].length && puzzle[row][col + 1].down > 0) ? 1 : 0) >= 2)
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            break;
+          case "right":
+            //negative condition
+            if((inValid.contains(puzzle[row][col].up)) && (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row][col + 1].up))
+                || (inValid.contains(puzzle[row][col].down) &&
+                    inValid.contains(puzzle[row + 1][col].right) &&
+                    (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row][col + 1].down)))
+            ) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if((puzzle[row][col].up > 0 && (col + 1 < puzzle[row].length && puzzle[row][col + 1].up > 0))
+                || ((puzzle[row][col].down > 0 ? 1 : 0) +
+                    (puzzle[row + 1][col].right > 0 ? 1 : 0) +
+                    ((col + 1 < puzzle[row].length && puzzle[row][col + 1].down > 0) ? 1 : 0) >= 2)
+            ) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            break;
+          case "up":
+            //negative condition
+            if((inValid.contains(puzzle[row][col - 1].up) && inValid.contains(puzzle[row][col - 1].right))
+                || (inValid.contains(puzzle[row][col].right) && (col + 1 >= puzzle[row].length || inValid.contains(puzzle[row][col + 1].up)))
+            ) {
+              puzzle[row][col].up = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if((puzzle[row][col - 1].up > 0 && puzzle[row][col - 1].right > 0)
+                || (col + 1 < puzzle[row].length && puzzle[row][col].right > 0 && puzzle[row][col + 1].up > 0)
+            ) {
+              puzzle[row][col].up = -1;
+              isValid = false;
+            }
+            break;
+        }
+      }
+      else if(row != 0 && col == 0) {
+        switch(pos) {
+          case "down":
+            //negative condition
+            if((inValid.contains(puzzle[row][col].left) && (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].left)))
+                || (inValid.contains(puzzle[row][col].right) &&
+                    inValid.contains(puzzle[row][col + 1].down) &&
+                    (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].right)))
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if((row + 1 < puzzle.length && puzzle[row][col].left > 0 && puzzle[row + 1][col].left > 0)
+                || ((puzzle[row][col].right > 0 ? 1 : 0 +
+                    puzzle[row][col + 1].down > 0 ? 1 : 0 +
+                    (row + 1 < puzzle.length && puzzle[row + 1][col].right > 0 ? 1 : 0)) >= 2)
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            break;
+          case "right":
+            //negative condition
+            if((inValid.contains(puzzle[row - 1][col].down) && inValid.contains(puzzle[row - 1][col].right) && inValid.contains(puzzle[row - 1][col + 1].down))
+                || (inValid.contains(puzzle[row][col].down) &&
+                    inValid.contains(puzzle[row][col + 1].down) &&
+                    (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].right)))
+            ) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if(((puzzle[row - 1][col].right > 0 ? 1 : 0 +
+                puzzle[row - 1][col].down > 0 ? 1 : 0 +
+                puzzle[row - 1][col + 1].down > 0 ? 1 : 0) >= 2)
+                || (puzzle[row][col].down > 0 ? 1 : 0 +
+                    puzzle[row][col + 1].down > 0 ? 1 : 0 +
+                    ((row + 1 < puzzle.length && puzzle[row + 1][col].right > 0) ? 1 : 0)) >= 2) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            break;
+          case "left":
+            //negative condition
+            if((inValid.contains(puzzle[row - 1][col].left) && inValid.contains(puzzle[row - 1][col].down))
+              || (inValid.contains(puzzle[row][col].down)
+                  && (row + 1 >= puzzle.length || inValid.contains(puzzle[row + 1][col].left))
+                )
+            ) {
+              puzzle[row][col].left = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if((puzzle[row - 1][col].left > 0 && puzzle[row - 1][col].down > 0)
+                || (puzzle[row][col].down > 0 && row + 1 < puzzle.length && puzzle[row + 1][col].left > 0)
+            ) {
+              puzzle[row][col].left = -1;
+              isValid = false;
+            }
+            break;
+        }
+      }
+      else {
+        switch(pos) {
+          case "down":
+            //negative condition
+            if((inValid.contains(puzzle[row][col].left) && inValid.contains(puzzle[row][col + 1].left))
+                || (inValid.contains(puzzle[row][col].right) && inValid.contains(puzzle[row][col + 1].down) && inValid.contains(puzzle[row + 1][col].right))
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if((puzzle[row][col].left > 0 && puzzle[row + 1][col].left > 0)
+                || ((puzzle[row][col].right > 0 ? 1 : 0) +
+                    (puzzle[row][col + 1].down > 0 ? 1 : 0) +
+                    (puzzle[row + 1][col].right > 0 ? 1 : 0) >= 2)
+            ) {
+              puzzle[row][col].down = -1;
+              isValid = false;
+            }
+            break;
+          case "right":
+            //negative condition
+            if((inValid.contains(puzzle[row][col].up) && inValid.contains(puzzle[row][col + 1].up))
+              || (inValid.contains(puzzle[row][col].down) && inValid.contains(puzzle[row][col + 1].down) && inValid.contains(puzzle[row + 1][col].right))
+            ) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if((puzzle[row][col].up > 0 && puzzle[row][col + 1].up > 0)
+                || ((puzzle[row][col].down > 0 ? 1 : 0) +
+                    (puzzle[row][col + 1].down > 0 ? 1 : 0) +
+                    (puzzle[row + 1][col].right > 0 ? 1 : 0) >= 2)
+            ) {
+              puzzle[row][col].right = -1;
+              isValid = false;
+            }
+            break;
+          case "up":
+            //negative condition
+            if(inValid.contains(puzzle[row][col].left) ||
+                (inValid.contains(puzzle[row][col].right) && inValid.contains(puzzle[row][col + 1].up))
+            ) {
+              puzzle[row][col].up = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if(puzzle[row][col].right > 0 && puzzle[row][col + 1].up > 0) {
+              puzzle[row][col].up = -1;
+              isValid = false;
+            }
+            break;
+          case "left":
+            //negative condition
+            if(inValid.contains(puzzle[row][col].up) ||
+                (inValid.contains(puzzle[row][col].down) && inValid.contains(puzzle[row + 1][col].left))
+            ) {
+              puzzle[row][col].left = -1;
+              isValid = false;
+            }
+            //positive condition
+            else if(puzzle[row][col].down > 0 && puzzle[row + 1][col].left > 0) {
+              puzzle[row][col].left = -1;
+              isValid = false;
+            }
+            break;
+        }
+      }
+
+      //재검사 목록 생성
+      if(isValid) {
+        validLine.add(nearList[i]);
+      }
+    }
+
+
+    return validLine;
+  }
+
+  ///현재 lineValue가 0또는 1인 라인에 대해
+  ///
+  ///-1이 되는 조건을 만족하면 -1로, 아니면 0으로 세팅
+  ///
+  ///-3값은 0과 동일하게 처리(howToPlay 때문에, 일반에서는 클릭 시 -3이 0으로 변경되기에 무관)
+  Future<void> checkCurrentPathForward() async {
+    if(UserInfo.debugMode["print_methodName"]!) {
+      // ignore: avoid_print
+      print("call checkCurrentPathForward");
+    }
+    int value = 0;
+    bool goNextLine = false;
+    List<int> inValid = [-1, -2, -4];
+
+    for (int i = 0; i < puzzle.length; i++) {
+      for (int j = 0; j < puzzle[i].length; j++) {
+        if(i > 0 && j > 0) {
+          //puzzle[i][j].down
+          {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //left
+            value = max(puzzle[i][j - 1].down, puzzle[i][j - 1].right);
+            if(i + 1 < puzzle.length) {
+              value = max(value, puzzle[i + 1][j - 1].right);
+            }
+            //check right
+            if(value >= 0) {
+              value = puzzle[i][j].right;
+              if(i + 1 < puzzle.length) {
+                value = max(value, puzzle[i + 1][j].right);
+              }
+              if(j + 1 < puzzle[i].length) {
+                value = max(value, puzzle[i][j + 1].down);
+              }
+            }
+
+            if(value < 0 && puzzle[i][j].down == 0) {
+              puzzle[i][j].down = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].down == -1) {
+              puzzle[i][j].down = 0;
+            }
+            value = 0;
+            //handling heading to positive edge
+            //left
+            if(!goNextLine && i + 1 < puzzle.length) {
+              if([puzzle[i][j - 1].down, puzzle[i][j - 1].right, puzzle[i + 1][j - 1].right]
+                  .where((value) => value > 0).length >= 2) {
+                if(puzzle[i][j].down == 0){
+                  puzzle[i][j].down = -1;
+                  value++;
+                }
+              }
+            }
+            else if(!goNextLine && puzzle[i][j - 1].down > 0 && puzzle[i][j - 1].right > 0) {
+              if(puzzle[i][j].down == 0){
+                puzzle[i][j].down = -1;
+                value++;
+              }
+            }
+            //right
+            if(!goNextLine && (value == 0 || value == -3)) {
+              if((i + 1 < puzzle.length) && (j + 1 < puzzle[i].length)) {
+                if([puzzle[i][j].right, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+              else if((i + 1 < puzzle.length) && !(j + 1 < puzzle[i].length)) {
+                if(puzzle[i][j].right > 0 && puzzle[i + 1][j].right > 0) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+              else if(!(i + 1 < puzzle.length) && (j + 1 < puzzle[i].length)) {
+                if(puzzle[i][j].right > 0 && puzzle[i][j + 1].down > 0) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+            }
+          }
+          //puzzle[i][j].right
+          {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //check up
+            value = max(puzzle[i - 1][j].down, puzzle[i - 1][j].right);
+            if(j + 1 < puzzle[i].length) {
+              value = max(value, puzzle[i - 1][j + 1].down);
+            }
+            //check down
+            if(value >= 0) {
+              value = puzzle[i][j].down;
+              if(i + 1 < puzzle.length) {
+                value = max(value, puzzle[i + 1][j].right);
+              }
+              if(j + 1 < puzzle[i].length) {
+                value = max(value, puzzle[i][j + 1].down);
+              }
+            }
+
+            if(value < 0 && puzzle[i][j].right == 0) {
+              puzzle[i][j].right = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].right == -1) {
+              puzzle[i][j].right = 0;
+            }
+            value = 0;
+            //handling heading to minus edge
+            //up
+            if(!goNextLine && j + 1 < puzzle[i].length) {
+              if([puzzle[i - 1][j].down, puzzle[i - 1][j].right, puzzle[i - 1][j + 1].down]
+                  .where((value) => value > 0).length >= 2) {
+                if(puzzle[i][j].right == 0){
+                  puzzle[i][j].right = -1;
+                  value++;
+                }
+              }
+            }
+            else if(!goNextLine && puzzle[i - 1][j].down > 0 && puzzle[i - 1][j].right > 0) {
+              if(puzzle[i][j].right == 0){
+                puzzle[i][j].right = -1;
+                value++;
+              }
+            }
+            //down
+            if(!goNextLine && (value == 0 || value == -3)) {
+              if((i + 1 < puzzle.length) && (j + 1 < puzzle[i].length)) {
+                if([puzzle[i][j].down, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+              else if((i + 1 < puzzle.length) && !(j + 1 < puzzle[i].length)) {
+                if(puzzle[i][j].down > 0 && puzzle[i + 1][j].right > 0) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+              else if(!(i + 1 < puzzle.length) && (j + 1 < puzzle[i].length)) {
+                if(puzzle[i][j].down > 0 && puzzle[i][j + 1].down > 0) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+            }
+          }
+        }
+        else if(i == 0 && j != 0) {
+          //print("i $i, j $j");
+          //puzzle[i][j].up
+          {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //left
+            value = max(puzzle[i][j - 1].up, puzzle[i][j - 1].right);
+            //right
+            if(value >= 0) {
+              if(j + 1 < puzzle[i].length) {
+                value = max(puzzle[i][j].right, puzzle[i][j + 1].up);
+              }
+              else {
+                value = puzzle[i][j].right;
+              }
+            }
+            if(value < 0 && puzzle[i][j].up == 0) {
+              puzzle[i][j].up = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].up == -1) {
+              puzzle[i][j].up = 0;
+            }
+            //handling heading to positive edge
+            //left
+            if(!goNextLine && puzzle[i][j - 1].up > 0 && puzzle[i][j - 1].right > 0) {
+              if(puzzle[i][j].up == 0){
+                puzzle[i][j].up = -1;
+              }
+            }
+            //right
+            else if(!goNextLine && j + 1 < puzzle[i].length){
+               if(puzzle[i][j].right > 0 && puzzle[i][j + 1].up > 0) {
+                 if(puzzle[i][j].up == 0){
+                  puzzle[i][j].up = -1;
+                }
+              }
+            }
+          }
+          //puzzle[i][j].down
+          {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //left
+            value = max(puzzle[i][j - 1].right, max(puzzle[i][j - 1].down, puzzle[i + 1][j - 1].right));
+            if(value >= 0){
+              //right
+              if(j + 1 < puzzle[i].length) {
+                value = max(puzzle[i][j + 1].down, max(puzzle[i][j].right, puzzle[i + 1][j].right));
+              }
+              else {
+                value = max(puzzle[i][j].right, puzzle[i + 1][j].right);
+              }
+            }
+            if(value < 0 && puzzle[i][j].down == 0) {
+              puzzle[i][j].down = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].down == -1) {
+              puzzle[i][j].down = 0;
+            }
+            //handling heading to positive edge
+            //left
+            if(!goNextLine && [puzzle[i][j -1].right, puzzle[i][j - 1].down, puzzle[i + 1][j - 1].right]
+                .where((value) => value > 0).length >= 2) {
+              if(puzzle[i][j].down == 0){
+                puzzle[i][j].down = -1;
+              }
+            }
+            //right
+            else if(!goNextLine) {
+              if(j + 1 < puzzle[i].length) {
+                if([puzzle[i][j].right, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+              else {
+                if(puzzle[i][j].right > 0 && puzzle[i + 1][j].right > 0) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+            }
+          }
+          //puzzle[i][j].right
+          {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //up
+            if(j + 1 < puzzle[i].length) {
+              value = max(puzzle[i][j].up, puzzle[i][j + 1].up);
+            }
+            else {
+              value = puzzle[i][j].up;
+            }
+            //down
+            if(value >= 0) {
+              value = max(puzzle[i][j].down, puzzle[i + 1][j].right);
+              if(j + 1 < puzzle[i].length) {
+                value = max(value, puzzle[i][j + 1].down);
+              }
+            }
+            if(value < 0 && puzzle[i][j].right == 0) {
+              puzzle[i][j].right = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].right == -1) {
+              puzzle[i][j].right = 0;
+            }
+            //handling heading to positive edge
+            //up
+            if(!goNextLine && j + 1 < puzzle[i].length) {
+              if(puzzle[i][j].up > 0 && puzzle[i][j + 1].up > 0) {
+                if(puzzle[i][j].right == 0){
+                  puzzle[i][j].right = -1;
+                }
+              }
+            }
+            //down
+            if(!goNextLine && puzzle[i][j].right == 0) {
+              if(j + 1 < puzzle[i].length) {
+                if([puzzle[i][j].down, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+              else {
+                if(puzzle[i][j].down > 0 && puzzle[i + 1][j].right > 0) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+            }
+          }
+        }
+        else if(i != 0 && j == 0) {
+          //puzzle[i][j].left
+          {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //up
+            value = max(puzzle[i - 1][j].left, puzzle[i - 1][j].down);
+            //down
+            if(value >= 0) {
+              if(i + 1 < puzzle.length) {
+                value = max(puzzle[i][j].down, puzzle[i + 1][j].left);
+              }
+              else {
+                value = puzzle[i][j].down;
+              }
+            }
+
+            if(value < 0 && puzzle[i][j].left == 0) {
+              puzzle[i][j].left = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].left == -1) {
+              puzzle[i][j].right = 0;
+            }
+            //handling heading to positive edge
+            //up
+            if(!goNextLine && puzzle[i - 1][j].left > 0 && puzzle[i - 1][j].down > 0) {
+              if(puzzle[i][j].left == 0){
+                puzzle[i][j].left = -1;
+              }
+            }
+            //down
+            else if(!goNextLine && i + 1 < puzzle.length) {
+              if(puzzle[i][j].down > 0 && puzzle[i + 1][j].left > 0) {
+                if(puzzle[i][j].left == 0){
+                  puzzle[i][j].left = -1;
+                }
+              }
+            }
+          }
+          //puzzle[i][j].right
+          {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //up
+            value = max(max(puzzle[i - 1][j].down, puzzle[i - 1][j].right), puzzle[i - 1][j + 1].down);
+            //down
+            if(value >= 0) {
+              if(i + 1 < puzzle.length) {
+                value = max(puzzle[i + 1][j].right, max(puzzle[i][j].down, puzzle[i][j + 1].down));
+              }
+              else {
+                value = max(puzzle[i][j].down, puzzle[i][j + 1].down);
+              }
+            }
+
+            if(value < 0 && puzzle[i][j].right == 0) {
+              puzzle[i][j].right = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].right == -1) {
+              puzzle[i][j].right = 0;
+            }
+            //handling heading to positive edge
+            //up
+            if(!goNextLine && [puzzle[i - 1][j].down, puzzle[i - 1][j].right, puzzle[i - 1][j + 1].down]
+                .where((value) => value > 0).length >= 2) {
+              if(puzzle[i][j].right == 0){
+                puzzle[i][j].right = -1;
+              }
+            }
+            //down
+            else if(!goNextLine) {
+              if(i + 1 < puzzle.length) {
+                if([puzzle[i][j].down, puzzle[i][j + 1].down, puzzle[i + 1][j].right]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+              else {
+                if(puzzle[i][j].down > 0 && puzzle[i][j + 1].down > 0) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+            }
+          }
+          //puzzle[i][j].down
+          {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //left
+            value = puzzle[i][j].left;
+            if(i + 1 < puzzle.length) {
+              value = max(value, puzzle[i + 1][j].left);
+            }
+            //right
+            if(value >= 0) {
+              value = max(puzzle[i][j].right, puzzle[i][j + 1].down);
+              if(i + 1 < puzzle.length) {
+                value = max(value, puzzle[i + 1][j].right);
+              }
+            }
+
+            if(value < 0 && puzzle[i][j].down == 0) {
+              puzzle[i][j].down = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].down == -1) {
+              puzzle[i][j].down = 0;
+            }
+            //handling heading to positive edge
+            //left
+            if(!goNextLine && i + 1 < puzzle.length) {
+              if(puzzle[i][j].left > 0 && puzzle[i + 1][j].left > 0) {
+                if(puzzle[i][j].down == 0){
+                  puzzle[i][j].down = -1;
+                }
+              }
+            }
+            //right
+            else if(!goNextLine) {
+              if(i + 1 < puzzle.length) {
+                if([puzzle[i][j].right, puzzle[i][j + 1].down, puzzle[i + 1][j].right]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+              else if(puzzle[i][j].right > 0 && puzzle[i][j + 1].down > 0) {
+                if(puzzle[i][j].down == 0){
+                  puzzle[i][j].down = -1;
+                }
+              }
+            }
+          }
+        }
+        else {
+          //i == 0 && j == 0
+          //puzzle[i][j].up
+          {
+            value = 0;
+            //handling heading to minus edge
+            if (inValid.contains(puzzle[i][j].left) ||
+                (inValid.contains(puzzle[i][j].right) &&
+                    inValid.contains(puzzle[i][j + 1].up))) {
+              value = -1;
+            }
+            //handling heading to positive edge
+            else if (puzzle[i][j].right > 0 && puzzle[i][j + 1].up > 0) {
+              if (puzzle[i][j].up == 0) {
+                value = -1;
+              }
+            }
+            if(value != 0 && puzzle[i][j].up == 0) {
+              puzzle[i][j].up = value;
+            }
+            else if(((value == 0 || value == -3)) && puzzle[i][j].up == -1) {
+              puzzle[i][j].up = 0;
+            }
+          }
+          //puzzle[i][j].left
+          {
+            value = 0;
+            //handling heading to minus edge
+            if (inValid.contains(puzzle[i][j].up) ||
+                (inValid.contains(puzzle[i][j].down) &&
+                    inValid.contains(puzzle[i + 1][j].left))) {
+              value = -1;
+            }
+            //handling heading to positive edge
+            else if (puzzle[i][j].down > 0 && puzzle[i + 1][j].left > 0) {
+              if (puzzle[i][j].left == 0) {
+                value = -1;
+              }
+            }
+            if(value != 0 && puzzle[i][j].left == 0) {
+              puzzle[i][j].left = value;
+            }
+            else if((value == 0 || value == -3) && puzzle[i][j].left == -1) {
+              puzzle[i][j].left = 0;
+            }
+          }
+          //puzzle[i][j].down
+          {
+            value = 0;
+            //handling heading to minus edge
+            if ((inValid.contains(puzzle[i][j].left) &&
+                    inValid.contains(puzzle[i + 1][j].left)) ||
+                (inValid.contains(puzzle[i][j].right) &&
+                    inValid.contains(puzzle[i][j + 1].down) &&
+                    inValid.contains(puzzle[i + 1][j].right))) {
+              value = -1;
+            }
+            //handling heading to positive edge
+            //left
+            else if (puzzle[i][j].left > 0 && puzzle[i + 1][j].left > 0) {
+              if (puzzle[i][j].down == 0) {
+                value = -1;
+              }
+            }
+            //handling heading to positive edge
+            //right
+            else if ([
+                  puzzle[i][j].right,
+                  puzzle[i + 1][j].right,
+                  puzzle[i][j + 1].down
+                ].where((value) => value > 0).length >=
+                2) {
+              if (puzzle[i][j].down == 0) {
+                value = -1;
+              }
+            }
+            if(value != 0 && puzzle[i][j].down == 0) {
+              puzzle[i][j].down = value;
+            }
+            else if((value == 0 || value == -3) && puzzle[i][j].down == -1) {
+              puzzle[i][j].down = 0;
+            }
+          }
+          //puzzle[i][j].right
+          {
+            value = 0;
+            //handling heading to minus edge
+            if ((inValid.contains(puzzle[i][j].up) &&
+                    inValid.contains(puzzle[i][j + 1].up)) ||
+                (inValid.contains(puzzle[i][j].down) &&
+                    inValid.contains(puzzle[i][j + 1].down) &&
+                    inValid.contains(puzzle[i + 1][j].right))) {
+              value = -1;
+            }
+            //handling heading to positive edge
+            //up
+            else if (puzzle[i][j].up > 0 && puzzle[i][j + 1].up > 0) {
+              if (puzzle[i][j].right == 0) {
+                value = -1;
+              }
+            }
+            //handling heading to positive edge
+            //down
+            else if ([
+                  puzzle[i][j].down,
+                  puzzle[i + 1][j].right,
+                  puzzle[i][j + 1].down
+                ].where((value) => value > 0).length >=
+                2) {
+              if (puzzle[i][j].right == 0) {
+                value = -1;
+              }
+            }
+            if(value != 0 && puzzle[i][j].right == 0) {
+              puzzle[i][j].right = value;
+            }
+            else if((value == 0 || value == -3) && puzzle[i][j].right == -1) {
+              puzzle[i][j].right = 0;
+            }
+          }
+        }
+
+        await checkMaxLine();
+      }
+    }
+
+    notifyListeners();
+    submit = await readSquare.readSubmit(puzzle);
+  }
+
+  ///checkCurrentPathForward()의 반복문을 반대로 수행
+  Future<void> checkCurrentPathBackward() async {
+    if(UserInfo.debugMode["print_methodName"]!) {
+      // ignore: avoid_print
+      print("call checkCurrentPathForward");
+    }
+    int value = 0;
+    bool goNextLine = false;
+    List<int> inValid = [-1, -2, -4];
+
+    for (int i = puzzle.length - 1; i >= 0; i--) {
+      for (int j = puzzle[i].length - 1; j >= 0 ; j--) {
+        if(i > 0 && j > 0) {
+          //puzzle[i][j].down
+          {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //left
+            value = max(puzzle[i][j - 1].down, puzzle[i][j - 1].right);
+            if(i + 1 < puzzle.length) {
+              value = max(value, puzzle[i + 1][j - 1].right);
+            }
+            //check right
+            if(value >= 0) {
+              value = puzzle[i][j].right;
+              if(i + 1 < puzzle.length) {
+                value = max(value, puzzle[i + 1][j].right);
+              }
+              if(j + 1 < puzzle[i].length) {
+                value = max(value, puzzle[i][j + 1].down);
+              }
+            }
+
+            if(value < 0 && puzzle[i][j].down == 0) {
+              puzzle[i][j].down = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].down == -1) {
+              puzzle[i][j].down = 0;
+            }
+            value = 0;
+            //handling heading to positive edge
+            //left
+            if(!goNextLine && i + 1 < puzzle.length) {
+              if([puzzle[i][j - 1].down, puzzle[i][j - 1].right, puzzle[i + 1][j - 1].right]
+                  .where((value) => value > 0).length >= 2) {
+                if(puzzle[i][j].down == 0){
+                  puzzle[i][j].down = -1;
+                  value++;
+                }
+              }
+            }
+            else if(!goNextLine && puzzle[i][j - 1].down > 0 && puzzle[i][j - 1].right > 0) {
+              if(puzzle[i][j].down == 0){
+                puzzle[i][j].down = -1;
+                value++;
+              }
+            }
+            //right
+            if(!goNextLine && (value == 0 || value == -3)) {
+              if((i + 1 < puzzle.length) && (j + 1 < puzzle[i].length)) {
+                if([puzzle[i][j].right, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+              else if((i + 1 < puzzle.length) && !(j + 1 < puzzle[i].length)) {
+                if(puzzle[i][j].right > 0 && puzzle[i + 1][j].right > 0) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+              else if(!(i + 1 < puzzle.length) && (j + 1 < puzzle[i].length)) {
+                if(puzzle[i][j].right > 0 && puzzle[i][j + 1].down > 0) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+            }
+          }
+          //puzzle[i][j].right
+              {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //check up
+            value = max(puzzle[i - 1][j].down, puzzle[i - 1][j].right);
+            if(j + 1 < puzzle[i].length) {
+              value = max(value, puzzle[i - 1][j + 1].down);
+            }
+            //check down
+            if(value >= 0) {
+              value = puzzle[i][j].down;
+              if(i + 1 < puzzle.length) {
+                value = max(value, puzzle[i + 1][j].right);
+              }
+              if(j + 1 < puzzle[i].length) {
+                value = max(value, puzzle[i][j + 1].down);
+              }
+            }
+
+            if(value < 0 && puzzle[i][j].right == 0) {
+              puzzle[i][j].right = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].right == -1) {
+              puzzle[i][j].right = 0;
+            }
+            value = 0;
+            //handling heading to minus edge
+            //up
+            if(!goNextLine && j + 1 < puzzle[i].length) {
+              if([puzzle[i - 1][j].down, puzzle[i - 1][j].right, puzzle[i - 1][j + 1].down]
+                  .where((value) => value > 0).length >= 2) {
+                if(puzzle[i][j].right == 0){
+                  puzzle[i][j].right = -1;
+                  value++;
+                }
+              }
+            }
+            else if(!goNextLine && puzzle[i - 1][j].down > 0 && puzzle[i - 1][j].right > 0) {
+              if(puzzle[i][j].right == 0){
+                puzzle[i][j].right = -1;
+                value++;
+              }
+            }
+            //down
+            if(!goNextLine && (value == 0 || value == -3)) {
+              if((i + 1 < puzzle.length) && (j + 1 < puzzle[i].length)) {
+                if([puzzle[i][j].down, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+              else if((i + 1 < puzzle.length) && !(j + 1 < puzzle[i].length)) {
+                if(puzzle[i][j].down > 0 && puzzle[i + 1][j].right > 0) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+              else if(!(i + 1 < puzzle.length) && (j + 1 < puzzle[i].length)) {
+                if(puzzle[i][j].down > 0 && puzzle[i][j + 1].down > 0) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+            }
+          }
+        }
+        else if(i == 0 && j != 0) {
+          //print("i $i, j $j");
+          //puzzle[i][j].up
+          {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //left
+            value = max(puzzle[i][j - 1].up, puzzle[i][j - 1].right);
+            //right
+            if(value >= 0) {
+              if(j + 1 < puzzle[i].length) {
+                value = max(puzzle[i][j].right, puzzle[i][j + 1].up);
+              }
+              else {
+                value = puzzle[i][j].right;
+              }
+            }
+            if(value < 0 && puzzle[i][j].up == 0) {
+              puzzle[i][j].up = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].up == -1) {
+              puzzle[i][j].up = 0;
+            }
+            //handling heading to positive edge
+            //left
+            if(!goNextLine && puzzle[i][j - 1].up > 0 && puzzle[i][j - 1].right > 0) {
+              if(puzzle[i][j].up == 0){
+                puzzle[i][j].up = -1;
+              }
+            }
+            //right
+            else if(!goNextLine && j + 1 < puzzle[i].length){
+              if(puzzle[i][j].right > 0 && puzzle[i][j + 1].up > 0) {
+                if(puzzle[i][j].up == 0){
+                  puzzle[i][j].up = -1;
+                }
+              }
+            }
+          }
+          //puzzle[i][j].down
+              {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //left
+            value = max(puzzle[i][j - 1].right, max(puzzle[i][j - 1].down, puzzle[i + 1][j - 1].right));
+            if(value >= 0){
+              //right
+              if(j + 1 < puzzle[i].length) {
+                value = max(puzzle[i][j + 1].down, max(puzzle[i][j].right, puzzle[i + 1][j].right));
+              }
+              else {
+                value = max(puzzle[i][j].right, puzzle[i + 1][j].right);
+              }
+            }
+            if(value < 0 && puzzle[i][j].down == 0) {
+              puzzle[i][j].down = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].down == -1) {
+              puzzle[i][j].down = 0;
+            }
+            //handling heading to positive edge
+            //left
+            if(!goNextLine && [puzzle[i][j -1].right, puzzle[i][j - 1].down, puzzle[i + 1][j - 1].right]
+                .where((value) => value > 0).length >= 2) {
+              if(puzzle[i][j].down == 0){
+                puzzle[i][j].down = -1;
+              }
+            }
+            //right
+            else if(!goNextLine) {
+              if(j + 1 < puzzle[i].length) {
+                if([puzzle[i][j].right, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+              else {
+                if(puzzle[i][j].right > 0 && puzzle[i + 1][j].right > 0) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+            }
+          }
+          //puzzle[i][j].right
+              {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //up
+            if(j + 1 < puzzle[i].length) {
+              value = max(puzzle[i][j].up, puzzle[i][j + 1].up);
+            }
+            else {
+              value = puzzle[i][j].up;
+            }
+            //down
+            if(value >= 0) {
+              value = max(puzzle[i][j].down, puzzle[i + 1][j].right);
+              if(j + 1 < puzzle[i].length) {
+                value = max(value, puzzle[i][j + 1].down);
+              }
+            }
+            if(value < 0 && puzzle[i][j].right == 0) {
+              puzzle[i][j].right = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].right == -1) {
+              puzzle[i][j].right = 0;
+            }
+            //handling heading to positive edge
+            //up
+            if(!goNextLine && j + 1 < puzzle[i].length) {
+              if(puzzle[i][j].up > 0 && puzzle[i][j + 1].up > 0) {
+                if(puzzle[i][j].right == 0){
+                  puzzle[i][j].right = -1;
+                }
+              }
+            }
+            //down
+            if(!goNextLine && puzzle[i][j].right == 0) {
+              if(j + 1 < puzzle[i].length) {
+                if([puzzle[i][j].down, puzzle[i + 1][j].right, puzzle[i][j + 1].down]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+              else {
+                if(puzzle[i][j].down > 0 && puzzle[i + 1][j].right > 0) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+            }
+          }
+        }
+        else if(i != 0 && j == 0) {
+          //puzzle[i][j].left
+          {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //up
+            value = max(puzzle[i - 1][j].left, puzzle[i - 1][j].down);
+            //down
+            if(value >= 0) {
+              if(i + 1 < puzzle.length) {
+                value = max(puzzle[i][j].down, puzzle[i + 1][j].left);
+              }
+              else {
+                value = puzzle[i][j].down;
+              }
+            }
+
+            if(value < 0 && puzzle[i][j].left == 0) {
+              puzzle[i][j].left = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].left == -1) {
+              puzzle[i][j].right = 0;
+            }
+            //handling heading to positive edge
+            //up
+            if(!goNextLine && puzzle[i - 1][j].left > 0 && puzzle[i - 1][j].down > 0) {
+              if(puzzle[i][j].left == 0){
+                puzzle[i][j].left = -1;
+              }
+            }
+            //down
+            else if(!goNextLine && i + 1 < puzzle.length) {
+              if(puzzle[i][j].down > 0 && puzzle[i + 1][j].left > 0) {
+                if(puzzle[i][j].left == 0){
+                  puzzle[i][j].left = -1;
+                }
+              }
+            }
+          }
+          //puzzle[i][j].right
+              {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //up
+            value = max(max(puzzle[i - 1][j].down, puzzle[i - 1][j].right), puzzle[i - 1][j + 1].down);
+            //down
+            if(value >= 0) {
+              if(i + 1 < puzzle.length) {
+                value = max(puzzle[i + 1][j].right, max(puzzle[i][j].down, puzzle[i][j + 1].down));
+              }
+              else {
+                value = max(puzzle[i][j].down, puzzle[i][j + 1].down);
+              }
+            }
+
+            if(value < 0 && puzzle[i][j].right == 0) {
+              puzzle[i][j].right = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].right == -1) {
+              puzzle[i][j].right = 0;
+            }
+            //handling heading to positive edge
+            //up
+            if(!goNextLine && [puzzle[i - 1][j].down, puzzle[i - 1][j].right, puzzle[i - 1][j + 1].down]
+                .where((value) => value > 0).length >= 2) {
+              if(puzzle[i][j].right == 0){
+                puzzle[i][j].right = -1;
+              }
+            }
+            //down
+            else if(!goNextLine) {
+              if(i + 1 < puzzle.length) {
+                if([puzzle[i][j].down, puzzle[i][j + 1].down, puzzle[i + 1][j].right]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+              else {
+                if(puzzle[i][j].down > 0 && puzzle[i][j + 1].down > 0) {
+                  if(puzzle[i][j].right == 0){
+                    puzzle[i][j].right = -1;
+                  }
+                }
+              }
+            }
+          }
+          //puzzle[i][j].down
+              {
+            value = 0;
+            goNextLine = false;
+            //handling heading to minus edge
+            //left
+            value = puzzle[i][j].left;
+            if(i + 1 < puzzle.length) {
+              value = max(value, puzzle[i + 1][j].left);
+            }
+            //right
+            if(value >= 0) {
+              value = max(puzzle[i][j].right, puzzle[i][j + 1].down);
+              if(i + 1 < puzzle.length) {
+                value = max(value, puzzle[i + 1][j].right);
+              }
+            }
+
+            if(value < 0 && puzzle[i][j].down == 0) {
+              puzzle[i][j].down = -1;
+              goNextLine = true;
+            }
+            else if(value >= 0 && puzzle[i][j].down == -1) {
+              puzzle[i][j].down = 0;
+            }
+            //handling heading to positive edge
+            //left
+            if(!goNextLine && i + 1 < puzzle.length) {
+              if(puzzle[i][j].left > 0 && puzzle[i + 1][j].left > 0) {
+                if(puzzle[i][j].down == 0){
+                  puzzle[i][j].down = -1;
+                }
+              }
+            }
+            //right
+            else if(!goNextLine) {
+              if(i + 1 < puzzle.length) {
+                if([puzzle[i][j].right, puzzle[i][j + 1].down, puzzle[i + 1][j].right]
+                    .where((value) => value > 0).length >= 2) {
+                  if(puzzle[i][j].down == 0){
+                    puzzle[i][j].down = -1;
+                  }
+                }
+              }
+              else if(puzzle[i][j].right > 0 && puzzle[i][j + 1].down > 0) {
+                if(puzzle[i][j].down == 0){
+                  puzzle[i][j].down = -1;
+                }
+              }
+            }
+          }
+        }
+        else {
+          //i == 0 && j == 0
+          //puzzle[i][j].up
+          {
+            value = 0;
+            //handling heading to minus edge
+            if (inValid.contains(puzzle[i][j].left) ||
+                (inValid.contains(puzzle[i][j].right) &&
+                    inValid.contains(puzzle[i][j + 1].up))) {
+              value = -1;
+            }
+            //handling heading to positive edge
+            else if (puzzle[i][j].right > 0 && puzzle[i][j + 1].up > 0) {
+              if (puzzle[i][j].up == 0) {
+                value = -1;
+              }
+            }
+            if(value != 0 && puzzle[i][j].up == 0) {
+              puzzle[i][j].up = value;
+            }
+            else if(((value == 0 || value == -3)) && puzzle[i][j].up == -1) {
+              puzzle[i][j].up = 0;
+            }
+          }
+          //puzzle[i][j].left
+              {
+            value = 0;
+            //handling heading to minus edge
+            if (inValid.contains(puzzle[i][j].up) ||
+                (inValid.contains(puzzle[i][j].down) &&
+                    inValid.contains(puzzle[i + 1][j].left))) {
+              value = -1;
+            }
+            //handling heading to positive edge
+            else if (puzzle[i][j].down > 0 && puzzle[i + 1][j].left > 0) {
+              if (puzzle[i][j].left == 0) {
+                value = -1;
+              }
+            }
+            if(value != 0 && puzzle[i][j].left == 0) {
+              puzzle[i][j].left = value;
+            }
+            else if((value == 0 || value == -3) && puzzle[i][j].left == -1) {
+              puzzle[i][j].left = 0;
+            }
+          }
+          //puzzle[i][j].down
+              {
+            value = 0;
+            //handling heading to minus edge
+            if ((inValid.contains(puzzle[i][j].left) &&
+                inValid.contains(puzzle[i + 1][j].left)) ||
+                (inValid.contains(puzzle[i][j].right) &&
+                    inValid.contains(puzzle[i][j + 1].down) &&
+                    inValid.contains(puzzle[i + 1][j].right))) {
+              value = -1;
+            }
+            //handling heading to positive edge
+            //left
+            else if (puzzle[i][j].left > 0 && puzzle[i + 1][j].left > 0) {
+              if (puzzle[i][j].down == 0) {
+                value = -1;
+              }
+            }
+            //handling heading to positive edge
+            //right
+            else if ([
+              puzzle[i][j].right,
+              puzzle[i + 1][j].right,
+              puzzle[i][j + 1].down
+            ].where((value) => value > 0).length >=
+                2) {
+              if (puzzle[i][j].down == 0) {
+                value = -1;
+              }
+            }
+            if(value != 0 && puzzle[i][j].down == 0) {
+              puzzle[i][j].down = value;
+            }
+            else if((value == 0 || value == -3) && puzzle[i][j].down == -1) {
+              puzzle[i][j].down = 0;
+            }
+          }
+          //puzzle[i][j].right
+              {
+            value = 0;
+            //handling heading to minus edge
+            if ((inValid.contains(puzzle[i][j].up) &&
+                inValid.contains(puzzle[i][j + 1].up)) ||
+                (inValid.contains(puzzle[i][j].down) &&
+                    inValid.contains(puzzle[i][j + 1].down) &&
+                    inValid.contains(puzzle[i + 1][j].right))) {
+              value = -1;
+            }
+            //handling heading to positive edge
+            //up
+            else if (puzzle[i][j].up > 0 && puzzle[i][j + 1].up > 0) {
+              if (puzzle[i][j].right == 0) {
+                value = -1;
+              }
+            }
+            //handling heading to positive edge
+            //down
+            else if ([
+              puzzle[i][j].down,
+              puzzle[i + 1][j].right,
+              puzzle[i][j + 1].down
+            ].where((value) => value > 0).length >=
+                2) {
+              if (puzzle[i][j].right == 0) {
+                value = -1;
+              }
+            }
+            if(value != 0 && puzzle[i][j].right == 0) {
+              puzzle[i][j].right = value;
+            }
+            else if((value == 0 || value == -3) && puzzle[i][j].right == -1) {
+              puzzle[i][j].right = 0;
+            }
+          }
+        }
+
+        await checkMaxLine();
+      }
+    }
+
+    notifyListeners();
+    submit = await readSquare.readSubmit(puzzle);
+  }
+
+  int getLineCount(int row, int col) {
+    int count = 0;
+
+    if(row != 0 && col != 0) {
+      count = [
+        puzzle[row - 1][col].down,
+        puzzle[row][col].down,
+        puzzle[row][col - 1].right,
+        puzzle[row][col].right
+      ].where((value) => value > 0).length;
+    }
+    else if(row != 0 && col == 0) {
+      count = [
+        puzzle[row - 1][col].down,
+        puzzle[row][col].down,
+        puzzle[row][col].left,
+        puzzle[row][col].right
+      ].where((value) => value > 0).length;
+    }
+    else if(row == 0 && col != 0) {
+      count = [
+        puzzle[row][col].up,
+        puzzle[row][col].down,
+        puzzle[row][col - 1].right,
+        puzzle[row][col].right
+      ].where((value) => value > 0).length;
+    }
+    else {
+      count = [
+        puzzle[row][col].up,
+        puzzle[row][col].down,
+        puzzle[row][col].left,
+        puzzle[row][col].right
+      ].where((value) => value > 0).length;
+    }
+
+    return count;
+  }
+
+  ///현재 라인이 num 이상인 경우 호출되는 함수
+  ///
+  ///0으로 남아 있는 라인을 모두 -1로 변경
+  ///
+  ///setLineDisable() 호출 직후 checkMaxLine()를 호출함
+  Future<bool> setLineDisable(int row, int col) async {
+    if(UserInfo.debugMode["print_methodName"]!) {
+      // ignore: avoid_print
+      print("call setLineDisable($row, $col)");
+    }
+    await checkMaxLine();
+    bool isChanged = false;
+
+    if(row != 0 && col != 0) {
+      if (puzzle[row - 1][col].down == 0) {
+        puzzle[row - 1][col].down = -1;
+        isChanged = true;
+      }
+      if (puzzle[row][col].down == 0) {
+        puzzle[row][col].down = -1;
+        isChanged = true;
+      }
+      if (puzzle[row][col - 1].right == 0) {
+        puzzle[row][col - 1].right = -1;
+        isChanged = true;
+      }
+      if (puzzle[row][col].right == 0) {
+        puzzle[row][col].right = -1;
+        isChanged = true;
+      }
+    }
+    else if(row != 0 && col == 0) {
+      if (puzzle[row - 1][col].down == 0) {
+        puzzle[row - 1][col].down = -1;
+        isChanged = true;
+      }
+      if (puzzle[row][col].down == 0) {
+        puzzle[row][col].down = -1;
+        isChanged = true;
+      }
+      if (puzzle[row][col].left == 0) {
+        puzzle[row][col].left = -1;
+        isChanged = true;
+      }
+      if (puzzle[row][col].right == 0) {
+        puzzle[row][col].right = -1;
+        isChanged = true;
+      }
+    }
+    else if(row == 0 && col != 0) {
+      if (puzzle[row][col].up == 0) {
+        puzzle[row][col].up = -1;
+        isChanged = true;
+      }
+      if (puzzle[row][col].down == 0) {
+        puzzle[row][col].down = -1;
+        isChanged = true;
+      }
+      if (puzzle[row][col - 1].right == 0) {
+        puzzle[row][col - 1].right = -1;
+        isChanged = true;
+      }
+      if (puzzle[row][col].right == 0) {
+        puzzle[row][col].right = -1;
+        isChanged = true;
+      }
+    }
+    else {
+      if (puzzle[row][col].up == 0) {
+        puzzle[row][col].up = -1;
+        isChanged = true;
+      }
+      if (puzzle[row][col].down == 0) {
+        puzzle[row][col].down = -1;
+        isChanged = true;
+      }
+      if (puzzle[row][col].left == 0) {
+        puzzle[row][col].left = -1;
+        isChanged = true;
+      }
+      if (puzzle[row][col].right == 0) {
+        puzzle[row][col].right = -1;
+        isChanged = true;
+      }
+    }
+
+    return isChanged;
+  }
+
+  ///enable이 true로 호출되는 경우 호출되는 함수
+  ///
+  ///findBlockEnableDisable의 checkCurrentPath()에서 다시 계산을 할 수 있도록 모든 -1 값을 0으로 변경
+  ///
+  ///setLineEnable() 호출 직후 checkMaxLine()를 호출함
+  Future<bool> setLineEnable(int row, int col) async {
+    if(UserInfo.debugMode["print_methodName"]!) {
+      // ignore: avoid_print
+      print("call setLineEnable($row, $col)");
+    }
+    await checkMaxLine();
+    bool isChanged = false;
+
+    if(row != 0 && col != 0) {
+      if (puzzle[row - 1][col].down == -1) {
+        puzzle[row - 1][col].down = 0;
+        isChanged = true;
+      }
+      if (puzzle[row][col].down == -1) {
+        puzzle[row][col].down = 0;
+        isChanged = true;
+      }
+      if (puzzle[row][col - 1].right == -1) {
+        puzzle[row][col - 1].right = 0;
+        isChanged = true;
+      }
+      if (puzzle[row][col].right == -1) {
+        puzzle[row][col].right = 0;
+        isChanged = true;
+      }
+    }
+    else if(row != 0 && col == 0) {
+      if (puzzle[row - 1][col].down == -1) {
+        puzzle[row - 1][col].down = 0;
+        isChanged = true;
+      }
+      if (puzzle[row][col].down == -1) {
+        puzzle[row][col].down = 0;
+        isChanged = true;
+      }
+      if (puzzle[row][col].left == -1) {
+        puzzle[row][col].left = 0;
+        isChanged = true;
+      }
+      if (puzzle[row][col].right == -1) {
+        puzzle[row][col].right = 0;
+        isChanged = true;
+      }
+    }
+    else if(row == 0 && col != 0) {
+      if (puzzle[row][col].up == -1) {
+        puzzle[row][col].up = 0;
+        isChanged = true;
+      }
+      if (puzzle[row][col].down == -1) {
+        puzzle[row][col].down = 0;
+        isChanged = true;
+      }
+      if (puzzle[row][col - 1].right == -1) {
+        puzzle[row][col - 1].right = 0;
+        isChanged = true;
+      }
+      if (puzzle[row][col].right == -1) {
+        puzzle[row][col].right = 0;
+        isChanged = true;
+      }
+    }
+    else {
+      if (puzzle[row][col].up == -1) {
+        puzzle[row][col].up = 0;
+        isChanged = true;
+      }
+      if (puzzle[row][col].down == -1) {
+        puzzle[row][col].down = 0;
+        isChanged = true;
+      }
+      if (puzzle[row][col].left == -1) {
+        puzzle[row][col].left = 0;
+        isChanged = true;
+      }
+      if (puzzle[row][col].right == -1) {
+        puzzle[row][col].right = 0;
+        isChanged = true;
+      }
+    }
+
+    return isChanged;
   }
 }

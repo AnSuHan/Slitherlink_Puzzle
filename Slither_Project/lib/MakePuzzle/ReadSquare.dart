@@ -1,3 +1,4 @@
+// ignore_for_file: file_names
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -59,6 +60,12 @@ class ReadSquare {
     //get submit data
     //read from SharedPreference
     else {
+      //load test data
+      if(key.split("_")[3].compareTo("test") == 0) {
+        data = await read.readData(key);
+        //printData();
+        return data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
+      }
       final ExtractData prefs = ExtractData();
       String? temp = (await prefs.getDataFromLocal(key)) ?.toString();
 
@@ -78,7 +85,7 @@ class ReadSquare {
     }
   }
 
-
+  ///this method's return should be saved to submit in provider
   Future<List<List<int>>> readSubmit(List<List<SquareBox>> puzzle) async {
     lineData = List.generate(puzzle.length * 2 + 1, (row) =>
         List.filled(row % 2 == 0 ? puzzle[0].length : puzzle[0].length + 1, 0),

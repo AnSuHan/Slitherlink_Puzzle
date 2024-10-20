@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
+import '../Front/HowToPlay.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../User/Authentication.dart';
 import '../User/UserInfo.dart';
@@ -15,6 +16,9 @@ class MainUI {
   bool debugDropdown = false;
 
   late Size screenSize;
+  List<String> puzzleMode = ["debug", "release"];
+  String selectedMode= "release";
+
   List<String> puzzleType = ["square", "triangle"];
   static List<String> _puzzleType = ["square", "triangle"];
   List<String> puzzleSize = ["small"];
@@ -96,6 +100,10 @@ class MainUI {
         PopupMenuItem<String>(
           value: 'account',
           child: Text(appLocalizations.translate('MainUI_menuAccount')),
+        ),
+        PopupMenuItem<String>(
+          value: 'how',
+          child: Text(appLocalizations.translate('MainUI_menuHowToPlay')),
         ),
         PopupMenuItem<String>(
           value: 'setting',
@@ -691,6 +699,14 @@ class MainUI {
         );
 
         break;
+      case "how":
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const HowToPlay(),
+            )
+        );
+        break;
     }
   }
 
@@ -816,15 +832,38 @@ class MainUI {
   //about puzzle difficulty
   Widget getPuzzleType(BuildContext context, VoidCallback onUpdate) {
     applyLanguageCode();
+
+    List<Widget> children = [
+      if (UserInfo.debugMode["loadTestAnswer"]!) getPuzzleMode(context, onUpdate),
+      if (UserInfo.debugMode["loadTestAnswer"]!) const SizedBox(width: 50,),
+      getPuzzleShape(context, onUpdate),
+      const SizedBox(
+        width: 50,
+      ),
+      getPuzzleSize(context, onUpdate),
+    ];
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        getPuzzleShape(context, onUpdate),
-        const SizedBox(
-          width: 50,
-        ),
-        getPuzzleSize(context, onUpdate),
-      ],
+      children: children,
+    );
+  }
+
+  //for debug (no translation)
+  DropdownButton getPuzzleMode(BuildContext context, VoidCallback onUpdate) {
+    return DropdownButton(items: puzzleMode
+        .map((e) => DropdownMenuItem(
+      value: e, // 선택 시 onChanged 를 통해 반환할 value
+      child: Text(e),
+    ))
+        .toList(),
+      onChanged: (value) async {
+        selectedMode = value;
+        onUpdate();
+      },
+      value: selectedMode,
+      style: const TextStyle(color: Colors.white, fontSize: 24),
+      dropdownColor: Colors.grey,
     );
   }
 
@@ -927,6 +966,13 @@ class MainUI {
       onPressed: () async {
         int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
+        //for debug
+        if(selectedMode.compareTo("debug") == 0) {
+          //print("debug key : $progressKey");
+          // ignore: use_build_context_synchronously
+          changeScene(context, "${progressKey}_test");
+          return;
+        }
         //restrict puzzle's EOF
         // ignore: use_build_context_synchronously
         if(await answer.checkRemainPuzzle(context, selectedType[0], selectedType[1])) {
@@ -958,13 +1004,14 @@ class MainUI {
   void changeScene(BuildContext context, String key, {bool isContinue = false}) {
     //print("change Scene with key : $key, isContinue : $isContinue");
     List<String> token = key.split("_");
+    bool isDebugMode = selectedMode.compareTo("debug") == 0;
 
     switch(token[0]) {
       case "square":
         Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => GameSceneSquare(isContinue: isContinue, loadKey: key),
+              builder: (context) => GameSceneSquare(isContinue: isContinue, loadKey: key, testMode: isDebugMode),
             )
         );
         break;

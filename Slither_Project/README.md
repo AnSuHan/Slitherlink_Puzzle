@@ -47,3 +47,15 @@ samples, guidance on mobile development, and a full API reference.
 ## File Handling
 
 Square_small.json : item's length should be 1410 (like test form) 
+
+## variable Handling
+
+SquareProvider > _isUpdating (int) :
+    updateSquareBox() => 0이 될 때까지 대기 후 실행 => 시작 시(removeHintLine 호출 이후) 1로 설정 => setDo 호출 => 3이 될 때까지 종료 대기 후 종료 시 0으로 설정
+    removeHintLine() => 0이 될 때까지 대기 후 실행
+    setDo() => 1이 될 때까지 대기 후 실행 => 시작 시 2으로 설정, 종료 시 3으로 설정
+    refreshSubmit() => 0이거나 2가 될 때까지 대기 후 실행
+
+    checkCompletePuzzleCompletely() => 0이 될 때까지 대기 후 실행
+    resetDo() => 0으로 설정
+    실행 순서 : updateSquareBox( removeHintLine() -> setDo() )

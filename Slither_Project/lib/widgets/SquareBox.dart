@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../Front/HowToPlay.dart';
 import '../ThemeColor.dart';
 import '../provider/SquareProvider.dart';
 
@@ -12,12 +13,15 @@ class SquareBox extends StatefulWidget {
   //SquareBox's position in `puzzle`
   final int row;
   final int column;
+  final bool isHowToPlay;
 
   //각 숫자는 색에 대한 의미를 같이 가짐
   //0 : 기본, 1~ : 유저가 선택, -4 : 유저가 x로 표기
   //-1 : 비활성(미선택), -2 : 비활성(선택), -3 : 정답을 나타내는 힌트, -5 : 오답을 나타내는 힌트 
   var up = 0, down = 0, left = 0, right = 0;
   var num = 0;
+  var boxColor = 0; //0 : 일반, 1 : 강조(howToPlay에서만 사용)
+  HowToPlayState howToPlay = HowToPlayState();
 
   SquareBox({
     Key? key,
@@ -25,6 +29,7 @@ class SquareBox extends StatefulWidget {
     this.isFirstColumn = false,
     required this.row,
     required this.column,
+    this.isHowToPlay = false,
   }) : super(key: key);
 
   @override
@@ -45,6 +50,10 @@ class SquareBox extends StatefulWidget {
         left = color;
         break;
     }
+  }
+
+  void setBoxColor(int color) {
+    boxColor = color;
   }
 }
 
@@ -107,12 +116,15 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
     var left = widget.left;
     var right = widget.right;
     var num = widget.num;
+    var boxColor = widget.boxColor;
 
     int row = widget.row;
     int column = widget.column;
 
     return Consumer<SquareProvider>(
       builder: (context, squareProvider, child) {
+        boxColor = squareProvider.getBoxColor(row, column);
+
         return Column(
           children: [
             !isFirstRow ? Container() : Row(
@@ -154,7 +166,14 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       });
 
                       await Provider.of<SquareProvider>(context, listen: false)
-                          .updateSquareBox(row, column, up: up);
+                        .updateSquareBox(row, column, up: up,
+                        callback: widget.isHowToPlay ? (int row, int col, String pos) async {
+                          final howToPlayState = context.findAncestorStateOfType<HowToPlayState>();
+                          if (howToPlayState != null) {
+                            howToPlayState.checkStep(row, col, pos);
+                          }
+                        } : null
+                      );
                     },
                     child: AnimatedBuilder(
                       animation: _colorAnimation,
@@ -217,7 +236,14 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       });
 
                       await Provider.of<SquareProvider>(context, listen: false)
-                          .updateSquareBox(row, column, left: left);
+                        .updateSquareBox(row, column, left: left,
+                        callback: widget.isHowToPlay ? (int row, int col, String pos) async {
+                          final howToPlayState = context.findAncestorStateOfType<HowToPlayState>();
+                          if (howToPlayState != null) {
+                            howToPlayState.checkStep(row, col, pos);
+                          }
+                        } : null
+                      );
                     },
                     child: AnimatedBuilder(
                       animation: _colorAnimation,
@@ -246,7 +272,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                 Container(
                   height: 50,
                   width: 50,
-                  color: settingColor["box"],
+                  color: boxColor == 0 ? settingColor["box"] : settingColor["boxHighLight"],
                   child: Center(
                     child: Text(num.toString(), style: TextStyle(color: settingColor["number"])),
                   ),
@@ -274,7 +300,14 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       });
 
                       await Provider.of<SquareProvider>(context, listen: false)
-                          .updateSquareBox(row, column, right: right);
+                        .updateSquareBox(row, column, right: right,
+                        callback: widget.isHowToPlay ? (int row, int col, String pos) async {
+                          final howToPlayState = context.findAncestorStateOfType<HowToPlayState>();
+                          if (howToPlayState != null) {
+                            howToPlayState.checkStep(row, col, pos);
+                          }
+                        } : null
+                      );
                     },
                     child: AnimatedBuilder(
                       animation: _colorAnimation,
@@ -341,7 +374,14 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       });
 
                       await Provider.of<SquareProvider>(context, listen: false)
-                          .updateSquareBox(row, column, down: down);
+                        .updateSquareBox(row, column, down: down,
+                        callback: widget.isHowToPlay ? (int row, int col, String pos) async {
+                          final howToPlayState = context.findAncestorStateOfType<HowToPlayState>();
+                          if (howToPlayState != null) {
+                            howToPlayState.checkStep(row, col, pos);
+                          }
+                        } : null
+                      );
                     },
                     child: AnimatedBuilder(
                       animation: _colorAnimation,
