@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "Bash(mv \"Slither_Project/.dart_tool\" \".dart_tool\")",
+      "Bash(mv \"Slither_Project/.flutter-plugins\" \".flutter-plugins\")",
+      "Bash(mv \"Slither_Project/.flutter-plugins-dependencies\" \".flutter-plugins-dependencies\")",
+      "Bash(mv \"Slither_Project/.idea\" \".idea_flutter\")",
+      "Bash(rmdir \"Slither_Project\")",
+      "Bash(rm -rf \".idea\")",
+      "Bash(mv \".idea_flutter\" \".idea\")",
+      "Bash(grep:*)",
+      "Bash(find D:/ForGitRepository/Slitherlink_Puzzle/.idea -name *.xml)",
+      "Bash(flutter doctor:*)",
+      "Bash(flutter analyze:*)",
+      "Bash(flutter pub:*)",
+      "Bash(\"/d/flutter_windows_3.35.6-stable/flutter/bin/cache/dart-sdk/bin/dart.exe\" --version 2>&1)",
+      "Bash(xargs grep:*)",
+      "Bash(flutter --version)",
+      "Bash(flutter build:*)",
+      "Bash(flutter clean:*)",
+      "Bash(cl)",
+      "Bash(\"C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt\")",
+      "Read(//c/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/**)",
+      "Read(//c/Program Files/Microsoft Visual Studio/**)",
+      "Read(//c/Program Files \\(x86\\)/Microsoft Visual Studio/**)"
+    ]
+  }
+}

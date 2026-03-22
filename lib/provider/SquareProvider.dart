@@ -938,8 +938,10 @@ class SquareProvider with ChangeNotifier {
     submit = await readSquare.readSubmit(puzzle);
     notifyListeners();
     await setDo();
-    await findBlockEnableDisable(
+    await findBlockEnableDisableRefactor(
         row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
+    // await findBlockEnableDisable(
+    //     row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
     notifyListeners();
     while(_isUpdating != 3) {
       await Future.delayed(const        // ignore: avoid_print
@@ -2131,6 +2133,71 @@ class SquareProvider with ChangeNotifier {
     //print("changedList $changedList");
   }
 
+  List<List<dynamic>> needCalcLine = [];
+  List<List<int>> needCalcSet = [];
+  List<List<dynamic>> needCalcLineTemp = [];
+  int calcIndex = 0;
+
+  ///findBlockEnableDisable의 계산량을 줄인 메소드
+  Future<void> findBlockEnableDisableRefactor(
+      int row, int column, String pos,
+      {bool enable = false, bool disable = false}
+    ) async {
+
+    //[row, col, pos]에 인접한 라인을 검색
+    if(needCalcLine.isEmpty) {
+      needCalcLine = getMinusNearLine([[row, column, pos]]);
+    }
+    for(int i = 0 ; i < needCalcLine.length ; i++) {
+      if(needCalcSet.isNotEmpty) {
+        bool flag = true;
+        //같은 것을 찾으면 false로 즉시 종료
+        for(int j = 0 ; flag && j < needCalcSet.length ; j++) {
+          if(needCalcSet[j][0] == needCalcLine[i][0] && needCalcSet[j][1] == needCalcLine[i][1]) {
+            flag = false;
+            break;
+          }
+        }
+
+        if(flag) {
+          needCalcSet.add([needCalcLine[i][0], needCalcLine[i][1]]);
+        }
+      }
+      else {
+        needCalcSet.add([needCalcLine[i][0], needCalcLine[i][1]]);
+      }
+    }
+    print("needCalcSet : $needCalcSet");
+
+
+    //종료 조건 검색
+    while(calcIndex < needCalcSet.length) {
+      print("call checkMaxLineBox");
+      checkMaxLineBox(needCalcSet[calcIndex][0], needCalcSet[calcIndex][1]);
+
+      //추가 조건 만족
+      if(false) {
+        needCalcLineTemp = getMinusNearLine([[row, column, pos]]);
+        for(int i = 0 ; i < needCalcLineTemp.length ; i++) {
+          for(int j = 0 ; j < needCalcLine.length ; j++) {
+            if(needCalcLine[j][0] == needCalcLineTemp[i][0] &&
+                needCalcLine[j][1] == needCalcLineTemp[i][1] &&
+                needCalcLine[j][2].compareTo(needCalcLineTemp[i][2]) == 0) {
+
+            }
+          }
+        }
+      }
+
+      calcIndex++;
+    }
+
+    //await checkCurrentPath();
+    notifyListeners();
+    submit = await readSquare.readSubmit(puzzle);
+    //print("changedList $changedList");
+  }
+
   ///현재 submit 기준 사용할 수 없는 라인을 -1로 변경
   Future<void> checkCurrentPath() async {
     if(UserInfo.debugMode["print_methodName"]!) {
@@ -2202,6 +2269,69 @@ class SquareProvider with ChangeNotifier {
             if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
           }
         }
+      }
+    }
+
+    notifyListeners();
+    submit = await readSquare.readSubmit(puzzle);
+  }
+
+  ///각 박스마다 lineValue가 1이상인 값을 세고, 해당 박스의 num 이상인 경우 남은 0 라인을 -1로 변경
+  Future<void> checkMaxLineBox(int row, int col) async {
+    if(UserInfo.debugMode["print_methodName"]!) {
+      // ignore: avoid_print
+      print("call checkMaxLineBox");
+    }
+    int count = 0;
+
+    int i = row, j = col;
+    if(i > 0 && j > 0) {
+      count = [puzzle[i - 1][j].down, puzzle[i][j].down, puzzle[i][j - 1].right, puzzle[i][j].right]
+          .where((value) => value >= 1)
+          .length;
+
+      if(count >= puzzle[i][j].num) {
+        if(puzzle[i - 1][j].down == 0) puzzle[i - 1][j].down = -1;
+        if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
+        if(puzzle[i][j - 1].right == 0) puzzle[i][j - 1].right = -1;
+        if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
+      }
+    }
+    else if(i == 0 && j != 0) {
+      count = [puzzle[i][j].up, puzzle[i][j].down, puzzle[i][j - 1].right, puzzle[i][j].right]
+          .where((value) => value >= 1)
+          .length;
+
+      if(count >= puzzle[i][j].num) {
+        if(puzzle[i][j].up == 0) puzzle[i][j].up = -1;
+        if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
+        if(puzzle[i][j - 1].right == 0) puzzle[i][j - 1].right = -1;
+        if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
+      }
+    }
+    else if(i != 0 && j == 0) {
+      count = [puzzle[i - 1][j].down, puzzle[i][j].down, puzzle[i][j].left, puzzle[i][j].right]
+          .where((value) => value >= 1)
+          .length;
+
+      if(count >= puzzle[i][j].num) {
+        if(puzzle[i - 1][j].down == 0) puzzle[i - 1][j].down = -1;
+        if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
+        if(puzzle[i][j].left == 0) puzzle[i][j].left = -1;
+        if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
+      }
+    }
+    else {
+      //i == 0 && j == 0
+      count = [puzzle[i][j].up, puzzle[i][j].down, puzzle[i][j].left, puzzle[i][j].right]
+          .where((value) => value >= 1)
+          .length;
+
+      if(count >= puzzle[i][j].num) {
+        if(puzzle[i][j].up == 0) puzzle[i][j].up = -1;
+        if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
+        if(puzzle[i][j].left == 0) puzzle[i][j].left = -1;
+        if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
       }
     }
 
