@@ -21,11 +21,19 @@ class MainUI {
 
   List<String> puzzleType = ["square", "triangle"];
   static List<String> _puzzleType = ["square", "triangle"];
-  List<String> puzzleSize = ["small"];
-  static List<String> _puzzleSize = ["small"];
+  List<String> puzzleSize = ["small", "generate"];
+  static List<String> _puzzleSize = ["small", "generate"];
   ///shape, size
-  static List<String> selectedType = ["square", "small"];
-  static final List<String> _selectedType = ["square", "small"];
+  static List<String> selectedType = ["square", "generate"];
+  static final List<String> _selectedType = ["square", "generate"];
+
+  // Generate mode settings
+  List<String> difficultyList = ["easy", "normal", "hard"];
+  static List<String> _difficultyList = ["easy", "normal", "hard"];
+  static String selectedDifficulty = "normal";
+  static String _selectedDifficulty = "normal";
+  static int generateRows = 10;
+  static int generateCols = 10;
   //continue data
   List<String> progressPuzzle = UserInfo.getContinuePuzzle().isEmpty ? [""] : UserInfo.getContinuePuzzle().toList();
   static String progressKey = "";
@@ -61,7 +69,7 @@ class MainUI {
     auth = Authentication();
     //subscription of stream
     checkLanguage().listen((event) {});
-    answer = Answer(context: context);
+    answer = Answer(context: context, loadPreset: true);
   }
 
   void setAppLocalizations(AppLocalizations appLocalizations) {
@@ -742,19 +750,49 @@ class MainUI {
         selectedType[0] = "triangle";
         break;
     }
-    _puzzleSize = [appLocalizations.translate('MainUI_puzzleSize_small')];
+    _puzzleSize = [
+      appLocalizations.translate('MainUI_puzzleSize_small'),
+      appLocalizations.translate('MainUI_puzzleSize_generate'),
+    ];
     switch(_selectedType[1]) {
       case "small":
       case "소형":
         _selectedType[1] = appLocalizations.translate('MainUI_puzzleSize_small');
         selectedType[1] = "small";
         break;
+      case "generate":
+      case "생성":
+        _selectedType[1] = appLocalizations.translate('MainUI_puzzleSize_generate');
+        selectedType[1] = "generate";
+        break;
     }
 
+    _difficultyList = [
+      appLocalizations.translate('MainUI_difficulty_easy'),
+      appLocalizations.translate('MainUI_difficulty_normal'),
+      appLocalizations.translate('MainUI_difficulty_hard'),
+    ];
+    switch(_selectedDifficulty) {
+      case "easy":
+      case "쉬움":
+        _selectedDifficulty = appLocalizations.translate('MainUI_difficulty_easy');
+        selectedDifficulty = "easy";
+        break;
+      case "normal":
+      case "보통":
+        _selectedDifficulty = appLocalizations.translate('MainUI_difficulty_normal');
+        selectedDifficulty = "normal";
+        break;
+      case "hard":
+      case "어려움":
+        _selectedDifficulty = appLocalizations.translate('MainUI_difficulty_hard');
+        selectedDifficulty = "hard";
+        break;
+    }
 
     //main en
     puzzleType = ["square", "triangle"];
-    puzzleSize = ["small"];
+    puzzleSize = ["small", "generate"];
 
     _theme = [
       appLocalizations.translate('ThemeName_01'),
@@ -837,15 +875,93 @@ class MainUI {
       if (UserInfo.debugMode["loadTestAnswer"]!) getPuzzleMode(context, onUpdate),
       if (UserInfo.debugMode["loadTestAnswer"]!) const SizedBox(width: 50,),
       getPuzzleShape(context, onUpdate),
-      const SizedBox(
-        width: 50,
-      ),
+      const SizedBox(width: 50,),
       getPuzzleSize(context, onUpdate),
     ];
 
+    if (selectedType[1] == "generate") {
+      children.addAll([
+        const SizedBox(width: 50,),
+        getPuzzleDifficulty(context, onUpdate),
+      ]);
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: children,
+      ),
+    );
+  }
+
+  Widget getGenerateSizeSelector(BuildContext context, VoidCallback onUpdate) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: children,
+      children: [
+        Text("${appLocalizations.translate('MainUI_generateRows')}: ", style: const TextStyle(color: Colors.white, fontSize: 18)),
+        SizedBox(
+          width: 60,
+          child: DropdownButton<int>(
+            items: [5, 7, 10, 15, 20].map((e) => DropdownMenuItem(value: e, child: Text("$e"))).toList(),
+            onChanged: (value) {
+              generateRows = value ?? 10;
+              onUpdate();
+            },
+            value: generateRows,
+            style: const TextStyle(color: Colors.white, fontSize: 18),
+            dropdownColor: Colors.grey,
+            isExpanded: true,
+          ),
+        ),
+        const SizedBox(width: 30,),
+        Text("${appLocalizations.translate('MainUI_generateCols')}: ", style: const TextStyle(color: Colors.white, fontSize: 18)),
+        SizedBox(
+          width: 60,
+          child: DropdownButton<int>(
+            items: [5, 7, 10, 15, 20].map((e) => DropdownMenuItem(value: e, child: Text("$e"))).toList(),
+            onChanged: (value) {
+              generateCols = value ?? 10;
+              onUpdate();
+            },
+            value: generateCols,
+            style: const TextStyle(color: Colors.white, fontSize: 18),
+            dropdownColor: Colors.grey,
+            isExpanded: true,
+          ),
+        ),
+      ],
+    );
+  }
+
+  DropdownButton getPuzzleDifficulty(BuildContext context, VoidCallback onUpdate) {
+    return DropdownButton(items: _difficultyList
+        .map((e) => DropdownMenuItem(
+      value: e,
+      child: Text(e),
+    ))
+        .toList(),
+      onChanged: (value) {
+        _selectedDifficulty = value;
+        switch(value) {
+          case "easy":
+          case "쉬움":
+            selectedDifficulty = "easy";
+            break;
+          case "normal":
+          case "보통":
+            selectedDifficulty = "normal";
+            break;
+          case "hard":
+          case "어려움":
+            selectedDifficulty = "hard";
+            break;
+        }
+        onUpdate();
+      },
+      value: _selectedDifficulty,
+      style: const TextStyle(color: Colors.white, fontSize: 24),
+      dropdownColor: Colors.grey,
     );
   }
 
@@ -903,12 +1019,23 @@ class MainUI {
   DropdownButton getPuzzleSize(BuildContext context, VoidCallback onUpdate) {
     return DropdownButton(items: _puzzleSize
         .map((e) => DropdownMenuItem(
-      value: e, // 선택 시 onChanged 를 통해 반환할 value
+      value: e,
       child: Text(e),
     ))
         .toList(),
       onChanged: (value) {
         _selectedType[1] = value;
+        switch(value) {
+          case "small":
+          case "소형":
+            selectedType[1] = "small";
+            break;
+          case "generate":
+          case "생성":
+            selectedType[1] = "generate";
+            break;
+        }
+        onUpdate();
       },
       value: _selectedType[1],
       style: const TextStyle(color: Colors.white, fontSize: 24),
@@ -964,6 +1091,14 @@ class MainUI {
         minimumSize: const Size(100, 50),
       ),
       onPressed: () async {
+        // Generate mode: create key like "square_generate_10x10_normal"
+        if (selectedType[1] == "generate") {
+          progressKey = "${selectedType[0]}_generate_${generateRows}x${generateCols}_$selectedDifficulty";
+          // ignore: use_build_context_synchronously
+          changeScene(context, progressKey);
+          return;
+        }
+
         int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
         progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
         //for debug

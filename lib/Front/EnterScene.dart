@@ -209,6 +209,11 @@ class EnterSceneState extends State<EnterScene> {
                     Center(
                       child: ui.getPuzzleType(context, updateUI),
                     ),
+                    if (MainUI.selectedType[1] == "generate")
+                      Padding(
+                        padding: const EdgeInsetsDirectional.symmetric(vertical: 10),
+                        child: ui.getGenerateSizeSelector(context, updateUI),
+                      ),
                   ],
                 ),
               ),
@@ -267,6 +272,11 @@ class EnterSceneState extends State<EnterScene> {
                       child: ui.getStartButton(context),
                     ),
                     ui.getPuzzleType(context, updateUI),
+                    if (MainUI.selectedType[1] == "generate")
+                      Padding(
+                        padding: const EdgeInsetsDirectional.symmetric(vertical: 10),
+                        child: ui.getGenerateSizeSelector(context, updateUI),
+                      ),
                   ],
                 ),
               ),
@@ -330,6 +340,11 @@ class EnterSceneState extends State<EnterScene> {
                           child: ui.getStartButton(context),
                         ),
                         ui.getPuzzleType(context, updateUI),
+                    if (MainUI.selectedType[1] == "generate")
+                      Padding(
+                        padding: const EdgeInsetsDirectional.symmetric(vertical: 10),
+                        child: ui.getGenerateSizeSelector(context, updateUI),
+                      ),
                       ],
                     ),
                     //continue puzzle

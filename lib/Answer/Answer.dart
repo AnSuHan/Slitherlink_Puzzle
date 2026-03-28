@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
+import '../MakePuzzle/SlitherlinkGenerator.dart';
 import '../User/UserInfo.dart';
 
 class Answer {
@@ -11,18 +12,23 @@ class Answer {
   bool showCycle = false;
 
   Answer({
-    BuildContext? context
+    BuildContext? context,
+    bool loadPreset = false,
   }) {
-    ///hot load don't apply changes in json files
-    initPuzzleAll().then((_) {
+    if (loadPreset) {
+      ///hot load don't apply changes in json files
+      initPuzzleAll().then((_) {
+        isFinishInit = true;
+        showCycle = UserInfo.debugMode["Answer_showCycle"]!;
+        if(showCycle) {
+          checkDuplicateAll();
+          checkCycleSquareAll();
+          checkCycleSquareTest();
+        }
+      });
+    } else {
       isFinishInit = true;
-      showCycle = UserInfo.debugMode["Answer_showCycle"]!;
-      if(showCycle) {
-        checkDuplicateAll();
-        checkCycleSquareAll();
-        checkCycleSquareTest();
-      }
-    });
+    }
   }
 
   List<List<List<bool>>> squareSmallAnswer = [];
@@ -281,6 +287,20 @@ class Answer {
   Future<List<List<bool>>> getTestSquare() async {
     await _waitForInitialization();
     return squareSmallTestAnswer[1];
+  }
+
+  /// Generate a new puzzle dynamically
+  /// Returns edge data in the same format as pre-made puzzles (List<List<bool>>)
+  /// [rows] and [cols] are the cell grid dimensions
+  /// [difficulty] controls hint ratio (easy=80%, normal=55%, hard=35%)
+  /// [seed] optional seed for reproducibility
+  List<List<bool>> generateSquare(int rows, int cols, {Difficulty difficulty = Difficulty.normal, int? seed}) {
+    final generator = SlitherlinkGenerator(rows, cols, seed: seed);
+    final puzzle = generator.generateSolution();
+    final edgeFormat = puzzle.toEdgeFormat();
+
+    // Convert List<List<int>> to List<List<bool>> (1 -> true, 0 -> false)
+    return edgeFormat.map((row) => row.map((v) => v == 1).toList()).toList();
   }
 
   Future<void> _waitForInitialization() async {

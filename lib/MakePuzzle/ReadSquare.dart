@@ -43,6 +43,7 @@ class ReadSquare {
   }
 
   ///param should be "shape`_`size`_`progress`_`{continue}"
+  ///or "shape_generate_{rows}x{cols}_{difficulty}" for generated puzzles
   Future<List<List<int>>> loadPuzzle(String key) async {
     try {
       read;
@@ -50,9 +51,17 @@ class ReadSquare {
       read = ReadPuzzleData(context: context);
     }
 
+    List<String> tokens = key.split("_");
+
+    // generate mode: "square_generate_10x10_normal"
+    if (tokens.length >= 3 && tokens[1] == "generate") {
+      data = await read.readData(key);
+      return data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
+    }
+
     //get answer data
     //read from Answer.dart
-    if(key.split("_").length == 3) {
+    if(tokens.length == 3) {
       data = await read.readData(key);
       //printData();
       return data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
@@ -61,7 +70,7 @@ class ReadSquare {
     //read from SharedPreference
     else {
       //load test data
-      if(key.split("_")[3].compareTo("test") == 0) {
+      if(tokens[3].compareTo("test") == 0) {
         data = await read.readData(key);
         //printData();
         return data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
