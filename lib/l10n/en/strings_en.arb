@@ -52,6 +52,7 @@
   "appbar_mode01" : "fixed",
   "appbar_mode02" : "toggle",
   "restart" : "restart",
+  "new_game" : "new game",
   "hint" : "hint",
   "save" : "save as",
   "load" : "load as",

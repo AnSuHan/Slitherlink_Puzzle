@@ -6,6 +6,7 @@ import '../Platform/ExtractData.dart'
 if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
 import '../MakePuzzle/ReadSquare.dart';
 import '../l10n/app_localizations.dart';
+import '../Scene/GameSceneSquare.dart';
 import '../provider/SquareProvider.dart';
 import 'MainUI.dart';
 
@@ -40,6 +41,20 @@ class GameUI {
     await squareProvider.saveDoSubmit();
     // ignore: use_build_context_synchronously
     Navigator.pop(context);
+  }
+
+  void _startNewGame() {
+    String key = MainUI.getProgressKey();
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => GameSceneSquare(
+          isContinue: false,
+          loadKey: key,
+          forceNewPuzzle: true,
+        ),
+      ),
+    );
   }
 
   Future<void> pauseGame() async {
@@ -176,6 +191,10 @@ class GameUI {
                 child: Text(appLocalizations.translate('restart')),
               ),
               PopupMenuItem<String>(
+                value: 'menu new_game',
+                child: Text(appLocalizations.translate('new_game')),
+              ),
+              PopupMenuItem<String>(
                 value: 'menu hint',
                 child: Text(appLocalizations.translate("hint")),
               ),
@@ -245,6 +264,9 @@ class GameUI {
       switch(token[1]) {
         case "restart":
           Provider.of<SquareProvider>(context, listen: false).restart();
+          break;
+        case "new_game":
+          _startNewGame();
           break;
         case "hint":
           Provider.of<SquareProvider>(context, listen: false).showHint(context);

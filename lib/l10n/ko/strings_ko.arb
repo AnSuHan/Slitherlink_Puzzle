@@ -52,6 +52,7 @@
   "appbar_mode01" : "고정",
   "appbar_mode02" : "토글",
   "restart" : "재시작",
+  "new_game" : "새 게임",
   "hint" : "힌트",
   "save" : "저장",
   "load" : "불러오기",

@@ -58,7 +58,8 @@ class SlitherlinkPuzzle {
   }
 }
 
-/// Generates Slitherlink puzzles using Wilson's Loop-Erased Random Walk
+/// Generates Slitherlink puzzles by growing a random simply-connected region
+/// and using its boundary as the loop.
 class SlitherlinkGenerator {
   final int rows;
   final int cols;
@@ -73,119 +74,197 @@ class SlitherlinkGenerator {
 
   /// Generate a complete puzzle with the given difficulty
   SlitherlinkPuzzle generate({Difficulty difficulty = Difficulty.normal}) {
-    SlitherlinkPuzzle puzzle = SlitherlinkPuzzle(rows, cols);
-
-    // Try up to 100 times to generate a valid loop
-    for (int attempt = 0; attempt < 100; attempt++) {
+    for (int attempt = 0; attempt < 300; attempt++) {
+      SlitherlinkPuzzle puzzle = SlitherlinkPuzzle(rows, cols);
       Set<int> edges = _generateLoop();
-      if (edges.isEmpty) continue;
+      if (edges.length < 4) continue;
 
       _decodeEdges(puzzle, edges);
-
-      if (_isValidLoop(puzzle)) {
-        _computeSolution(puzzle);
-        _buildClue(puzzle, difficulty);
-        return puzzle;
-      }
-
-      // Reset for retry
-      puzzle = SlitherlinkPuzzle(rows, cols);
+      _computeSolution(puzzle);
+      _buildClue(puzzle, difficulty);
+      return puzzle;
     }
-
-    throw Exception('Failed to generate a valid puzzle after 100 attempts');
+    throw Exception('Failed to generate a valid puzzle after 300 attempts');
   }
 
   /// Generate only the loop (solution edges) without clue masking
   SlitherlinkPuzzle generateSolution() {
-    SlitherlinkPuzzle puzzle = SlitherlinkPuzzle(rows, cols);
-
-    for (int attempt = 0; attempt < 100; attempt++) {
+    for (int attempt = 0; attempt < 300; attempt++) {
+      SlitherlinkPuzzle puzzle = SlitherlinkPuzzle(rows, cols);
       Set<int> edges = _generateLoop();
-      if (edges.isEmpty) continue;
+      if (edges.length < 4) continue;
 
       _decodeEdges(puzzle, edges);
-
-      if (_isValidLoop(puzzle)) {
-        _computeSolution(puzzle);
-        // Set all clues visible (same as solution)
-        for (int r = 0; r < rows; r++) {
-          for (int c = 0; c < cols; c++) {
-            puzzle.clue[r][c] = puzzle.solution[r][c];
-          }
+      _computeSolution(puzzle);
+      for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+          puzzle.clue[r][c] = puzzle.solution[r][c];
         }
-        return puzzle;
       }
-
-      puzzle = SlitherlinkPuzzle(rows, cols);
+      return puzzle;
     }
-
-    throw Exception('Failed to generate a valid puzzle after 100 attempts');
+    throw Exception('Failed to generate a valid puzzle after 300 attempts');
   }
 
-  /// Encode an edge between two node indices as a single int
-  /// Uses node index a * 10000 + b (where a < b)
   int _encodeEdge(int a, int b) {
     int lo = min(a, b);
     int hi = max(a, b);
     return lo * 10000 + hi;
   }
 
-  /// Get node index from (row, col) in the node grid
   int _nodeIndex(int r, int c) => r * _nodeCols + c;
 
-  /// Get adjacent node indices for a given node
-  List<int> _getNeighbors(int nodeIndex) {
-    int r = nodeIndex ~/ _nodeCols;
-    int c = nodeIndex % _nodeCols;
-    List<int> neighbors = [];
-
-    if (r > 0) neighbors.add(_nodeIndex(r - 1, c)); // up
-    if (r < _nodeRows - 1) neighbors.add(_nodeIndex(r + 1, c)); // down
-    if (c > 0) neighbors.add(_nodeIndex(r, c - 1)); // left
-    if (c < _nodeCols - 1) neighbors.add(_nodeIndex(r, c + 1)); // right
-
-    return neighbors;
-  }
-
-  /// Wilson's Loop-Erased Random Walk
-  /// Returns a set of encoded edges forming a valid loop
+  /// Generate a random single closed loop by growing a simply-connected region.
+  /// Uses DFS-style growth to create thin, winding regions with high perimeter.
   Set<int> _generateLoop() {
-    int maxSteps = _totalNodes * 10;
-    int startNode = _random.nextInt(_totalNodes);
+    List<List<bool>> inside = List.generate(rows, (_) => List.filled(cols, false));
 
-    List<int> path = [startNode];
-    Set<int> pathSet = {startNode};
+    // Random starting cell
+    int sr = _random.nextInt(rows);
+    int sc = _random.nextInt(cols);
+    inside[sr][sc] = true;
 
-    for (int step = 0; step < maxSteps; step++) {
-      int current = path.last;
-      List<int> neighbors = _getNeighbors(current);
-      int next = neighbors[_random.nextInt(neighbors.length)];
+    // Target: 35-65% of cells inside
+    int total = rows * cols;
+    int target = max(1, (total * (0.35 + _random.nextDouble() * 0.30)).round());
 
-      // If we return to start and path is long enough, we have a loop
-      if (next == startNode && path.length >= 4) {
-        path.add(next);
-        // Convert path to edge set
-        Set<int> edges = {};
-        for (int i = 0; i < path.length - 1; i++) {
-          edges.add(_encodeEdge(path[i], path[i + 1]));
-        }
-        return edges;
+    // Use stack (DFS) for thin winding growth, with periodic shuffling
+    List<int> stack = [];
+    for (var n in _cellNeighbors(sr, sc)) {
+      stack.add(n[0] * cols + n[1]);
+    }
+    stack.shuffle(_random);
+
+    int size = 1;
+    int stepsSinceShuffle = 0;
+    while (size < target && stack.isNotEmpty) {
+      // Periodically shuffle the stack to add randomness
+      stepsSinceShuffle++;
+      if (stepsSinceShuffle > 3 + _random.nextInt(5)) {
+        stack.shuffle(_random);
+        stepsSinceShuffle = 0;
       }
 
-      // Loop erasure: if we revisit a node in the path, erase the loop
-      if (pathSet.contains(next) && next != startNode) {
-        int idx = path.indexOf(next);
-        // Remove everything after the first occurrence
-        while (path.length > idx + 1) {
-          pathSet.remove(path.removeLast());
+      // DFS: take from top of stack
+      int encoded = stack.removeLast();
+      int r = encoded ~/ cols, c = encoded % cols;
+      if (inside[r][c]) continue;
+
+      inside[r][c] = true;
+      if (!_outsideConnected(inside)) {
+        inside[r][c] = false;
+        continue;
+      }
+
+      size++;
+      List<int> neighbors = [];
+      for (var n in _cellNeighbors(r, c)) {
+        if (!inside[n[0]][n[1]]) {
+          neighbors.add(n[0] * cols + n[1]);
         }
-      } else {
-        path.add(next);
-        pathSet.add(next);
+      }
+      neighbors.shuffle(_random);
+      stack.addAll(neighbors);
+    }
+
+    return _extractBoundaryEdges(inside);
+  }
+
+  /// Get neighboring cell coordinates
+  List<List<int>> _cellNeighbors(int r, int c) {
+    List<List<int>> result = [];
+    if (r > 0) result.add([r - 1, c]);
+    if (r < rows - 1) result.add([r + 1, c]);
+    if (c > 0) result.add([r, c - 1]);
+    if (c < cols - 1) result.add([r, c + 1]);
+    return result;
+  }
+
+  /// Check that all outside cells can reach the grid border.
+  /// If an outside cell is surrounded by inside cells, we have a hole.
+  bool _outsideConnected(List<List<bool>> inside) {
+    // Find any outside cell on the border to start BFS
+    int startR = -1, startC = -1;
+
+    // Check border rows/cols for an outside cell
+    for (int c = 0; c < cols && startR == -1; c++) {
+      if (!inside[0][c]) { startR = 0; startC = c; }
+      if (startR == -1 && !inside[rows - 1][c]) { startR = rows - 1; startC = c; }
+    }
+    for (int r = 0; r < rows && startR == -1; r++) {
+      if (!inside[r][0]) { startR = r; startC = 0; }
+      if (startR == -1 && !inside[r][cols - 1]) { startR = r; startC = cols - 1; }
+    }
+
+    if (startR == -1) {
+      // All border cells are inside. Check if any outside cells exist at all.
+      for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+          if (!inside[r][c]) return false; // Unreachable outside cell = hole
+        }
+      }
+      return true; // All cells inside, no holes
+    }
+
+    // BFS from the border outside cell
+    List<List<bool>> visited = List.generate(rows, (_) => List.filled(cols, false));
+    visited[startR][startC] = true;
+    Queue<int> queue = Queue();
+    queue.add(startR * cols + startC);
+    int visitedCount = 1;
+
+    while (queue.isNotEmpty) {
+      int enc = queue.removeFirst();
+      int r = enc ~/ cols, c = enc % cols;
+      for (var n in _cellNeighbors(r, c)) {
+        int nr = n[0], nc = n[1];
+        if (!inside[nr][nc] && !visited[nr][nc]) {
+          visited[nr][nc] = true;
+          queue.add(nr * cols + nc);
+          visitedCount++;
+        }
       }
     }
 
-    return {}; // Failed to generate
+    // Count total outside cells
+    int outsideCount = 0;
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        if (!inside[r][c]) outsideCount++;
+      }
+    }
+
+    return visitedCount == outsideCount;
+  }
+
+  /// Extract boundary edges: edges between inside and outside cells.
+  /// These form a single closed loop when the inside region is simply connected.
+  Set<int> _extractBoundaryEdges(List<List<bool>> inside) {
+    Set<int> edges = {};
+
+    // Horizontal edges: between cell rows r-1 and r
+    for (int r = 0; r <= rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        bool above = (r > 0) ? inside[r - 1][c] : false;
+        bool below = (r < rows) ? inside[r][c] : false;
+        if (above != below) {
+          edges.add(_encodeEdge(_nodeIndex(r, c), _nodeIndex(r, c + 1)));
+        }
+      }
+    }
+
+    // Vertical edges: between cell cols c-1 and c
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c <= cols; c++) {
+        bool left = (c > 0) ? inside[r][c - 1] : false;
+        bool right = (c < cols) ? inside[r][c] : false;
+        if (left != right) {
+          edges.add(_encodeEdge(_nodeIndex(r, c), _nodeIndex(r + 1, c)));
+        }
+      }
+    }
+
+    return edges;
   }
 
   /// Decode edge set into hEdge/vEdge arrays
@@ -197,99 +276,11 @@ class SlitherlinkGenerator {
       int rb = b ~/ _nodeCols, cb = b % _nodeCols;
 
       if (ra == rb) {
-        // Horizontal edge
         puzzle.hEdge[ra][min(ca, cb)] = true;
       } else {
-        // Vertical edge
         puzzle.vEdge[min(ra, rb)][ca] = true;
       }
     }
-  }
-
-  /// Validate that edges form a single closed loop
-  bool _isValidLoop(SlitherlinkPuzzle puzzle) {
-    List<int> degree = List.filled(_totalNodes, 0);
-    int edgeCount = 0;
-
-    // Count degrees from horizontal edges
-    for (int r = 0; r < _nodeRows; r++) {
-      for (int c = 0; c < cols; c++) {
-        if (puzzle.hEdge[r][c]) {
-          degree[_nodeIndex(r, c)]++;
-          degree[_nodeIndex(r, c + 1)]++;
-          edgeCount++;
-        }
-      }
-    }
-
-    // Count degrees from vertical edges
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < _nodeCols; c++) {
-        if (puzzle.vEdge[r][c]) {
-          degree[_nodeIndex(r, c)]++;
-          degree[_nodeIndex(r + 1, c)]++;
-          edgeCount++;
-        }
-      }
-    }
-
-    // Condition 1: all active nodes must have degree 2
-    for (int d in degree) {
-      if (d != 0 && d != 2) return false;
-    }
-
-    // Condition 2: at least 4 edges
-    if (edgeCount < 4) return false;
-
-    // Condition 3: BFS - all degree-2 nodes must be in one connected component
-    int startNode = -1;
-    for (int i = 0; i < _totalNodes; i++) {
-      if (degree[i] == 2) {
-        startNode = i;
-        break;
-      }
-    }
-    if (startNode == -1) return false;
-
-    Set<int> visited = {};
-    Queue<int> queue = Queue();
-    queue.add(startNode);
-    visited.add(startNode);
-
-    while (queue.isNotEmpty) {
-      int node = queue.removeFirst();
-      int r = node ~/ _nodeCols;
-      int c = node % _nodeCols;
-
-      // Check all 4 possible edges from this node
-      // Up
-      if (r > 0 && puzzle.vEdge[r - 1][c] && !visited.contains(_nodeIndex(r - 1, c))) {
-        visited.add(_nodeIndex(r - 1, c));
-        queue.add(_nodeIndex(r - 1, c));
-      }
-      // Down
-      if (r < rows && puzzle.vEdge[r][c] && !visited.contains(_nodeIndex(r + 1, c))) {
-        visited.add(_nodeIndex(r + 1, c));
-        queue.add(_nodeIndex(r + 1, c));
-      }
-      // Left
-      if (c > 0 && puzzle.hEdge[r][c - 1] && !visited.contains(_nodeIndex(r, c - 1))) {
-        visited.add(_nodeIndex(r, c - 1));
-        queue.add(_nodeIndex(r, c - 1));
-      }
-      // Right
-      if (c < cols && puzzle.hEdge[r][c] && !visited.contains(_nodeIndex(r, c + 1))) {
-        visited.add(_nodeIndex(r, c + 1));
-        queue.add(_nodeIndex(r, c + 1));
-      }
-    }
-
-    // All degree-2 nodes must be visited
-    for (int i = 0; i < _totalNodes; i++) {
-      if (degree[i] == 2 && !visited.contains(i)) return false;
-    }
-
-    return true;
   }
 
   /// Compute solution: count active edges around each cell
@@ -311,7 +302,6 @@ class SlitherlinkGenerator {
     int total = rows * cols;
     int toReveal = (total * difficulty.hintRatio).round();
 
-    // Create shuffled cell list
     List<List<int>> cells = [];
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
@@ -320,7 +310,6 @@ class SlitherlinkGenerator {
     }
     cells.shuffle(_random);
 
-    // Reveal first `toReveal` cells
     for (int i = 0; i < toReveal && i < cells.length; i++) {
       puzzle.clue[cells[i][0]][cells[i][1]] = puzzle.solution[cells[i][0]][cells[i][1]];
     }

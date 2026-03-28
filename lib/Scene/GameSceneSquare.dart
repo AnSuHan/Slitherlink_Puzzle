@@ -1,12 +1,15 @@
 // ignore_for_file: file_names
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:slitherlink_project/l10n/app_localizations.dart';
 
+import '../MakePuzzle/PuzzleCache.dart';
 import '../MakePuzzle/ReadSquare.dart';
+import '../MakePuzzle/SlitherlinkGenerator.dart';
 import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
 import '../provider/SquareProvider.dart';
@@ -17,9 +20,10 @@ class GameSceneSquare extends StatefulWidget {
   final bool isContinue;
   final String loadKey;
   final bool testMode;
+  final bool forceNewPuzzle;
 
   const GameSceneSquare({
-    Key? key, required this.isContinue, required this.loadKey, this.testMode = false
+    Key? key, required this.isContinue, required this.loadKey, this.testMode = false, this.forceNewPuzzle = false,
   }) : super(key: key);
 
   @override
@@ -62,6 +66,11 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
   late GameUI ui;
   Map<String, Color> settingColor = ThemeColor().getColor();
   late DisplayType displayType;
+
+  //puzzle generation state
+  bool _isGenerating = false;
+  String _generationStatus = '';
+  String _debugPuzzleInfo = '';
 
   //for moving interactive Viewer
   late TransformationController _transformationController;
@@ -108,43 +117,179 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
   }
 
   void loadPuzzle() async {
-    //print("loadKey : ${widget.loadKey}");
     isComplete = false;
+    List<String> tokens = widget.loadKey.split("_");
+    bool isGenerate = tokens.length >= 3 && tokens[1] == "generate";
 
     //load test answer
-    if(widget.testMode && widget.loadKey.split("_")[3].compareTo("test") == 0) {
+    if(widget.testMode && tokens.length > 3 && tokens[3].compareTo("test") == 0) {
       answer = await readSquare.loadPuzzle(widget.loadKey);
-
       submit = List.generate(answer.length, (row) =>
           List.filled(answer[row].length, 0),
       );
     }
     else if(widget.isContinue) {
       answer = await readSquare.loadPuzzle(widget.loadKey);
-
       submit = await readSquare.loadPuzzle("${widget.loadKey}_continue");
     }
-    else {
-      answer = await readSquare.loadPuzzle(widget.loadKey);
+    else if (isGenerate) {
+      List<String> sizeParts = tokens[2].split("x");
+      int genRows = int.parse(sizeParts[0]);
+      int genCols = int.parse(sizeParts[1]);
+
+      // Try cache first for instant loading (skip cache if forceNewPuzzle)
+      List<List<int>>? cached;
+      if (!widget.forceNewPuzzle) {
+        cached = await PuzzleCache.instance.getPuzzle(genRows, genCols);
+      }
+
+      if (cached != null) {
+        answer = cached;
+      } else {
+        // No cache or forced new - generate with progress UI
+        if (mounted) setState(() {
+          _isGenerating = true;
+          _generationStatus = '0%';
+        });
+
+        if (mounted) setState(() => _generationStatus = '20%');
+
+        // Run heavy generation in a separate isolate
+        answer = await compute(_generatePuzzleIsolate, {
+          'rows': genRows,
+          'cols': genCols,
+          'difficulty': tokens.length >= 4 ? tokens[3] : "normal",
+        });
+
+        if (mounted) setState(() => _generationStatus = '90%');
+      }
 
       submit = List.generate(answer.length, (row) =>
           List.filled(answer[row].length, 0),
       );
     }
+    else {
+      answer = await readSquare.loadPuzzle(widget.loadKey);
+      submit = List.generate(answer.length, (row) =>
+          List.filled(answer[row].length, 0),
+      );
+    }
+
+    if (!mounted) return;
+
+    // Debug: compute puzzle hash to verify uniqueness
+    int puzzleHash = 0;
+    for (int i = 0; i < answer.length; i++) {
+      for (int j = 0; j < answer[i].length; j++) {
+        puzzleHash = (puzzleHash * 31 + answer[i][j]) & 0x7FFFFFFF;
+      }
+    }
+    int activeEdges = 0;
+    for (var row in answer) {
+      for (var v in row) {
+        if (v == 1) activeEdges++;
+      }
+    }
+    _debugPuzzleInfo = 'Hash: $puzzleHash | Edges: $activeEdges | Force: ${widget.forceNewPuzzle}';
+    // ignore: avoid_print
+    print('PUZZLE DEBUG: $_debugPuzzleInfo | Key: ${widget.loadKey}');
 
     _provider.setAnswer(answer);
     _provider.setSubmit(submit);
     _provider.init();
-    _provider.setGameField(this); //start 할 때, 바로 field가 보이도록 하기 위해 사용
+    _provider.setGameField(this);
+
+    if (_isGenerating && mounted) {
+      setState(() {
+        _generationStatus = '100%';
+        _isGenerating = false;
+      });
+    }
+
+    // Auto-fit puzzle to screen after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fitPuzzleToScreen();
+    });
+  }
+
+  /// Top-level function for compute() isolate
+  static List<List<int>> _generatePuzzleIsolate(Map<String, dynamic> params) {
+    int rows = params['rows'];
+    int cols = params['cols'];
+    String diffStr = params['difficulty'];
+
+    Difficulty difficulty;
+    switch (diffStr) {
+      case "easy":
+        difficulty = Difficulty.easy;
+        break;
+      case "hard":
+        difficulty = Difficulty.hard;
+        break;
+      default:
+        difficulty = Difficulty.normal;
+    }
+
+    final generator = SlitherlinkGenerator(rows, cols);
+    final puzzle = generator.generateSolution();
+    return puzzle.toEdgeFormat();
+  }
+
+  void _fitPuzzleToScreen() {
+    if (!mounted) return;
+    final size = MediaQuery.of(context).size;
+
+    // SquareBox dimensions:
+    // Each cell: box(50) + rightLine(10) + gap(2.5) + dot(5) = 67.5px wide
+    // First column adds: leftLine(10) extra
+    // Each cell: box(50) + bottomLine(10) + dot(5) = 65px tall
+    // First row adds: topLine(10) + dot(5) + gap(2.5) = 17.5px extra
+    const double cellWidth = 67.5;
+    const double cellHeight = 65.0;
+    const double firstColExtra = 10.0;
+    const double firstRowExtra = 17.5;
+    const double viewPadding = 40.0;
+
+    int cols = answer.isNotEmpty ? answer[0].length : 1;
+    int rows = answer.isNotEmpty ? answer.length ~/ 2 : 1;
+
+    double puzzleWidth = cols * cellWidth + firstColExtra + viewPadding;
+    double puzzleHeight = rows * cellHeight + firstRowExtra + viewPadding;
+
+    double availableWidth = size.width;
+    double availableHeight = size.height - kToolbarHeight - 56; // appbar + status bar
+
+    double scaleX = availableWidth / puzzleWidth;
+    double scaleY = availableHeight / puzzleHeight;
+    double fitScale = scaleX < scaleY ? scaleX : scaleY;
+
+    // Clamp to reasonable range
+    if (fitScale < 0.3) fitScale = 0.3;
+    if (fitScale > 4.0) fitScale = 4.0;
+
+    // Center the puzzle
+    double scaledWidth = puzzleWidth * fitScale;
+    double scaledHeight = puzzleHeight * fitScale;
+    double dx = (size.width - scaledWidth) / 2;
+    double dy = (availableHeight - scaledHeight) / 2;
+    if (dx < 0) dx = 0;
+    if (dy < 0) dy = 0;
+
+    final matrix = Matrix4.identity()
+      ..translate(dx, dy)
+      ..scale(fitScale);
+    _transformationController.value = matrix;
   }
 
   Future<bool> _onWillPop() async {
-    // 여기서 뒤로 가기 버튼을 눌렀을 때 실행할 메소드를 호출
+    if (_isGenerating) {
+      // During generation, just go back without saving
+      return true;
+    }
     if(uiNullable != null) {
       await ui.exitGame();
     }
-    //print("뒤로 가기 버튼이 눌렸습니다.");
-    return true;  // true를 반환하면 앱이 종료됩니다.
+    return true;
   }
 
   @override
@@ -217,18 +362,47 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
                       children: [
                         Container(
                           color: settingColor["background"],
-                          child: InteractiveViewer(
+                          child: _isGenerating
+                            ? Center(
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const CircularProgressIndicator(
+                                      strokeWidth: 3,
+                                    ),
+                                    const SizedBox(height: 24),
+                                    Text(
+                                      _generationStatus,
+                                      style: TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.bold,
+                                        color: settingColor["number"] ?? Colors.white,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Generating puzzle...',
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: (settingColor["number"] ?? Colors.white).withOpacity(0.6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : InteractiveViewer(
                             transformationController: _transformationController,
+                            minScale: 0.3,
+                            maxScale: 5.0,
                             boundaryMargin: EdgeInsets.symmetric(
-                              horizontal: screenSize.width * 0.4,
-                              vertical: screenSize.height * 0.4,
+                              horizontal: screenSize.width * 0.5,
+                              vertical: screenSize.height * 0.5,
                             ),
                             constrained: false,
                             child: Padding(
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 20, vertical: 20),
                               child: Column(
-                                //provider와 ChangeNotifier를 통해 접근
                                 children: _provider.getSquareField().isNotEmpty
                                     ? _provider.getSquareField()
                                     : [
@@ -246,6 +420,21 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
                             ),
                           ),
                         ),
+                        // Debug: puzzle hash overlay
+                        if (_debugPuzzleInfo.isNotEmpty)
+                          Positioned(
+                            top: 10,
+                            left: 10,
+                            right: 10,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              color: Colors.black54,
+                              child: Text(
+                                _debugPuzzleInfo,
+                                style: const TextStyle(color: Colors.yellow, fontSize: 11),
+                              ),
+                            ),
+                          ),
                         Positioned(
                           width: 70,
                           height: 70,
