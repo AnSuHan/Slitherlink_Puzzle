@@ -91,7 +91,6 @@ class MainUI {
         enterSceneState.changeLanguage(lang);
 
         prevLanguage = lang;
-        enterSceneState.updateUI();
         onUpdate();
       }
       yield null;
