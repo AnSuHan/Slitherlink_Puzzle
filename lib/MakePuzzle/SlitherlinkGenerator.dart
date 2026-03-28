@@ -81,6 +81,10 @@ class SlitherlinkGenerator {
 
       _decodeEdges(puzzle, edges);
       _computeSolution(puzzle);
+
+      // Require at least 70% cell coverage (cells touched by the loop)
+      if (_cellCoverage(puzzle) < 0.70) continue;
+
       _buildClue(puzzle, difficulty);
       return puzzle;
     }
@@ -96,6 +100,9 @@ class SlitherlinkGenerator {
 
       _decodeEdges(puzzle, edges);
       _computeSolution(puzzle);
+
+      if (_cellCoverage(puzzle) < 0.70) continue;
+
       for (int r = 0; r < rows; r++) {
         for (int c = 0; c < cols; c++) {
           puzzle.clue[r][c] = puzzle.solution[r][c];
@@ -104,6 +111,17 @@ class SlitherlinkGenerator {
       return puzzle;
     }
     throw Exception('Failed to generate a valid puzzle after 300 attempts');
+  }
+
+  /// Calculate fraction of cells touched by at least one edge
+  double _cellCoverage(SlitherlinkPuzzle puzzle) {
+    int touched = 0;
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        if (puzzle.solution[r][c] > 0) touched++;
+      }
+    }
+    return touched / (rows * cols);
   }
 
   int _encodeEdge(int a, int b) {
@@ -115,7 +133,7 @@ class SlitherlinkGenerator {
   int _nodeIndex(int r, int c) => r * _nodeCols + c;
 
   /// Generate a random single closed loop by growing a simply-connected region.
-  /// Uses DFS-style growth to create thin, winding regions with high perimeter.
+  /// Uses a random walk that prefers thin, winding growth for high cell coverage.
   Set<int> _generateLoop() {
     List<List<bool>> inside = List.generate(rows, (_) => List.filled(cols, false));
 
@@ -124,47 +142,81 @@ class SlitherlinkGenerator {
     int sc = _random.nextInt(cols);
     inside[sr][sc] = true;
 
-    // Target: 35-65% of cells inside
+    // Target: 35-55% of cells inside (thin regions have higher perimeter/area ratio)
     int total = rows * cols;
-    int target = max(1, (total * (0.35 + _random.nextDouble() * 0.30)).round());
+    int target = max(1, (total * (0.35 + _random.nextDouble() * 0.20)).round());
 
-    // Use stack (DFS) for thin winding growth, with periodic shuffling
-    List<int> stack = [];
-    for (var n in _cellNeighbors(sr, sc)) {
-      stack.add(n[0] * cols + n[1]);
-    }
-    stack.shuffle(_random);
-
+    // Random walk growth: always extend from the most recent cell added,
+    // creating a thin winding path. Fall back to frontier when stuck.
+    int curR = sr, curC = sc;
     int size = 1;
-    int stepsSinceShuffle = 0;
-    while (size < target && stack.isNotEmpty) {
-      // Periodically shuffle the stack to add randomness
-      stepsSinceShuffle++;
-      if (stepsSinceShuffle > 3 + _random.nextInt(5)) {
-        stack.shuffle(_random);
-        stepsSinceShuffle = 0;
-      }
 
-      // DFS: take from top of stack
-      int encoded = stack.removeLast();
-      int r = encoded ~/ cols, c = encoded % cols;
-      if (inside[r][c]) continue;
+    // Also maintain a frontier for fallback
+    Set<int> frontier = {};
+    for (var n in _cellNeighbors(sr, sc)) {
+      frontier.add(n[0] * cols + n[1]);
+    }
 
-      inside[r][c] = true;
-      if (!_outsideConnected(inside)) {
-        inside[r][c] = false;
-        continue;
-      }
-
-      size++;
-      List<int> neighbors = [];
-      for (var n in _cellNeighbors(r, c)) {
-        if (!inside[n[0]][n[1]]) {
-          neighbors.add(n[0] * cols + n[1]);
-        }
-      }
+    while (size < target && frontier.isNotEmpty) {
+      // Try to extend from current position (random walk)
+      List<List<int>> neighbors = _cellNeighbors(curR, curC);
       neighbors.shuffle(_random);
-      stack.addAll(neighbors);
+
+      bool extended = false;
+      for (var n in neighbors) {
+        int nr = n[0], nc = n[1];
+        if (inside[nr][nc]) continue;
+
+        inside[nr][nc] = true;
+        if (!_outsideConnected(inside)) {
+          inside[nr][nc] = false;
+          continue;
+        }
+
+        // Successfully extended the walk
+        curR = nr;
+        curC = nc;
+        size++;
+        extended = true;
+        frontier.remove(nr * cols + nc);
+        for (var fn in _cellNeighbors(nr, nc)) {
+          if (!inside[fn[0]][fn[1]]) {
+            frontier.add(fn[0] * cols + fn[1]);
+          }
+        }
+        break;
+      }
+
+      if (!extended) {
+        // Stuck - pick a random frontier cell
+        var fList = frontier.toList();
+        fList.shuffle(_random);
+
+        bool found = false;
+        for (int encoded in fList) {
+          int r = encoded ~/ cols, c = encoded % cols;
+          frontier.remove(encoded);
+          if (inside[r][c]) continue;
+
+          inside[r][c] = true;
+          if (!_outsideConnected(inside)) {
+            inside[r][c] = false;
+            continue;
+          }
+
+          curR = r;
+          curC = c;
+          size++;
+          found = true;
+          for (var fn in _cellNeighbors(r, c)) {
+            if (!inside[fn[0]][fn[1]]) {
+              frontier.add(fn[0] * cols + fn[1]);
+            }
+          }
+          break;
+        }
+        if (!found) break;
+      }
     }
 
     return _extractBoundaryEdges(inside);
