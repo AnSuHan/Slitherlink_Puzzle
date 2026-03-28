@@ -6,6 +6,7 @@ import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
 import '../Front/HowToPlay.dart';
 import '../Scene/GameSceneSquare.dart';
+import '../ThemeColor.dart';
 import '../User/Authentication.dart';
 import '../User/UserInfo.dart';
 import '../l10n/app_localizations.dart';
@@ -492,220 +493,7 @@ class MainUI {
         }
         break;
       case "setting":
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return StatefulBuilder(
-              builder: (BuildContext context, StateSetter setState) {
-                return Dialog(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Container(
-                    width: 300, // 원하는 너비로 설정
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          appLocalizations.translate('MainUI_menuSetting'),
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 20),
-                        Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(appLocalizations.translate('MainUI_menuSetting_theme')),
-                                DropdownButton(
-                                  items: _theme.map((String item) {
-                                    return DropdownMenuItem<String>(
-                                      value: item,
-                                      child: Text(item),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _themeValue = value!;
-                                    });
-                                    if(debugDropdown) {
-                                      // ignore: avoid_print
-                                      print("_themeValue : $_themeValue");
-                                    }
-                                  },
-                                  value: _themeValue,
-                                  style: const TextStyle(color: Colors.black, fontSize: 18),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(appLocalizations.translate('MainUI_menuSetting_language')),
-                                DropdownButton(items: _language.map((String item) {
-                                  return DropdownMenuItem<String>(
-                                    value: item,
-                                    child: Text(item),
-                                  );
-                                }).toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _languageValue = value!;
-                                    });
-                                    if(debugDropdown) {
-                                      // ignore: avoid_print
-                                      print("_languageValue : $_languageValue");
-                                    }
-                                  },
-                                  value: _languageValue,
-                                  style: const TextStyle(color: Colors.black, fontSize: 18),),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(appLocalizations.translate('MainUI_menuSetting_appbar')),
-                                DropdownButton(items: _appbar.map((String item) {
-                                  return DropdownMenuItem<String>(
-                                    value: item,
-                                    child: Text(item),
-                                  );
-                                }).toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _appbarValue = value!;
-                                    });
-                                    if(debugDropdown) {
-                                      // ignore: avoid_print
-                                      print("_appbarValue : $_appbarValue");
-                                    }
-                                  },
-                                  value: _appbarValue,
-                                  style: const TextStyle(color: Colors.black, fontSize: 18),),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(appLocalizations.translate('MainUI_menuSetting_btnAlignment')),
-                                DropdownButton(items: _btnAlignment.map((String item) {
-                                  return DropdownMenuItem<String>(
-                                    value: item,
-                                    child: Text(item),
-                                  );
-                                }).toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _btnAlignmentValue = value!;
-                                    });
-                                    if(debugDropdown) {
-                                      // ignore: avoid_print
-                                      print("_btnAlignmentValue : $_btnAlignmentValue");
-                                    }
-                                  },
-                                  value: _btnAlignmentValue,
-                                  style: const TextStyle(color: Colors.black, fontSize: 18),),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton(
-                              child: Text(appLocalizations.translate('MainUI_btnApply')),
-                              onPressed: () async {
-                                switch(_languageValue) {
-                                  case "english":
-                                  case "영어":
-                                    setting["language"] = "english";
-                                    break;
-                                  case "korean":
-                                  case "한국어":
-                                    setting["language"] = "korean";
-                                    break;
-                                }
-                                switch(_themeValue) {
-                                  case "default":
-                                  case "기본":
-                                    setting["theme"] = "default";
-                                    break;
-                                  case "warm":
-                                  case "따뜻한":
-                                    setting["theme"] = "warm";
-                                    break;
-                                  case "cool":
-                                  case "시원한":
-                                    setting["theme"] = "cool";
-                                    break;
-                                  case "earth":
-                                  case "자연":
-                                    setting["theme"] = "earth";
-                                    break;
-                                  case "pastel":
-                                  case "파스텔":
-                                    setting["theme"] = "pastel";
-                                    break;
-                                  case "vibrant":
-                                  case "생동감있는":
-                                    setting["theme"] = "vibrant";
-                                    break;
-                                }
-                                switch(_appbarValue) {
-                                  case "fixed":
-                                  case "고정":
-                                    setting["appbar_mode"] = "fixed";
-                                    break;
-                                  case "toggle":
-                                  case "토글":
-                                    setting["appbar_mode"] = "toggle";
-                                    break;
-                                }
-                                switch(_btnAlignmentValue) {
-                                  case "left":
-                                  case "왼쪽":
-                                    setting["button_alignment"] = "left";
-                                    break;
-                                  case "right":
-                                  case "오른쪽":
-                                    setting["button_alignment"] = "right";
-                                    break;
-                                }
-                                //theme, language, button alignment
-                                await UserInfo.setSettingAll(setting);
-                                //only for language
-                                enterSceneState.changeLanguage(languageToCode(setting["language"]!));
-                                onUpdate();
-
-                                // ignore: use_build_context_synchronously
-                                Navigator.of(context).pop();
-                              },
-                            ),
-                            TextButton(
-                              child: Text(appLocalizations.translate('MainUI_btnClose')),
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-            );
-          },
-        );
-
+        _showSettingsDialog(context);
         break;
       case "how":
         Navigator.push(
@@ -798,29 +586,18 @@ class MainUI {
       appLocalizations.translate('ThemeName_01'),
       appLocalizations.translate('ThemeName_02'),
       appLocalizations.translate('ThemeName_03'),
-      appLocalizations.translate('ThemeName_04'),
-      appLocalizations.translate('ThemeName_05'),
-      appLocalizations.translate('ThemeName_06')
     ];
 
     switch (setting["theme"]) {
       case "default":
+      case "midnight":
         _themeValue = appLocalizations.translate('ThemeName_01');
         break;
-      case "warm":
+      case "ocean":
         _themeValue = appLocalizations.translate('ThemeName_02');
         break;
-      case "cool":
+      case "sakura":
         _themeValue = appLocalizations.translate('ThemeName_03');
-        break;
-      case "earth":
-        _themeValue = appLocalizations.translate('ThemeName_04');
-        break;
-      case "pastel":
-        _themeValue = appLocalizations.translate('ThemeName_05');
-        break;
-      case "vibrant":
-        _themeValue = appLocalizations.translate('ThemeName_06');
         break;
     }
 
@@ -1174,5 +951,504 @@ class MainUI {
   //last tried key
   static String getProgressKey() {
     return progressKey;
+  }
+
+  // ============================================================
+  // Modern UI Methods (used by redesigned EnterScene)
+  // ============================================================
+
+  /// Chip-style puzzle type selector (shape + size)
+  Widget getPuzzleTypeChips(BuildContext context, VoidCallback onUpdate, Map<String, Color> palette) {
+    applyLanguageCode();
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _buildLabel(appLocalizations.translate('MainUI_puzzleShape_square'), palette),
+        ..._buildChipGroup(
+          items: ["small", "generate"],
+          labels: [
+            appLocalizations.translate('MainUI_puzzleSize_small'),
+            appLocalizations.translate('MainUI_puzzleSize_generate'),
+          ],
+          selected: selectedType[1],
+          palette: palette,
+          onSelected: (value) {
+            selectedType[1] = value;
+            _selectedType[1] = value == "small"
+                ? appLocalizations.translate('MainUI_puzzleSize_small')
+                : appLocalizations.translate('MainUI_puzzleSize_generate');
+            onUpdate();
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLabel(String text, Map<String, Color> palette) {
+    return Chip(
+      label: Text(text, style: TextStyle(color: palette['buttonText'], fontWeight: FontWeight.w600)),
+      backgroundColor: palette['primary']!.withOpacity(0.8),
+      side: BorderSide.none,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    );
+  }
+
+  List<Widget> _buildChipGroup({
+    required List<String> items,
+    required List<String> labels,
+    required String selected,
+    required Map<String, Color> palette,
+    required Function(String) onSelected,
+  }) {
+    return List.generate(items.length, (i) {
+      bool isSelected = selected == items[i];
+      return ChoiceChip(
+        label: Text(labels[i]),
+        selected: isSelected,
+        selectedColor: palette['accent']!.withOpacity(0.2),
+        backgroundColor: palette['surface']!.withOpacity(0.5),
+        labelStyle: TextStyle(
+          color: isSelected ? palette['accent'] : palette['onSurfaceDim'],
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+        ),
+        side: BorderSide(
+          color: isSelected ? palette['accent']! : palette['divider']!,
+          width: isSelected ? 1.5 : 1,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        onSelected: (_) => onSelected(items[i]),
+      );
+    });
+  }
+
+  /// Chip-style difficulty selector
+  Widget getDifficultyChips(BuildContext context, VoidCallback onUpdate, Map<String, Color> palette) {
+    List<String> difficulties = ["easy", "normal", "hard"];
+    List<String> labels = [
+      appLocalizations.translate('MainUI_difficulty_easy'),
+      appLocalizations.translate('MainUI_difficulty_normal'),
+      appLocalizations.translate('MainUI_difficulty_hard'),
+    ];
+    List<IconData> icons = [Icons.sentiment_satisfied, Icons.trending_flat, Icons.local_fire_department];
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(difficulties.length, (i) {
+        bool isSelected = selectedDifficulty == difficulties[i];
+        return ChoiceChip(
+          avatar: Icon(icons[i], size: 18, color: isSelected ? palette['accent'] : palette['onSurfaceDim']),
+          label: Text(labels[i]),
+          selected: isSelected,
+          selectedColor: palette['accent']!.withOpacity(0.2),
+          backgroundColor: palette['surface']!.withOpacity(0.5),
+          labelStyle: TextStyle(
+            color: isSelected ? palette['accent'] : palette['onSurfaceDim'],
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+          ),
+          side: BorderSide(
+            color: isSelected ? palette['accent']! : palette['divider']!,
+            width: isSelected ? 1.5 : 1,
+          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          onSelected: (_) {
+            selectedDifficulty = difficulties[i];
+            _selectedDifficulty = labels[i];
+            onUpdate();
+          },
+        );
+      }),
+    );
+  }
+
+  /// Slider-style row/col selector for generate mode
+  Widget getGenerateSizeSliders(BuildContext context, VoidCallback onUpdate, Map<String, Color> palette) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            SizedBox(
+              width: 50,
+              child: Text(
+                "${appLocalizations.translate('MainUI_generateRows')}: $generateRows",
+                style: TextStyle(color: palette['onSurfaceDim'], fontSize: 13),
+              ),
+            ),
+            Expanded(
+              child: SliderTheme(
+                data: SliderThemeData(
+                  activeTrackColor: palette['primary'],
+                  inactiveTrackColor: palette['divider'],
+                  thumbColor: palette['primary'],
+                  overlayColor: palette['primary']!.withOpacity(0.1),
+                  trackHeight: 3,
+                ),
+                child: Slider(
+                  value: generateRows.toDouble(),
+                  min: 3,
+                  max: 20,
+                  divisions: 17,
+                  label: "$generateRows",
+                  onChanged: (v) {
+                    generateRows = v.round();
+                    onUpdate();
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            SizedBox(
+              width: 50,
+              child: Text(
+                "${appLocalizations.translate('MainUI_generateCols')}: $generateCols",
+                style: TextStyle(color: palette['onSurfaceDim'], fontSize: 13),
+              ),
+            ),
+            Expanded(
+              child: SliderTheme(
+                data: SliderThemeData(
+                  activeTrackColor: palette['primary'],
+                  inactiveTrackColor: palette['divider'],
+                  thumbColor: palette['primary'],
+                  overlayColor: palette['primary']!.withOpacity(0.1),
+                  trackHeight: 3,
+                ),
+                child: Slider(
+                  value: generateCols.toDouble(),
+                  min: 3,
+                  max: 20,
+                  divisions: 17,
+                  label: "$generateCols",
+                  onChanged: (v) {
+                    generateCols = v.round();
+                    onUpdate();
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  /// Continue game list for new UI
+  Widget getContinueList(BuildContext context, Map<String, Color> palette) {
+    progressPuzzle = UserInfo.getContinuePuzzle().isEmpty ? [""] : UserInfo.getContinuePuzzle().toList();
+    if (progressKey.isEmpty) {
+      progressKey = progressPuzzle[0];
+    }
+    if (!progressPuzzle.contains(progressKey)) {
+      progressKey = progressPuzzle[0];
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: palette['divider']!),
+      ),
+      child: DropdownButton<String>(
+        items: progressPuzzle.map((e) => DropdownMenuItem(
+          value: e,
+          child: Text(e, style: TextStyle(color: palette['onSurface'])),
+        )).toList(),
+        onChanged: (value) {
+          progressKey = value ?? progressKey;
+          onUpdate();
+        },
+        value: progressKey,
+        isExpanded: true,
+        underline: const SizedBox(),
+        style: TextStyle(color: palette['onSurface'], fontSize: 15),
+        dropdownColor: palette['cardBg'],
+        icon: Icon(Icons.expand_more, color: palette['onSurfaceDim']),
+      ),
+    );
+  }
+
+  /// Start game action for new UI
+  void startGame(BuildContext context) {
+    if (selectedType[1] == "generate") {
+      progressKey = "${selectedType[0]}_generate_${generateRows}x${generateCols}_$selectedDifficulty";
+      changeScene(context, progressKey);
+      return;
+    }
+
+    int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
+    progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
+
+    if (selectedMode == "debug") {
+      changeScene(context, "${progressKey}_test");
+      return;
+    }
+
+    changeScene(context, progressKey);
+  }
+
+  /// Continue game action for new UI
+  void continueGame(BuildContext context) {
+    changeScene(context, progressKey, isContinue: true);
+  }
+
+  /// Modern settings dialog
+  void _showSettingsDialog(BuildContext context) {
+    loadSetting();
+    final palette = ThemeColor().getPalette();
+    final isDark = ThemeColor().isDark();
+
+    String tempTheme = setting["theme"] ?? "midnight";
+    String tempLang = setting["language"] ?? "english";
+    String tempAppbar = setting["appbar_mode"] ?? "fixed";
+    String tempBtnAlign = setting["button_alignment"] ?? "right";
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Dialog(
+              backgroundColor: isDark ? const Color(0xFF1E1E3A) : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Container(
+                width: 360,
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Header
+                    Row(
+                      children: [
+                        Icon(Icons.tune_rounded, color: palette['primary'], size: 28),
+                        const SizedBox(width: 10),
+                        Text(
+                          appLocalizations.translate('MainUI_menuSetting'),
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w700,
+                            color: palette['onSurface'],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Theme selection
+                    _settingLabel(appLocalizations.translate('MainUI_menuSetting_theme'), palette),
+                    const SizedBox(height: 8),
+                    _buildThemeSelector(tempTheme, palette, isDark, (value) {
+                      setState(() { tempTheme = value; });
+                    }),
+                    const SizedBox(height: 20),
+
+                    // Language
+                    _settingLabel(appLocalizations.translate('MainUI_menuSetting_language'), palette),
+                    const SizedBox(height: 8),
+                    _buildToggleRow(
+                      options: ["english", "korean"],
+                      labels: ["English", "한국어"],
+                      selected: tempLang,
+                      palette: palette,
+                      isDark: isDark,
+                      onSelected: (v) => setState(() { tempLang = v; }),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Appbar mode
+                    _settingLabel(appLocalizations.translate('MainUI_menuSetting_appbar'), palette),
+                    const SizedBox(height: 8),
+                    _buildToggleRow(
+                      options: ["fixed", "toggle"],
+                      labels: [
+                        appLocalizations.translate('appbar_mode01'),
+                        appLocalizations.translate('appbar_mode02'),
+                      ],
+                      selected: tempAppbar,
+                      palette: palette,
+                      isDark: isDark,
+                      onSelected: (v) => setState(() { tempAppbar = v; }),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Button alignment
+                    _settingLabel(appLocalizations.translate('MainUI_menuSetting_btnAlignment'), palette),
+                    const SizedBox(height: 8),
+                    _buildToggleRow(
+                      options: ["left", "right"],
+                      labels: [
+                        appLocalizations.translate('left'),
+                        appLocalizations.translate('right'),
+                      ],
+                      selected: tempBtnAlign,
+                      palette: palette,
+                      isDark: isDark,
+                      onSelected: (v) => setState(() { tempBtnAlign = v; }),
+                    ),
+
+                    const SizedBox(height: 28),
+
+                    // Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: palette['onSurfaceDim'],
+                              side: BorderSide(color: palette['divider']!),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                            ),
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: Text(appLocalizations.translate('MainUI_btnClose')),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: palette['buttonBg'],
+                              foregroundColor: palette['buttonText'],
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              elevation: 0,
+                            ),
+                            onPressed: () async {
+                              setting["theme"] = tempTheme;
+                              setting["language"] = tempLang;
+                              setting["appbar_mode"] = tempAppbar;
+                              setting["button_alignment"] = tempBtnAlign;
+
+                              await UserInfo.setSettingAll(setting);
+                              enterSceneState.changeLanguage(languageToCode(setting["language"]!));
+                              onUpdate();
+
+                              // ignore: use_build_context_synchronously
+                              Navigator.of(context).pop();
+                            },
+                            child: Text(appLocalizations.translate('MainUI_btnApply')),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _settingLabel(String text, Map<String, Color> palette) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: palette['onSurfaceDim'],
+        letterSpacing: 0.5,
+      ),
+    );
+  }
+
+  Widget _buildThemeSelector(String selected, Map<String, Color> palette, bool isDark, Function(String) onSelected) {
+    final themes = [
+      {"key": "midnight", "icon": Icons.dark_mode_rounded, "color": const Color(0xFF6C63FF)},
+      {"key": "ocean", "icon": Icons.water_rounded, "color": const Color(0xFF0288D1)},
+      {"key": "sakura", "icon": Icons.local_florist_rounded, "color": const Color(0xFFE91E63)},
+    ];
+    final labels = _theme;
+
+    return Row(
+      children: List.generate(themes.length, (i) {
+        String key = themes[i]["key"] as String;
+        bool isSelected = selected == key || (selected == "default" && key == "midnight");
+        Color color = themes[i]["color"] as Color;
+
+        return Expanded(
+          child: GestureDetector(
+            onTap: () => onSelected(key),
+            child: Container(
+              margin: EdgeInsets.only(right: i < 2 ? 8 : 0),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected ? color.withOpacity(0.15) : (isDark ? const Color(0xFF2A2A4A) : const Color(0xFFF5F5F5)),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? color : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(themes[i]["icon"] as IconData, color: color, size: 24),
+                  const SizedBox(height: 4),
+                  Text(
+                    i < labels.length ? labels[i] : key,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      color: isSelected ? color : palette['onSurfaceDim'],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+  Widget _buildToggleRow({
+    required List<String> options,
+    required List<String> labels,
+    required String selected,
+    required Map<String, Color> palette,
+    required bool isDark,
+    required Function(String) onSelected,
+  }) {
+    return Row(
+      children: List.generate(options.length, (i) {
+        bool isSelected = selected == options[i];
+        return Expanded(
+          child: GestureDetector(
+            onTap: () => onSelected(options[i]),
+            child: Container(
+              margin: EdgeInsets.only(right: i < options.length - 1 ? 8 : 0),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? palette['primary']!.withOpacity(0.15)
+                    : (isDark ? const Color(0xFF2A2A4A) : const Color(0xFFF5F5F5)),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? palette['primary']! : Colors.transparent,
+                  width: 1.5,
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  labels[i],
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected ? palette['primary'] : palette['onSurfaceDim'],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
   }
 }

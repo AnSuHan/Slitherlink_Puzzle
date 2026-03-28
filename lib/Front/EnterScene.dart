@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
 
+import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/MainUI.dart';
@@ -72,8 +73,6 @@ class EnterSceneState extends State<EnterScene> {
     setState(() {});
   }
 
-  //AppLocalizations.of(context)!.translate('helloWorld')
-  ///language Code is "en", "ko"
   void changeLanguage(String languageCode) {
     setState(() {
       _locale = Locale(languageCode);
@@ -93,17 +92,21 @@ class EnterSceneState extends State<EnterScene> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(  // Replace YourWidget with your actual widget
+    return MaterialApp(
         locale: _locale,
         localizationsDelegates: const [
           AppLocalizations.delegate,
-          ...GlobalMaterialLocalizations.delegates, // 전체 로케일 추가
-          GlobalCupertinoLocalizations.delegate, // Cupertino 로케일 추가
+          ...GlobalMaterialLocalizations.delegates,
+          GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: const [
           Locale('en'),
           Locale('ko'),
         ],
+        theme: ThemeData(
+          useMaterial3: true,
+          fontFamily: 'Roboto',
+        ),
         home: RawKeyboardListener(
           focusNode: _focusNode,
           onKey: (RawKeyEvent event) {
@@ -121,7 +124,6 @@ class EnterSceneState extends State<EnterScene> {
           },
           child: FutureBuilder<void>(
               future: () async {
-                //first execution
                 if(uiNullable == null) {
                   return;
                 }
@@ -139,20 +141,12 @@ class EnterSceneState extends State<EnterScene> {
                   ui.setScreenSize(screenSize);
                   ui.setAppLocalizations(AppLocalizations.of(context)!);
 
-                  if(screenSize.width < screenSize.height) {
-                    return portrait(context);
-                  } else {
-                    if (screenSize.height > 600) {
-                      return landscape(context);
-                    } else {
-                      return landscapeSmall(context);
-                    }
-                  }
+                  return _buildMainScreen(context);
                 }
                 else if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Scaffold(
-                    backgroundColor: Colors.blueGrey,
-                    body: Center(child: CircularProgressIndicator()),
+                    backgroundColor: Color(0xFF0A0A1A),
+                    body: Center(child: CircularProgressIndicator(color: Color(0xFF6C63FF))),
                   );
                 }
                 else {
@@ -164,202 +158,231 @@ class EnterSceneState extends State<EnterScene> {
     );
   }
 
-  Scaffold portrait(BuildContext context) {
+  Widget _buildMainScreen(BuildContext context) {
+    final palette = ThemeColor().getPalette();
+    final isDark = ThemeColor().isDark();
+
     return Scaffold(
-        backgroundColor: Colors.blueGrey,
-        body: Column(
-          children: [
-            Flexible(
-              flex: 1,
-              child: Center(
-                child: Column(
-                  children: [
-                    const SizedBox(
-                      height: 25,
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        ui.getMainMenu(context)
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            //title, start button, puzzle type
-            Flexible(
-              flex: 3,
-              child: Center(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Padding(
-                      padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.005)),
-                      child: const Text("Slitherlink",
-                        style: TextStyle(
-                          fontSize: 45, fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.1)),
-                      child: ui.getStartButton(context),
-                    ),
-                    Center(
-                      child: ui.getPuzzleType(context, updateUI),
-                    ),
-                    if (MainUI.selectedType[1] == "generate")
-                      Padding(
-                        padding: const EdgeInsetsDirectional.symmetric(vertical: 10),
-                        child: ui.getGenerateSizeSelector(context, updateUI),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-            //continue puzzle
-            Flexible(
-              flex: 2,
-              child: Center(
-                child: ui.getContinueWidget(context),
-              ),
-            ),
-          ],
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              palette['gradientStart']!,
+              palette['gradientEnd']!,
+            ],
+          ),
         ),
-    );
-  }
-
-  Scaffold landscape(BuildContext context) {
-    return Scaffold(
-        backgroundColor: Colors.blueGrey,
-        body: Column(
-          children: [
-            Flexible(
-              flex: 1,
-              child: Center(
-                child: Column(
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Top bar with settings
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    const SizedBox(
-                      height: 15,
+                    IconButton(
+                      icon: Icon(Icons.settings_rounded, color: palette['onSurfaceDim'], size: 28),
+                      onPressed: () => ui.handleMainMenu(context, "setting"),
                     ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        ui.getMainMenu(context)
-                      ],
+                    IconButton(
+                      icon: Icon(Icons.person_rounded, color: palette['onSurfaceDim'], size: 28),
+                      onPressed: () => ui.handleMainMenu(context, "account"),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.help_outline_rounded, color: palette['onSurfaceDim'], size: 28),
+                      onPressed: () => ui.handleMainMenu(context, "how"),
                     ),
                   ],
                 ),
               ),
-            ),
-            //title, start button, puzzle type
-            Flexible(
-              flex: 2,
-              child: Center(
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.0005)),
-                      child: const Text("Slitherlink",
+
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 20),
+
+                      // Logo / Title
+                      Icon(
+                        Icons.grid_4x4_rounded,
+                        size: 64,
+                        color: palette['primary'],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        "SLITHERLINK",
                         style: TextStyle(
-                          fontSize: 45, fontWeight: FontWeight.w400,
+                          fontSize: 36,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 6,
+                          color: palette['onSurface'],
                         ),
                       ),
-                    ),
-                    Padding(
-                      padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.05)),
-                      child: ui.getStartButton(context),
-                    ),
-                    ui.getPuzzleType(context, updateUI),
-                    if (MainUI.selectedType[1] == "generate")
-                      Padding(
-                        padding: const EdgeInsetsDirectional.symmetric(vertical: 10),
-                        child: ui.getGenerateSizeSelector(context, updateUI),
+                      const SizedBox(height: 4),
+                      Text(
+                        "PUZZLE",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w300,
+                          letterSpacing: 8,
+                          color: palette['onSurfaceDim'],
+                        ),
                       ),
-                  ],
-                ),
-              ),
-            ),
-            //continue puzzle
-            Flexible(
-              flex: 2,
-              child: Center(
-                child: ui.getContinueWidget(context),
-              ),
-            ),
-          ],
-        )
-    );
-  }
 
-  Scaffold landscapeSmall(BuildContext context) {
-    return Scaffold(
-        backgroundColor: Colors.blueGrey,
-        body: Column(
-          children: [
-            Flexible(
-              flex: 1,
-              child: Center(
-                child: Column(
-                  children: [
-                    const SizedBox(
-                      height: 15,
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        ui.getMainMenu(context)
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Flexible(
-              flex: 3,
-              child: Center(
-                child: Row(
-                  mainAxisAlignment: ui.getContinueWidget(context) == null
-                    ? MainAxisAlignment.center
-                    : MainAxisAlignment.spaceEvenly,
-                  children: [
-                    //title, start button, puzzle type
-                    Column(
-                      children: [
-                        Padding(
-                          padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.0005)),
-                          child: const Text("Slitherlink",
-                            style: TextStyle(
-                              fontSize: 45, fontWeight: FontWeight.w400,
+                      const SizedBox(height: 40),
+
+                      // New Game Card
+                      _buildCard(
+                        palette: palette,
+                        isDark: isDark,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.play_circle_filled_rounded, color: palette['primary'], size: 24),
+                                const SizedBox(width: 8),
+                                Text(
+                                  appLocalizations.translate('MainUI_btnStart'),
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: palette['onSurface'],
+                                  ),
+                                ),
+                              ],
                             ),
+                            const SizedBox(height: 16),
+
+                            // Puzzle config chips
+                            ui.getPuzzleTypeChips(context, updateUI, palette),
+
+                            if (MainUI.selectedType[1] == "generate") ...[
+                              const SizedBox(height: 12),
+                              ui.getDifficultyChips(context, updateUI, palette),
+                              const SizedBox(height: 12),
+                              ui.getGenerateSizeSliders(context, updateUI, palette),
+                            ],
+
+                            const SizedBox(height: 20),
+
+                            // Start button
+                            SizedBox(
+                              width: double.infinity,
+                              height: 52,
+                              child: ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: palette['buttonBg'],
+                                  foregroundColor: palette['buttonText'],
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                onPressed: () => ui.startGame(context),
+                                child: Text(
+                                  appLocalizations.translate('MainUI_btnStart'),
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, letterSpacing: 1),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Continue Game Card
+                      if (UserInfo.getContinuePuzzle().isNotEmpty)
+                        _buildCard(
+                          palette: palette,
+                          isDark: isDark,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(Icons.refresh_rounded, color: palette['accent'], size: 24),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    appLocalizations.translate('MainUI_btnContinue_title'),
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w600,
+                                      color: palette['onSurface'],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              ui.getContinueList(context, palette),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 48,
+                                child: OutlinedButton(
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: palette['primary'],
+                                    side: BorderSide(color: palette['primary']!, width: 1.5),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                  onPressed: () => ui.continueGame(context),
+                                  child: Text(
+                                    appLocalizations.translate('MainUI_btnContinue'),
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        Padding(
-                          padding: EdgeInsetsDirectional.symmetric(vertical: ui.getMargin(0.05)),
-                          child: ui.getStartButton(context),
-                        ),
-                        ui.getPuzzleType(context, updateUI),
-                    if (MainUI.selectedType[1] == "generate")
-                      Padding(
-                        padding: const EdgeInsetsDirectional.symmetric(vertical: 10),
-                        child: ui.getGenerateSizeSelector(context, updateUI),
-                      ),
-                      ],
-                    ),
-                    //continue puzzle
-                    ui.getContinueWidget(context) == null ? const SizedBox.shrink() :
-                    Center(
-                      child: ui.getContinueWidget(context),
-                    ),
-                  ],
-                )
+
+                      const SizedBox(height: 40),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
-        )
+            ],
+          ),
+        ),
+      ),
     );
   }
+
+  Widget _buildCard({
+    required Map<String, Color> palette,
+    required bool isDark,
+    required Widget child,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: palette['cardBg']!.withOpacity(isDark ? 0.7 : 0.95),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: palette['divider']!.withOpacity(0.3),
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  late AppLocalizations appLocalizations = AppLocalizations.of(context) ?? AppLocalizations(const Locale('en'));
 }
 
 class EnterScene extends StatefulWidget {

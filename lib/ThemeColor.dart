@@ -31,109 +31,85 @@ class ThemeColor {
     'line_15': const Color(0xFFFF7F50),  // Coral
   };
 
-  Map<String, Color> defaultColor = {
-    'appBar': const Color(0xFF00C8FF),        //GameUI
-    'appIcon': const Color(0xFF000000),       //GameUI
-    'background': const Color(0xFFFFF0E3),    //GameSceneStateSquare
-    'box': const Color(0xFFFFFFFF),           //SquareBoxState
-    'boxHighLight': const Color(0xFFFFCCBC),
-    'number': const Color(0xFF000000),        //SquareBoxState
+  // === Theme 1: Midnight (Dark elegant theme) ===
+  Map<String, Color> midnight = {
+    'appBar': const Color(0xFF1A1A2E),
+    'appIcon': const Color(0xFFE0E0FF),
+    'background': const Color(0xFF16213E),
+    'box': const Color(0xFF1A1A2E),
+    'boxHighLight': const Color(0xFF0F3460),
+    'number': const Color(0xFFE0E0FF),
+    // Extended palette for UI
+    'primary': const Color(0xFF6C63FF),
+    'primaryLight': const Color(0xFF8B83FF),
+    'secondary': const Color(0xFF0F3460),
+    'surface': const Color(0xFF1A1A2E),
+    'surfaceLight': const Color(0xFF222244),
+    'onSurface': const Color(0xFFE0E0FF),
+    'onSurfaceDim': const Color(0xFF9090B0),
+    'accent': const Color(0xFF6C63FF),
+    'gradientStart': const Color(0xFF0A0A1A),
+    'gradientEnd': const Color(0xFF1A1A2E),
+    'cardBg': const Color(0xFF222244),
+    'buttonBg': const Color(0xFF6C63FF),
+    'buttonText': const Color(0xFFFFFFFF),
+    'divider': const Color(0xFF333366),
   };
 
-  Map<String, Color> warm = {
-    'appBar': const Color(0xFFFF5722),
-    'appIcon': const Color(0xFFFFFFFF),
-    'background': const Color(0xFFFFEBE5),
-    'box': const Color(0xFFFFCCBC),
-    'boxHighLight': const Color(0xFFFFCCBC),
-    'number': const Color(0xFFBF360C),
-  };
-
-  Map<String, Color> cool = {
-    'appBar': const Color(0xFF2196F3),
-    'appIcon': const Color(0xFFFFFFFF),
-    'background': const Color(0xFFE3F2FD),
-    'box': const Color(0xFFBBDEFB),
-    'boxHighLight': const Color(0xFFFFCCBC),
-    'number': const Color(0xFF0D47A1),
-  };
-
-  Map<String, Color> earth = {
-    'appBar': const Color(0xFF795548),
-    'appIcon': const Color(0xFFFFFFFF),
-    'background': const Color(0xFFD7CCC8),
-    'box': const Color(0xFFBCAAA4),
-    'boxHighLight': const Color(0xFFFFCCBC),
-    'number': const Color(0xFF3E2723),
-  };
-
-  Map<String, Color> pastel = {
-    'appBar': const Color(0xFFB39DDB),
-    'appIcon': const Color(0xFFFFFFFF),
-    'background': const Color(0xFFEDE7F6),
-    'box': const Color(0xFFD1C4E9),
-    'boxHighLight': const Color(0xFFFFCCBC),
-    'number': const Color(0xFF512DA8),
-  };
-
-  Map<String, Color> vibrant = {
-    'appBar': const Color(0xFFFF4081),
-    'appIcon': const Color(0xFFFFFFFF),
-    'background': const Color(0xFFF8BBD0),
-    'box': const Color(0xFFF48FB1),
-    'boxHighLight': const Color(0xFF81D4FA),
-    'number': const Color(0xFFC2185B),
-  };
-
-  Map<String, Color> nature = {
-    'appBar': const Color(0xFF4CAF50),
-    'appIcon': const Color(0xFFFFFFFF),
-    'background': const Color(0xFFE8F5E9),
-    'box': const Color(0xFFC8E6C9),
-    'boxHighLight': const Color(0xFFFFCCBC),
-    'number': const Color(0xFF1B5E20),
-  };
-
-  Map<String, Color> sunset = {
-    'appBar': const Color(0xFFFF7043),
-    'appIcon': const Color(0xFFFFFFFF),
-    'background': const Color(0xFFFFE0B2),
-    'box': const Color(0xFFFFCC80),
-    'boxHighLight': const Color(0xFF81D4FA),
-    'number': const Color(0xFFE65100),
-  };
-
+  // === Theme 2: Ocean (Cool blue theme) ===
   Map<String, Color> ocean = {
-    'appBar': const Color(0xFF0288D1),
+    'appBar': const Color(0xFF0277BD),
     'appIcon': const Color(0xFFFFFFFF),
-    'background': const Color(0xFFE1F5FE),
-    'box': const Color(0xFF81D4FA),
-    'boxHighLight': const Color(0xFFFFCCBC),
+    'background': const Color(0xFFE8F4FD),
+    'box': const Color(0xFFFFFFFF),
+    'boxHighLight': const Color(0xFFB3E5FC),
     'number': const Color(0xFF01579B),
+    // Extended palette for UI
+    'primary': const Color(0xFF0288D1),
+    'primaryLight': const Color(0xFF03A9F4),
+    'secondary': const Color(0xFF4FC3F7),
+    'surface': const Color(0xFFFFFFFF),
+    'surfaceLight': const Color(0xFFF5FAFF),
+    'onSurface': const Color(0xFF1A1A2E),
+    'onSurfaceDim': const Color(0xFF607D8B),
+    'accent': const Color(0xFF00BCD4),
+    'gradientStart': const Color(0xFF0277BD),
+    'gradientEnd': const Color(0xFF4FC3F7),
+    'cardBg': const Color(0xFFFFFFFF),
+    'buttonBg': const Color(0xFF0288D1),
+    'buttonText': const Color(0xFFFFFFFF),
+    'divider': const Color(0xFFB0BEC5),
   };
 
-  Map<String, Color> forest = {
-    'appBar': const Color(0xFF388E3C),
+  // === Theme 3: Sakura (Warm pink theme) ===
+  Map<String, Color> sakura = {
+    'appBar': const Color(0xFFAD1457),
     'appIcon': const Color(0xFFFFFFFF),
-    'background': const Color(0xFFE8F5E9),
-    'box': const Color(0xFFA5D6A7),
-    'boxHighLight': const Color(0xFF81D4FA),
-    'number': const Color(0xFF2E7D32),
-  };
-
-  Map<String, Color> lavender = {
-    'appBar': const Color(0xFFFF4081),
-    'appIcon': const Color(0xFFFFFFFF),
-    'background': const Color(0xFFF8BBD0),
-    'box': const Color(0xFFF48FB1),
-    'boxHighLight': const Color(0xFF81D4FA),
-    'number': const Color(0xFFC2185B),
+    'background': const Color(0xFFFFF0F5),
+    'box': const Color(0xFFFFFFFF),
+    'boxHighLight': const Color(0xFFF8BBD0),
+    'number': const Color(0xFF880E4F),
+    // Extended palette for UI
+    'primary': const Color(0xFFE91E63),
+    'primaryLight': const Color(0xFFF06292),
+    'secondary': const Color(0xFFF48FB1),
+    'surface': const Color(0xFFFFFFFF),
+    'surfaceLight': const Color(0xFFFFF5F8),
+    'onSurface': const Color(0xFF2C1320),
+    'onSurfaceDim': const Color(0xFF8E6B7D),
+    'accent': const Color(0xFFFF4081),
+    'gradientStart': const Color(0xFFAD1457),
+    'gradientEnd': const Color(0xFFF06292),
+    'cardBg': const Color(0xFFFFFFFF),
+    'buttonBg': const Color(0xFFE91E63),
+    'buttonText': const Color(0xFFFFFFFF),
+    'divider': const Color(0xFFF8BBD0),
   };
 
   ThemeColor();
 
   List<String> getList() {
-    return ["default", "warm", "cool", "earth", "pastel", "vibrant"];
+    return ["midnight", "ocean", "sakura"];
   }
 
   List<String> getColorListTr(BuildContext context) {
@@ -141,29 +117,31 @@ class ThemeColor {
       AppLocalizations.of(context)!.translate('ThemeName_01'),
       AppLocalizations.of(context)!.translate('ThemeName_02'),
       AppLocalizations.of(context)!.translate('ThemeName_03'),
-      AppLocalizations.of(context)!.translate('ThemeName_04'),
-      AppLocalizations.of(context)!.translate('ThemeName_05'),
-      AppLocalizations.of(context)!.translate('ThemeName_06'),
     ];
   }
 
   Map<String, Color> getColor() {
     String type = UserInfo.getSetting("theme")!;
     switch (type) {
+      case "midnight":
       case "default":
-        return defaultColor;
-      case "warm":
-        return warm;
-      case "cool":
-        return cool;
-      case "earth":
-        return earth;
-      case "pastel":
-        return pastel;
-      case "vibrant":
-        return vibrant;
+        return midnight;
+      case "ocean":
+        return ocean;
+      case "sakura":
+        return sakura;
     }
-    return {};
+    return midnight;
+  }
+
+  /// Get the full theme palette (includes extended colors)
+  Map<String, Color> getPalette() {
+    return getColor();
+  }
+
+  bool isDark() {
+    String type = UserInfo.getSetting("theme")!;
+    return type == "midnight" || type == "default";
   }
 
   ///0 : normal, 1 : select, 2 : hint, -1 : disable, -2 : wrong
@@ -173,11 +151,9 @@ class ThemeColor {
       //line_01 ~ line_15
       int num = Random().nextInt(getNormalLineNum()) + 1;
       if(num < 10) {
-        //print("lineColor : ${lineColor["line_0$num"]!}");
         return lineColor["line_0$num"]!;
       }
       else {
-        //print("lineColor : ${lineColor["line_$num"]!}");
         return lineColor["line_$num"]!;
       }
     }
@@ -186,7 +162,6 @@ class ThemeColor {
     switch(type) {
       //normal(no select)
       case 0:
-        //print("lineColor[line_normal] : ${lineColor["line_normal"]}");
         rtColor = lineColor["line_normal"]!;
         break;
       //disable
@@ -207,7 +182,6 @@ class ThemeColor {
         break;
     }
 
-    //print("rtColor in getLineColor : $rtColor");
     return rtColor;
   }
 
@@ -235,7 +209,6 @@ class ThemeColor {
 
   //return over 0
   int getNormalRandom() {
-    //print("getNormalLineNum : ${getNormalLineNum()}");  //15
     return Random().nextInt(getNormalLineNum()) + 1;
   }
 }
