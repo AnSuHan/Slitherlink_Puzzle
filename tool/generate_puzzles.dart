@@ -127,7 +127,7 @@ class SlitherlinkGenerator {
     inside[sr][sc] = true;
 
     int total = rows * cols;
-    int target = max(1, (total * (0.35 + _random.nextDouble() * 0.20)).round());
+    int target = max(1, (total * (0.30 + _random.nextDouble() * 0.20)).round());
 
     int curR = sr, curC = sc;
     int size = 1;
@@ -145,6 +145,12 @@ class SlitherlinkGenerator {
       for (var n in neighbors) {
         int nr = n[0], nc = n[1];
         if (inside[nr][nc]) continue;
+
+        int insideNeighborCount = 0;
+        for (var nn in _cellNeighbors(nr, nc)) {
+          if (inside[nn[0]][nn[1]]) insideNeighborCount++;
+        }
+        if (insideNeighborCount > 1) continue;
 
         inside[nr][nc] = true;
         if (!_outsideConnected(inside)) {
@@ -174,6 +180,12 @@ class SlitherlinkGenerator {
           int r = encoded ~/ cols, c = encoded % cols;
           frontier.remove(encoded);
           if (inside[r][c]) continue;
+
+          int insideNeighborCount = 0;
+          for (var nn in _cellNeighbors(r, c)) {
+            if (inside[nn[0]][nn[1]]) insideNeighborCount++;
+          }
+          if (insideNeighborCount > 1) continue;
 
           inside[r][c] = true;
           if (!_outsideConnected(inside)) {
@@ -229,12 +241,12 @@ class SlitherlinkGenerator {
   }
 
   SlitherlinkPuzzle generate() {
-    for (int attempt = 0; attempt < 300; attempt++) {
+    for (int attempt = 0; attempt < 1000; attempt++) {
       SlitherlinkPuzzle puzzle = SlitherlinkPuzzle(rows, cols);
       Set<int> edges = _generateLoop();
       if (edges.length < 4) continue;
       _decodeEdges(puzzle, edges);
-      if (_cellCoverage(puzzle) < 0.70) continue;
+      if (_cellCoverage(puzzle) < 0.90) continue;
       return puzzle;
     }
     throw Exception('Failed to generate a valid puzzle after 300 attempts');

@@ -74,7 +74,7 @@ class SlitherlinkGenerator {
 
   /// Generate a complete puzzle with the given difficulty
   SlitherlinkPuzzle generate({Difficulty difficulty = Difficulty.normal}) {
-    for (int attempt = 0; attempt < 300; attempt++) {
+    for (int attempt = 0; attempt < 1000; attempt++) {
       SlitherlinkPuzzle puzzle = SlitherlinkPuzzle(rows, cols);
       Set<int> edges = _generateLoop();
       if (edges.length < 4) continue;
@@ -83,7 +83,7 @@ class SlitherlinkGenerator {
       _computeSolution(puzzle);
 
       // Require at least 70% cell coverage (cells touched by the loop)
-      if (_cellCoverage(puzzle) < 0.70) continue;
+      if (_cellCoverage(puzzle) < 0.90) continue;
 
       _buildClue(puzzle, difficulty);
       return puzzle;
@@ -93,7 +93,7 @@ class SlitherlinkGenerator {
 
   /// Generate only the loop (solution edges) without clue masking
   SlitherlinkPuzzle generateSolution() {
-    for (int attempt = 0; attempt < 300; attempt++) {
+    for (int attempt = 0; attempt < 1000; attempt++) {
       SlitherlinkPuzzle puzzle = SlitherlinkPuzzle(rows, cols);
       Set<int> edges = _generateLoop();
       if (edges.length < 4) continue;
@@ -101,7 +101,7 @@ class SlitherlinkGenerator {
       _decodeEdges(puzzle, edges);
       _computeSolution(puzzle);
 
-      if (_cellCoverage(puzzle) < 0.70) continue;
+      if (_cellCoverage(puzzle) < 0.90) continue;
 
       for (int r = 0; r < rows; r++) {
         for (int c = 0; c < cols; c++) {
@@ -142,23 +142,22 @@ class SlitherlinkGenerator {
     int sc = _random.nextInt(cols);
     inside[sr][sc] = true;
 
-    // Target: 35-55% of cells inside (thin regions have higher perimeter/area ratio)
+    // Target: 30-50% of cells inside as a thin snake path
     int total = rows * cols;
-    int target = max(1, (total * (0.35 + _random.nextDouble() * 0.20)).round());
+    int target = max(1, (total * (0.30 + _random.nextDouble() * 0.20)).round());
 
-    // Random walk growth: always extend from the most recent cell added,
-    // creating a thin winding path. Fall back to frontier when stuck.
+    // Snake-like random walk: only extend to cells with at most 1 inside
+    // neighbor, creating a 1-cell-wide winding path for maximum coverage.
     int curR = sr, curC = sc;
     int size = 1;
 
-    // Also maintain a frontier for fallback
     Set<int> frontier = {};
     for (var n in _cellNeighbors(sr, sc)) {
       frontier.add(n[0] * cols + n[1]);
     }
 
     while (size < target && frontier.isNotEmpty) {
-      // Try to extend from current position (random walk)
+      // Try to extend from current position
       List<List<int>> neighbors = _cellNeighbors(curR, curC);
       neighbors.shuffle(_random);
 
@@ -167,13 +166,19 @@ class SlitherlinkGenerator {
         int nr = n[0], nc = n[1];
         if (inside[nr][nc]) continue;
 
+        // Only extend to cells with at most 1 inside neighbor (thin path)
+        int insideNeighborCount = 0;
+        for (var nn in _cellNeighbors(nr, nc)) {
+          if (inside[nn[0]][nn[1]]) insideNeighborCount++;
+        }
+        if (insideNeighborCount > 1) continue;
+
         inside[nr][nc] = true;
         if (!_outsideConnected(inside)) {
           inside[nr][nc] = false;
           continue;
         }
 
-        // Successfully extended the walk
         curR = nr;
         curC = nc;
         size++;
@@ -188,7 +193,7 @@ class SlitherlinkGenerator {
       }
 
       if (!extended) {
-        // Stuck - pick a random frontier cell
+        // Stuck - pick a random thin frontier cell
         var fList = frontier.toList();
         fList.shuffle(_random);
 
@@ -197,6 +202,12 @@ class SlitherlinkGenerator {
           int r = encoded ~/ cols, c = encoded % cols;
           frontier.remove(encoded);
           if (inside[r][c]) continue;
+
+          int insideNeighborCount = 0;
+          for (var nn in _cellNeighbors(r, c)) {
+            if (inside[nn[0]][nn[1]]) insideNeighborCount++;
+          }
+          if (insideNeighborCount > 1) continue;
 
           inside[r][c] = true;
           if (!_outsideConnected(inside)) {
