@@ -1,7 +1,6 @@
 // ignore_for_file: file_names
 import 'dart:math';
 
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
@@ -938,10 +937,8 @@ class SquareProvider with ChangeNotifier {
     submit = await readSquare.readSubmit(puzzle);
     notifyListeners();
     await setDo();
-    await findBlockEnableDisableRefactor(
+    await findBlockEnableDisable(
         row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
-    // await findBlockEnableDisable(
-    //     row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
     notifyListeners();
     while(_isUpdating != 3) {
       await Future.delayed(const        // ignore: avoid_print
@@ -958,145 +955,104 @@ class SquareProvider with ChangeNotifier {
     }
   }
 
+  /// 라인(row, col, dir)의 값을 읽는 헬퍼
+  int _getEdgeValue(int row, int col, String dir) {
+    switch (dir) {
+      case "up":    return puzzle[row][col].up;
+      case "down":  return puzzle[row][col].down;
+      case "left":  return puzzle[row][col].left;
+      case "right": return puzzle[row][col].right;
+      default: return 0;
+    }
+  }
+
+  /// 라인(row, col, dir)의 양 끝 꼭짓점 좌표를 반환
+  /// 꼭짓점 (vi, vj): 0 <= vi <= numRows, 0 <= vj <= numCols
+  List<List<int>> _getEdgeVertices(int row, int col, String dir) {
+    switch (dir) {
+      case "up":    return [[row, col], [row, col + 1]];
+      case "down":  return [[row + 1, col], [row + 1, col + 1]];
+      case "left":  return [[row, col], [row + 1, col]];
+      case "right": return [[row, col + 1], [row + 1, col + 1]];
+      default: return [];
+    }
+  }
+
+  /// 꼭짓점 (vi, vj)에서 만나는 모든 라인을 [row, col, dir] 형태로 반환
+  List<List<dynamic>> _getEdgesAtVertex(int vi, int vj) {
+    List<List<dynamic>> edges = [];
+    int numRows = puzzle.length;
+    int numCols = puzzle[0].length;
+
+    // 왼쪽 수평 라인: (vi, vj-1) — (vi, vj)
+    if (vj > 0) {
+      if (vi == 0) {
+        edges.add([0, vj - 1, "up"]);
+      } else if (vi - 1 < numRows) {
+        edges.add([vi - 1, vj - 1, "down"]);
+      }
+    }
+
+    // 오른쪽 수평 라인: (vi, vj) — (vi, vj+1)
+    if (vj < numCols) {
+      if (vi == 0) {
+        edges.add([0, vj, "up"]);
+      } else if (vi - 1 < numRows) {
+        edges.add([vi - 1, vj, "down"]);
+      }
+    }
+
+    // 위쪽 수직 라인: (vi-1, vj) — (vi, vj)
+    if (vi > 0) {
+      if (vj == 0) {
+        if (vi - 1 < numRows) edges.add([vi - 1, 0, "left"]);
+      } else if (vj - 1 < numCols) {
+        if (vi - 1 < numRows) edges.add([vi - 1, vj - 1, "right"]);
+      }
+    }
+
+    // 아래쪽 수직 라인: (vi, vj) — (vi+1, vj)
+    if (vi < numRows) {
+      if (vj == 0) {
+        edges.add([vi, 0, "left"]);
+      } else if (vj - 1 < numCols) {
+        edges.add([vi, vj - 1, "right"]);
+      }
+    }
+
+    return edges;
+  }
+
+  /// 라인 (row, col, dir)에 인접한 모든 라인을 반환 (자기 자신 제외)
+  List<List<dynamic>> getAdjacentEdges(int row, int col, String dir) {
+    List<List<int>> vertices = _getEdgeVertices(row, col, dir);
+    Set<String> seen = {"$row,$col,$dir"};
+    List<List<dynamic>> result = [];
+
+    for (var v in vertices) {
+      for (var edge in _getEdgesAtVertex(v[0], v[1])) {
+        String key = "${edge[0]},${edge[1]},${edge[2]}";
+        if (!seen.contains(key)) {
+          seen.add(key);
+          result.add(edge);
+        }
+      }
+    }
+
+    return result;
+  }
+
   ///SquareBoxProvider List's index
   Set<int> getNearColor(int row, int col, String pos) {
     Set<int> use = {};
 
-    if(row != 0 && col != 0) {
-      switch(pos) {
-        case "down":
-          addIfPositive(use, puzzle[row][col - 1].down);
-          addIfPositive(use, puzzle[row][col - 1].right);
-          addIfPositive(use, puzzle[row][col].right);
-
-          if(puzzle.length > row + 1) {
-            addIfPositive(use, puzzle[row + 1][col - 1].right);
-            addIfPositive(use, puzzle[row + 1][col].right);
-          }
-          if(puzzle[row].length > col + 1) {
-            addIfPositive(use, puzzle[row][col + 1].down);
-          }
-          break;
-        case "right":
-          addIfPositive(use, puzzle[row - 1][col].right);
-          addIfPositive(use, puzzle[row - 1][col].down);
-          addIfPositive(use, puzzle[row][col].down);
-
-          if(puzzle[row].length > col + 1) {
-            addIfPositive(use, puzzle[row - 1][col + 1].down);
-            addIfPositive(use, puzzle[row][col + 1].down);
-          }
-          if(puzzle.length > row + 1) {
-            addIfPositive(use, puzzle[row + 1][col].right);
-          }
-          break;
-      }
-    }
-    else if(row == 0 && col != 0) {
-      switch(pos) {
-        case "up":
-          addIfPositive(use, puzzle[row][col - 1].up);
-          addIfPositive(use, puzzle[row][col - 1].right);
-          addIfPositive(use, puzzle[row][col].right);
-
-          if(puzzle[row].length > col + 1) {
-            addIfPositive(use, puzzle[row][col + 1].up);
-          }
-          break;
-        case "down":
-          addIfPositive(use, puzzle[row][col - 1].down);
-          addIfPositive(use, puzzle[row][col - 1].right);
-          addIfPositive(use, puzzle[row][col].right);
-
-          if(puzzle[row].length > col + 1) {
-            addIfPositive(use, puzzle[row][col + 1].down);
-          }
-          if(puzzle.length > row + 1) {
-            addIfPositive(use, puzzle[row + 1][col - 1].right);
-            addIfPositive(use, puzzle[row + 1][col].right);
-          }
-          break;
-        case "right":
-          addIfPositive(use, puzzle[row][col].up);
-          addIfPositive(use, puzzle[row][col].down);
-
-          if(puzzle[row].length > col + 1) {
-            addIfPositive(use, puzzle[row][col + 1].up);
-            addIfPositive(use, puzzle[row][col + 1].down);
-          }
-          if(puzzle.length > row + 1) {
-            addIfPositive(use, puzzle[row + 1][col].right);
-          }
-          break;
-      }
-    }
-    else if(row != 0 && col == 0) {
-      switch(pos) {
-        case "down":
-          addIfPositive(use, puzzle[row][col].left);
-          addIfPositive(use, puzzle[row][col].right);
-          if(row + 1 < puzzle.length) {
-            addIfPositive(use, puzzle[row + 1][col].left);
-            addIfPositive(use, puzzle[row + 1][col].right);
-          }
-          if(col + 1 < puzzle[row].length) {
-            addIfPositive(use, puzzle[row][col + 1].down);
-          }
-          break;
-        case "left":
-          addIfPositive(use, puzzle[row - 1][col].left);
-          addIfPositive(use, puzzle[row - 1][col].down);
-          addIfPositive(use, puzzle[row][col].down);
-
-          if(puzzle.length > row + 1) {
-            addIfPositive(use, puzzle[row + 1][col].left);
-          }
-          break;
-        case "right":
-          addIfPositive(use, puzzle[row - 1][col].right);
-          addIfPositive(use, puzzle[row - 1][col].down);
-          addIfPositive(use, puzzle[row][col].down);
-
-          if(puzzle.length > row + 1) {
-            addIfPositive(use, puzzle[row + 1][col].right);
-          }
-          if(col + 1 < puzzle[row].length) {
-            addIfPositive(use, puzzle[row - 1][col + 1].down);
-            addIfPositive(use, puzzle[row][col + 1].down);
-          }
-          break;
-      }
-    }
-    else {    //row == 0 && col == 0
-      switch(pos) {
-        case "up":
-          addIfPositive(use, puzzle[row][col].left);
-          addIfPositive(use, puzzle[row][col].right);
-          addIfPositive(use, puzzle[row][col + 1].up);
-          break;
-        case "down":
-          addIfPositive(use, puzzle[row][col].left);
-          addIfPositive(use, puzzle[row][col].right);
-          addIfPositive(use, puzzle[row + 1][col].left);
-          addIfPositive(use, puzzle[row + 1][col].right);
-          addIfPositive(use, puzzle[row][col + 1].down);
-          break;
-        case "left":
-          addIfPositive(use, puzzle[row][col].up);
-          addIfPositive(use, puzzle[row][col].down);
-          addIfPositive(use, puzzle[row + 1][col].left);
-          break;
-        case "right":
-          addIfPositive(use, puzzle[row][col].up);
-          addIfPositive(use, puzzle[row][col].down);
-          addIfPositive(use, puzzle[row][col + 1].up);
-          addIfPositive(use, puzzle[row][col + 1].down);
-          addIfPositive(use, puzzle[row + 1][col].right);
-          break;
+    for (var edge in getAdjacentEdges(row, col, pos)) {
+      int value = _getEdgeValue(edge[0] as int, edge[1] as int, edge[2] as String);
+      if (value > 0) {
+        use.add(value);
       }
     }
 
-    use.remove(0);
     return use;
   }
 
@@ -1106,544 +1062,47 @@ class SquareProvider with ChangeNotifier {
     }
   }
 
-  ///클릭한 라인 기준으로 가장 가까운 변경해야 할 라인을 하나 찾아서 getContinueOld()로 넘기는 메소드
+  ///클릭한 라인 기준으로 인접한 라인 중 색이 다른 것을 찾아, 연결된 모든 라인을 반환
   List<dynamic> getOldColorList(int row, int col, String pos, int now) {
-    //[row, col, pos]
-    ///rtValue는 값을 now로 변경해야 할 목록
     List<dynamic> rtValue = [];
 
-    //same as getNearColor except for comparing color
-    if(row != 0 && col != 0) {
-      switch(pos) {
-        case "down":
-        //use.add(puzzle[row][col - 1].down);
-          if(puzzle[row][col - 1].down > 0 && puzzle[row][col - 1].down != now) {
-            rtValue.add([row, col - 1, "down"]);
-          }
-          if (puzzle[row][col - 1].right > 0 && puzzle[row][col - 1].right != now) {
-            rtValue.add([row, col - 1, "right"]);
-          }
-          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
-            rtValue.add([row, col, "right"]);
-          }
-          if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col - 1].right > 0 && puzzle[row + 1][col - 1].right != now) {
-              rtValue.add([row + 1, col - 1, "right"]);
-            }
-            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-          }
-          if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-          }
-          break;
-        case "right":
-          if (puzzle[row - 1][col].right > 0 && puzzle[row - 1][col].right != now) {
-            rtValue.add([row - 1, col, "right"]);
-          }
-          if (puzzle[row - 1][col].down > 0 && puzzle[row - 1][col].down != now) {
-            rtValue.add([row - 1, col, "down"]);
-          }
-          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
-            rtValue.add([row, col, "down"]);
-          }
-          if (puzzle[row].length > col + 1) {
-            if (puzzle[row - 1][col + 1].down > 0 && puzzle[row - 1][col + 1].down != now) {
-              rtValue.add([row - 1, col + 1, "down"]);
-            }
-            if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-          }
-          if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-          }
-          break;
-      }
-    }
-    else if (row == 0 && col != 0) {
-      switch (pos) {
-        case "up":
-          if (puzzle[row][col - 1].up > 0 && puzzle[row][col - 1].up != now) {
-            rtValue.add([row, col - 1, "up"]);
-          }
-          if (puzzle[row][col - 1].right > 0 && puzzle[row][col - 1].right != now) {
-            rtValue.add([row, col - 1, "right"]);
-          }
-          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
-            rtValue.add([row, col, "right"]);
-          }
-          if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].up > 0 && puzzle[row][col + 1].up != now) {
-              rtValue.add([row, col + 1, "up"]);
-            }
-          }
-          break;
-        case "down":
-          if (puzzle[row][col - 1].down > 0 && puzzle[row][col - 1].down != now) {
-            rtValue.add([row, col - 1, "down"]);
-          }
-          if (puzzle[row][col - 1].right > 0 && puzzle[row][col - 1].right != now) {
-            rtValue.add([row, col - 1, "right"]);
-          }
-          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
-            rtValue.add([row, col, "right"]);
-          }
-          if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-          }
-          if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col - 1].right > 0 && puzzle[row + 1][col - 1].right != now) {
-              rtValue.add([row + 1, col - 1, "right"]);
-            }
-            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-          }
-          break;
-        case "right":
-          if (puzzle[row][col].up > 0 && puzzle[row][col].up != now) {
-            rtValue.add([row, col, "up"]);
-          }
-          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
-            rtValue.add([row, col, "down"]);
-          }
-          if (puzzle[row].length > col + 1) {
-            if (puzzle[row][col + 1].up > 0 && puzzle[row][col + 1].up != now) {
-              rtValue.add([row, col + 1, "up"]);
-            }
-            if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-          }
-          if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-          }
-          break;
-      }
-    }
-    else if (row != 0 && col == 0) {
-      switch (pos) {
-        case "down":
-          if (puzzle[row][col].left > 0 && puzzle[row][col].left != now) {
-            rtValue.add([row, col, "left"]);
-          }
-          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
-            rtValue.add([row, col, "right"]);
-          }
-          if (puzzle[row + 1][col].left > 0 && puzzle[row + 1][col].left != now) {
-            rtValue.add([row + 1, col, "left"]);
-          }
-          if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
-            rtValue.add([row + 1, col, "right"]);
-          }
-          if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
-            rtValue.add([row, col + 1, "down"]);
-          }
-          break;
-        case "left":
-          if (puzzle[row - 1][col].left > 0 && puzzle[row - 1][col].left != now) {
-            rtValue.add([row - 1, col, "left"]);
-          }
-          if (puzzle[row - 1][col].down > 0 && puzzle[row - 1][col].down != now) {
-            rtValue.add([row - 1, col, "down"]);
-          }
-          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
-            rtValue.add([row, col, "down"]);
-          }
-          if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].left > 0 && puzzle[row + 1][col].left != now) {
-              rtValue.add([row + 1, col, "left"]);
-            }
-          }
-          break;
-        case "right":
-          if (puzzle[row - 1][col].right > 0 && puzzle[row - 1][col].right != now) {
-            rtValue.add([row - 1, col, "right"]);
-          }
-          if (puzzle[row - 1][col].down > 0 && puzzle[row - 1][col].down != now) {
-            rtValue.add([row - 1, col, "down"]);
-          }
-          if (puzzle[row - 1][col + 1].down > 0 && puzzle[row - 1][col + 1].down != now) {
-            rtValue.add([row - 1, col + 1, "down"]);
-          }
-          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
-            rtValue.add([row, col, "down"]);
-          }
-          if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
-            rtValue.add([row, col + 1, "down"]);
-          }
-          if (puzzle.length > row + 1) {
-            if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-          }
-          break;
-      }
-    }
-    else {
-      switch(pos) {
-        case "up":
-          if (puzzle[row][col].left > 0 && puzzle[row][col].left != now) {
-            rtValue.add([row, col, "left"]);
-          }
-          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
-            rtValue.add([row, col, "right"]);
-          }
-          if (puzzle[row][col + 1].up > 0 && puzzle[row][col + 1].up != now) {
-            rtValue.add([row, col + 1, "up"]);
-          }
-          break;
-        case "down":
-          if (puzzle[row][col].left > 0 && puzzle[row][col].left != now) {
-            rtValue.add([row, col, "left"]);
-          }
-          if (puzzle[row][col].right > 0 && puzzle[row][col].right != now) {
-            rtValue.add([row, col, "right"]);
-          }
-          if (puzzle[row + 1][col].left > 0 && puzzle[row + 1][col].left != now) {
-            rtValue.add([row + 1, col, "left"]);
-          }
-          if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
-            rtValue.add([row + 1, col, "right"]);
-          }
-          if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
-            rtValue.add([row, col + 1, "down"]);
-          }
-          break;
-        case "left":
-          if (puzzle[row][col].up > 0 && puzzle[row][col].up != now) {
-            rtValue.add([row, col, "up"]);
-          }
-          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
-            rtValue.add([row, col, "down"]);
-          }
-          if (puzzle[row + 1][col].left > 0 && puzzle[row + 1][col].left != now) {
-            rtValue.add([row + 1, col, "left"]);
-          }
-          break;
-        case "right":
-          if (puzzle[row][col].up > 0 && puzzle[row][col].up != now) {
-            rtValue.add([row, col, "up"]);
-          }
-          if (puzzle[row][col].down > 0 && puzzle[row][col].down != now) {
-            rtValue.add([row, col, "down"]);
-          }
-          if (puzzle[row][col + 1].up > 0 && puzzle[row][col + 1].up != now) {
-            rtValue.add([row, col + 1, "up"]);
-          }
-          if (puzzle[row][col + 1].down > 0 && puzzle[row][col + 1].down != now) {
-            rtValue.add([row, col + 1, "down"]);
-          }
-          if (puzzle[row + 1][col].right > 0 && puzzle[row + 1][col].right != now) {
-            rtValue.add([row + 1, col, "right"]);
-          }
-          break;
+    for (var edge in getAdjacentEdges(row, col, pos)) {
+      int value = _getEdgeValue(edge[0] as int, edge[1] as int, edge[2] as String);
+      if (value > 0 && value != now) {
+        rtValue.add([edge[0], edge[1], edge[2]]);
       }
     }
 
-    //print("end of getOldColorList : $rtValue");
-    if(rtValue.isEmpty) {
+    if (rtValue.isEmpty) {
       return [];
     }
-    //return rtValue;
     return getContinueOld(rtValue);
   }
 
-  ///변경해야 하는 라인 하나를 받아, 변경이 필요한 모든 라인을 찾아 반환하는 메소드
+  ///변경해야 하는 라인들을 시작점으로, 같은 색으로 연결된 모든 라인을 BFS로 찾아 반환
   List<dynamic> getContinueOld(List<dynamic> start) {
     List<List<dynamic>> rtTempList = [start[0]];
 
     int row = int.parse(start[0][0].toString());
     int col = int.parse(start[0][1].toString());
     String pos = start[0][2].toString();
-    int find = 0;
-    //print("getContinueOld row $row, col $col, pos $pos");
-
-    switch(pos) {
-      case "down":
-        find = puzzle[row][col].down;
-        break;
-      case "right":
-        find = puzzle[row][col].right;
-        break;
-      case "up":
-        find = puzzle[row][col].up;
-        break;
-      case "left":
-        find = puzzle[row][col].left;
-        break;
-    }
+    int find = _getEdgeValue(row, col, pos);
 
     int count = 0;
-    do {
-      //print("\n find color(will be changed) is $find / time ${count + 1}");
-      if(rtTempList.length <= count) {
-        break;
-      }
-      //set now standard
+    while (count < rtTempList.length) {
       row = int.parse(rtTempList[count][0].toString());
       col = int.parse(rtTempList[count][1].toString());
-      pos = rtTempList[count][2];
-      //print("NOW : row $row col $col len ${rtTempList.length}");
+      pos = rtTempList[count][2].toString();
       count++;
 
-      //same as find color
-      if(row != 0 && col != 0) {
-        switch(pos) {
-          case "down":
-          //use.add(puzzle[row][col - 1].down);
-            if(puzzle[row][col - 1].down == find) {
-              addIfNotExist(rtTempList, [row, col - 1, "down"]);
-            }
-            if (puzzle[row][col - 1].right == find) {
-              addIfNotExist(rtTempList, [row, col - 1, "right"]);
-            }
-            if (puzzle[row][col].right == find) {
-              addIfNotExist(rtTempList, [row, col, "right"]);
-            }
-            if (puzzle.length > row + 1) {
-              if (puzzle[row + 1][col - 1].right == find) {
-                addIfNotExist(rtTempList, [row + 1, col - 1, "right"]);
-              }
-              if (puzzle[row + 1][col].right == find) {
-                addIfNotExist(rtTempList, [row + 1, col, "right"]);
-              }
-            }
-            if (puzzle[row].length > col + 1) {
-              if (puzzle[row][col + 1].down == find) {
-                addIfNotExist(rtTempList, [row, col + 1, "down"]);
-              }
-            }
-            break;
-          case "right":
-            if (puzzle[row - 1][col].right == find) {
-              addIfNotExist(rtTempList, [row - 1, col, "right"]);
-            }
-            if (puzzle[row - 1][col].down == find) {
-              addIfNotExist(rtTempList, [row - 1, col, "down"]);
-            }
-            if (puzzle[row][col].down == find) {
-              addIfNotExist(rtTempList, [row, col, "down"]);
-            }
-            if (puzzle[row].length > col + 1) {
-              if (puzzle[row - 1][col + 1].down == find) {
-                addIfNotExist(rtTempList, [row - 1, col + 1, "down"]);
-              }
-              if (puzzle[row][col + 1].down == find) {
-                addIfNotExist(rtTempList, [row, col + 1, "down"]);
-              }
-            }
-            if (puzzle.length > row + 1) {
-              if (puzzle[row + 1][col].right == find) {
-                addIfNotExist(rtTempList, [row + 1, col, "right"]);
-              }
-            }
-            break;
+      for (var edge in getAdjacentEdges(row, col, pos)) {
+        int value = _getEdgeValue(edge[0] as int, edge[1] as int, edge[2] as String);
+        if (value == find) {
+          addIfNotExist(rtTempList, [edge[0], edge[1], edge[2]]);
         }
       }
-      else if (row == 0 && col != 0) {
-        switch (pos) {
-          case "up":
-            if (puzzle[row][col - 1].up == find) {
-              addIfNotExist(rtTempList, [row, col - 1, "up"]);
-            }
-            if (puzzle[row][col - 1].right == find) {
-              addIfNotExist(rtTempList, [row, col - 1, "right"]);
-            }
-            if (puzzle[row][col].right == find) {
-              addIfNotExist(rtTempList, [row, col, "right"]);
-            }
-            if (puzzle[row].length > col + 1) {
-              if (puzzle[row][col + 1].up == find) {
-                addIfNotExist(rtTempList, [row, col + 1, "up"]);
-              }
-            }
-            break;
-          case "down":
-            if (puzzle[row][col - 1].down == find) {
-              addIfNotExist(rtTempList, [row, col - 1, "down"]);
-            }
-            if (puzzle[row][col - 1].right == find) {
-              addIfNotExist(rtTempList, [row, col - 1, "right"]);
-            }
-            if (puzzle[row][col].right == find) {
-              addIfNotExist(rtTempList, [row, col, "right"]);
-            }
-            if (puzzle[row].length > col + 1) {
-              if (puzzle[row][col + 1].down == find) {
-                addIfNotExist(rtTempList, [row, col + 1, "down"]);
-              }
-            }
-            if (puzzle.length > row + 1) {
-              if (puzzle[row + 1][col - 1].right == find) {
-                addIfNotExist(rtTempList, [row + 1, col - 1, "right"]);
-              }
-              if (puzzle[row + 1][col].right == find) {
-                addIfNotExist(rtTempList, [row + 1, col, "right"]);
-              }
-            }
-            break;
-          case "right":
-            if (puzzle[row][col].up == find) {
-              addIfNotExist(rtTempList, [row, col, "up"]);
-            }
-            if (puzzle[row][col].down == find) {
-              addIfNotExist(rtTempList, [row, col, "down"]);
-            }
-            if (puzzle[row].length > col + 1) {
-              if (puzzle[row][col + 1].up == find) {
-                addIfNotExist(rtTempList, [row, col + 1, "up"]);
-              }
-              if (puzzle[row][col + 1].down == find) {
-                addIfNotExist(rtTempList, [row, col + 1, "down"]);
-              }
-            }
-            if (puzzle.length > row + 1) {
-              if (puzzle[row + 1][col].right == find) {
-                addIfNotExist(rtTempList, [row + 1, col, "right"]);
-              }
-            }
-            break;
-        }
-      }
-      else if (row != 0 && col == 0) {
-        switch (pos) {
-          case "down":
-            if (puzzle[row][col].left == find) {
-              addIfNotExist(rtTempList, [row, col, "left"]);
-            }
-            if (puzzle[row][col].right == find) {
-              addIfNotExist(rtTempList, [row, col, "right"]);
-            }
-            if (puzzle[row][col + 1].down == find) {
-              addIfNotExist(rtTempList, [row, col + 1, "down"]);
-            }
-            if(row + 1 < puzzle.length) {
-              if (puzzle[row + 1][col].left == find) {
-                addIfNotExist(rtTempList, [row + 1, col, "left"]);
-              }
-              if (puzzle[row + 1][col].right == find) {
-                addIfNotExist(rtTempList, [row + 1, col, "right"]);
-              }
-            }
-            break;
-          case "left":
-            if (puzzle[row - 1][col].left == find) {
-              addIfNotExist(rtTempList, [row - 1, col, "left"]);
-            }
-            if (puzzle[row - 1][col].down == find) {
-              addIfNotExist(rtTempList, [row - 1, col, "down"]);
-            }
-            if (puzzle[row][col].down == find) {
-              addIfNotExist(rtTempList, [row, col, "down"]);
-            }
-            if (puzzle.length > row + 1) {
-              if (puzzle[row + 1][col].left == find) {
-                addIfNotExist(rtTempList, [row + 1, col, "left"]);
-              }
-            }
-            break;
-          case "right":
-            if (puzzle[row - 1][col].right == find) {
-              addIfNotExist(rtTempList, [row - 1, col, "right"]);
-            }
-            if (puzzle[row - 1][col].down == find) {
-              addIfNotExist(rtTempList, [row - 1, col, "down"]);
-            }
-            if (puzzle[row - 1][col + 1].down == find) {
-              addIfNotExist(rtTempList, [row - 1, col + 1, "down"]);
-            }
-            if (puzzle[row][col].down == find) {
-              addIfNotExist(rtTempList, [row, col, "down"]);
-            }
-            if (puzzle.length > row + 1) {
-              if (puzzle[row + 1][col].right == find) {
-                addIfNotExist(rtTempList, [row + 1, col, "right"]);
-              }
-              if (puzzle[row + 1][col + 1].down == find) {
-                addIfNotExist(rtTempList, [row + 1, col + 1, "down"]);
-              }
-            }
-            break;
-        }
-      }
-      else {
-        switch(pos) {
-          case "up":
-            if (puzzle[row][col].left == find) {
-              addIfNotExist(rtTempList, [row, col, "left"]);
-            }
-            if (puzzle[row][col].right == find) {
-              addIfNotExist(rtTempList, [row, col, "right"]);
-            }
-            if (puzzle[row + 1][col].up == find) {
-              addIfNotExist(rtTempList, [row + 1, col, "up"]);
-            }
-            break;
-          case "down":
-            if (puzzle[row][col].left == find) {
-              addIfNotExist(rtTempList, [row, col, "left"]);
-            }
-            if (puzzle[row][col].right == find) {
-              addIfNotExist(rtTempList, [row, col, "right"]);
-            }
-            if (puzzle[row + 1][col].left == find) {
-              addIfNotExist(rtTempList, [row + 1, col, "left"]);
-            }
-            if (puzzle[row + 1][col].right == find) {
-              addIfNotExist(rtTempList, [row + 1, col, "right"]);
-            }
-            if (puzzle[row][col + 1].down == find) {
-              addIfNotExist(rtTempList, [row, col + 1, "down"]);
-            }
-            break;
-          case "left":
-            if (puzzle[row][col].up == find) {
-              addIfNotExist(rtTempList, [row, col, "up"]);
-            }
-            if (puzzle[row][col].down == find) {
-              addIfNotExist(rtTempList, [row, col, "down"]);
-            }
-            if (puzzle[row + 1][col].left == find) {
-              addIfNotExist(rtTempList, [row + 1, col, "left"]);
-            }
-            break;
-          case "right":
-            if (puzzle[row][col].up == find) {
-              addIfNotExist(rtTempList, [row, col, "up"]);
-            }
-            if (puzzle[row][col].down == find) {
-              addIfNotExist(rtTempList, [row, col, "down"]);
-            }
-            if (puzzle[row][col + 1].up == find) {
-              addIfNotExist(rtTempList, [row, col + 1, "up"]);
-            }
-            if (puzzle[row][col + 1].down == find) {
-              addIfNotExist(rtTempList, [row, col + 1, "down"]);
-            }
-            if (puzzle[row + 1][col].right == find) {
-              addIfNotExist(rtTempList, [row + 1, col, "right"]);
-            }
-            break;
-        }
-      }
+    }
 
-      //print("rtTempList $rtTempList");
-
-    } while(true);
-
-
-    //print("end of getContinueOld : ${rtTempList.toList()}");
     return rtTempList.toList();
   }
 
@@ -2097,40 +1556,60 @@ class SquareProvider with ChangeNotifier {
       int row, int column, String pos,
       {bool enable = false, bool disable = false, bool isMax = false}
     ) async {
-    //print("clicked box : $row, $column, $pos");
-    //puzzle 기준
+    if(UserInfo.debugMode["print_methodName"]!) {
+      // ignore: avoid_print
+      print("call findBlockEnableDisable($row $column $pos $enable $disable)");
+    }
+
+    // Re-enable disabled lines around the changed line, then propagate.
+    // Use a queue to spread outward only to cells that actually change.
+    Set<int> visited = {};
+    List<int> queue = [];
+
+    // Seed: cells adjacent to the changed line
     int rowMin = max(0, min(puzzle.length - 1, row - 1));
     int rowMax = min(puzzle.length - 1, row + 1);
     int colMin = max(0, min(puzzle[row].length - 1, column - 1));
     int colMax = min(puzzle[row].length - 1, column + 1);
     colMax = min(colMax + 1, puzzle[row].length - 1);
 
-    if(isMax) {
-      rowMin = 0;
-      rowMax = puzzle.length - 1;
-      colMin = 0;
-      colMax = puzzle[row].length - 1;
-    }
-    if(UserInfo.debugMode["print_methodName"]!) {
-      // ignore: avoid_print
-      print("call findBlockEnableDisable($row $column $pos $enable $disable)");
-      // ignore: avoid_print
-      print("row : $rowMin - $rowMax, col : $colMin - $colMax");
+    for (int i = rowMin; i <= rowMax; i++) {
+      for (int j = colMin; j <= colMax; j++) {
+        int key = i * 1000 + j;
+        if (!visited.contains(key)) {
+          visited.add(key);
+          queue.add(key);
+        }
+      }
     }
 
-    //await checkCurrentPath();
+    // Propagate: re-enable and check neighbors
+    while (queue.isNotEmpty) {
+      int key = queue.removeAt(0);
+      int i = key ~/ 1000;
+      int j = key % 1000;
 
-    for(int i = rowMin ; i <= rowMax ; i++) {
-      for(int j = colMin ; j <= colMax ; j++) {
-        //범위 내 모든 라인을 활성화
-        await setLineEnable(i, j);
+      bool changed = await setLineEnable(i, j);
+      if (changed) {
+        // If lines were re-enabled, check surrounding cells too
+        for (int di = -1; di <= 1; di++) {
+          for (int dj = -1; dj <= 1; dj++) {
+            int ni = i + di, nj = j + dj;
+            if (ni >= 0 && ni < puzzle.length && nj >= 0 && nj < puzzle[0].length) {
+              int nkey = ni * 1000 + nj;
+              if (!visited.contains(nkey)) {
+                visited.add(nkey);
+                queue.add(nkey);
+              }
+            }
+          }
+        }
       }
     }
 
     await checkCurrentPath();
     notifyListeners();
     submit = await readSquare.readSubmit(puzzle);
-    //print("changedList $changedList");
   }
 
   List<List<dynamic>> needCalcLine = [];
@@ -2192,10 +1671,9 @@ class SquareProvider with ChangeNotifier {
       calcIndex++;
     }
 
-    //await checkCurrentPath();
+    await checkCurrentPath();
     notifyListeners();
     submit = await readSquare.readSubmit(puzzle);
-    //print("changedList $changedList");
   }
 
   ///현재 submit 기준 사용할 수 없는 라인을 -1로 변경
@@ -2423,8 +1901,6 @@ class SquareProvider with ChangeNotifier {
   ///
   ///puzzle 변수를 직접 조작하지 않음
   List<List<dynamic>> getMinusNearLine(List<List<dynamic>> minusList) {
-    List<List<dynamic>> rtValue = [];   //중복을 가질 수 있음 //반환 전 중복 처리 필요
-    int row = 0, col = 0;
     List<int> checkValue = [0];
 
     //isHowToPlay
@@ -2432,242 +1908,27 @@ class SquareProvider with ChangeNotifier {
       checkValue.add(-3);
     }
 
+    Set<String> seen = {};
+    List<List<dynamic>> result = [];
+
     for(int i = 0 ; i < minusList.length ; i++) {
-      row = int.parse(minusList[i][0].toString());
-      col = int.parse(minusList[i][1].toString());
+      int row = int.parse(minusList[i][0].toString());
+      int col = int.parse(minusList[i][1].toString());
+      String dir = minusList[i][2].toString();
 
-      switch(minusList[i][2].toString()) {
-        case "down":
-          if(row != 0 && col != 0) {
-            if(checkValue.contains(puzzle[row][col - 1].right)) {
-              rtValue.add([row, col - 1, "right"]);
-            }
-            if(checkValue.contains(puzzle[row][col - 1].down)) {
-              rtValue.add([row, col - 1, "down"]);
-            }
-            if(checkValue.contains(puzzle[row][col].right)) {
-              rtValue.add([row, col, "right"]);
-            }
-            if(row + 1 < puzzle.length) {
-              if(checkValue.contains(puzzle[row + 1][col - 1].right)) {
-                rtValue.add([row + 1, col - 1, "right"]);
-              }
-              if(checkValue.contains(puzzle[row + 1][col].right)) {
-                rtValue.add([row + 1, col, "right"]);
-              }
-            }
-            if(col + 1 < puzzle[row].length && checkValue.contains(puzzle[row][col + 1].down)) {
-              rtValue.add([row, col + 1, "down"]);
-            }
+      for (var edge in getAdjacentEdges(row, col, dir)) {
+        int value = _getEdgeValue(edge[0] as int, edge[1] as int, edge[2] as String);
+        if (checkValue.contains(value)) {
+          String key = "${edge[0]},${edge[1]},${edge[2]}";
+          if (!seen.contains(key)) {
+            seen.add(key);
+            result.add([edge[0], edge[1], edge[2]]);
           }
-          else if(row != 0 && col == 0) {
-            if(checkValue.contains(puzzle[row][col].left)) {
-              rtValue.add([row, col, "left"]);
-            }
-            if(checkValue.contains(puzzle[row][col].right)) {
-              rtValue.add([row, col, "right"]);
-            }
-            if(checkValue.contains(puzzle[row][col + 1].down)) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-            if(row + 1 < puzzle.length) {
-              if(checkValue.contains(puzzle[row + 1][col].left)) {
-                rtValue.add([row + 1, col, "left"]);
-              }
-              if(checkValue.contains(puzzle[row + 1][col].right)) {
-                rtValue.add([row + 1, col, "right"]);
-              }
-            }
-          }
-          else if(row == 0 && col != 0) {
-            if(checkValue.contains(puzzle[row][col - 1].right)) {
-              rtValue.add([row, col - 1, "right"]);
-            }
-            if(checkValue.contains(puzzle[row][col - 1].down)) {
-              rtValue.add([row, col - 1, "down"]);
-            }
-            if(checkValue.contains(puzzle[row + 1][col - 1].right)) {
-              rtValue.add([row + 1, col - 1, "right"]);
-            }
-            if(checkValue.contains(puzzle[row][col].right)) {
-              rtValue.add([row, col, "right"]);
-            }
-            if(checkValue.contains(puzzle[row + 1][col].right)) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-            if(col + 1 < puzzle[row].length && checkValue.contains(puzzle[row][col + 1].down)) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-          }
-          else {
-            if(checkValue.contains(puzzle[row][col].left)) {
-              rtValue.add([row, col, "left"]);
-            }
-            if(checkValue.contains(puzzle[row + 1][col].left)) {
-              rtValue.add([row + 1, col, "left"]);
-            }
-            if(checkValue.contains(puzzle[row][col].right)) {
-              rtValue.add([row, col, "right"]);
-            }
-            if(checkValue.contains(puzzle[row + 1][col].right)) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-            if(checkValue.contains(puzzle[row][col + 1].down)) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-          }
-          break;
-        case "right":
-          if(row != 0 && col != 0) {
-            if(checkValue.contains(puzzle[row - 1][col].right)) {
-              rtValue.add([row - 1, col, "right"]);
-            }
-            if(checkValue.contains(puzzle[row - 1][col].down)) {
-              rtValue.add([row - 1, col, "down"]);
-            }
-            if(checkValue.contains(puzzle[row][col].down)) {
-              rtValue.add([row, col, "down"]);
-            }
-            if(col + 1 < puzzle[row].length) {
-              if(checkValue.contains(puzzle[row - 1][col + 1].down)) {
-                rtValue.add([row - 1, col + 1, "down"]);
-              }
-              if(checkValue.contains(puzzle[row][col + 1].down)) {
-                rtValue.add([row, col + 1, "down"]);
-              }
-            }
-            if(row + 1 < puzzle.length) {
-              if(checkValue.contains(puzzle[row + 1][col].right)) {
-                rtValue.add([row + 1, col, "right"]);
-              }
-            }
-          }
-          else if(row == 0 && col != 0) {
-            if(checkValue.contains(puzzle[row][col].up)) {
-              rtValue.add([row, col, "up"]);
-            }
-            if(checkValue.contains(puzzle[row][col].down)) {
-              rtValue.add([row, col, "down"]);
-            }
-            if(checkValue.contains(puzzle[row + 1][col].right)) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-            if(col + 1 < puzzle[row].length) {
-              if(checkValue.contains(puzzle[row][col + 1].up)) {
-                rtValue.add([row, col + 1, "up"]);
-              }if(checkValue.contains(puzzle[row][col + 1].down)) {
-                rtValue.add([row, col + 1, "down"]);
-              }
-            }
-          }
-          else if(row != 0 && col == 0) {
-            if(checkValue.contains(puzzle[row - 1][col].right)) {
-              rtValue.add([row - 1, col, "right"]);
-            }
-            if(checkValue.contains(puzzle[row - 1][col].down)) {
-              rtValue.add([row - 1, col, "down"]);
-            }
-            if(checkValue.contains(puzzle[row - 1][col + 1].down)) {
-              rtValue.add([row - 1, col + 1, "down"]);
-            }
-            if(checkValue.contains(puzzle[row][col].down)) {
-              rtValue.add([row, col, "down"]);
-            }
-            if(checkValue.contains(puzzle[row][col + 1].down)) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-            if(row + 1 < puzzle.length && checkValue.contains(puzzle[row + 1][col].right)) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-          }
-          else {
-            if(checkValue.contains(puzzle[row][col].up)) {
-              rtValue.add([row, col, "up"]);
-            }
-            if(checkValue.contains(puzzle[row][col + 1].up)) {
-              rtValue.add([row, col + 1, "up"]);
-            }
-            if(checkValue.contains(puzzle[row][col].down)) {
-              rtValue.add([row, col, "down"]);
-            }
-            if(checkValue.contains(puzzle[row][col + 1].down)) {
-              rtValue.add([row, col + 1, "down"]);
-            }
-            if(checkValue.contains(puzzle[row + 1][col].right)) {
-              rtValue.add([row + 1, col, "right"]);
-            }
-          }
-          break;
-        case "left":
-          if(row != 0) {
-            //row != 0 && col == 0
-            if(checkValue.contains(puzzle[row - 1][col].left)) {
-              rtValue.add([row - 1, col, "left"]);
-            }
-            if(checkValue.contains(puzzle[row - 1][col].down)) {
-              rtValue.add([row - 1, col, "down"]);
-            }
-            if(checkValue.contains(puzzle[row][col].down)) {
-              rtValue.add([row, col, "down"]);
-            }
-            if(i + 1 < puzzle.length && checkValue.contains(puzzle[row + 1][col].left)) {
-              rtValue.add([row + 1, col, "left"]);
-            }
-          }
-          else {
-            //row == 0 && col == 0
-            if(checkValue.contains(puzzle[row][col].up)) {
-              rtValue.add([row, col, "up"]);
-            }
-            if(checkValue.contains(puzzle[row][col].down)) {
-              rtValue.add([row, col, "down"]);
-            }
-            if(checkValue.contains(puzzle[row + 1][col].left)) {
-              rtValue.add([row + 1, col, "left"]);
-            }
-          }
-          break;
-        case "up":
-          if(col != 0) {
-            //row == 0 && col != 0
-            if(checkValue.contains(puzzle[row][col - 1].right)) {
-              rtValue.add([row, col - 1, "right"]);
-            }
-            if(checkValue.contains(puzzle[row][col - 1].up)) {
-              rtValue.add([row, col - 1, "up"]);
-            }
-            if(checkValue.contains(puzzle[row][col].right)) {
-              rtValue.add([row, col, "right"]);
-            }
-            if(col + 1 < puzzle[row].length && checkValue.contains(puzzle[row][col + 1].up)) {
-              rtValue.add([row, col + 1, "up"]);
-            }
-          }
-          else {
-            //row == 0 && col == 0
-            if(checkValue.contains(puzzle[row][col].left)) {
-              rtValue.add([row, col, "left"]);
-            }
-            if(checkValue.contains(puzzle[row][col].right)) {
-              rtValue.add([row, col, "right"]);
-            }
-            if(checkValue.contains(puzzle[row][col + 1].up)) {
-              rtValue.add([row, col + 1, "up"]);
-            }
-          }
-          break;
+        }
       }
     }
 
-    List<List<dynamic>> set = [];
-    //중복 제거
-    for(var item in rtValue) {
-      if(!set.any((element) => const DeepCollectionEquality().equals(element, item))) {
-        set.add(item);
-      }
-    }
-
-    return set.toList();
+    return result;
   }
 
   ///nearList가 valid 한지 검사하고 inValid면 -1로 설정
