@@ -1172,26 +1172,126 @@ class MainUI {
 
   /// Start game action for new UI
   void startGame(BuildContext context) {
-    if (selectedType[1] == "generate") {
-      progressKey = "${selectedType[0]}_generate_${generateRows}x${generateCols}_$selectedDifficulty";
-      changeScene(context, progressKey);
+    progressKey = "${selectedType[0]}_generate_${generateRows}x${generateCols}_$selectedDifficulty";
+
+    // 같은 설정의 진행 중인 퍼즐이 있으면 이어하기
+    if (UserInfo.continuePuzzle.contains(progressKey)) {
+      changeScene(context, progressKey, isContinue: true);
       return;
     }
 
-    int progress = UserInfo.getProgress("${selectedType[0]}_${selectedType[1]}");
-    progressKey = "${selectedType[0]}_${selectedType[1]}_$progress";
-
-    if (selectedMode == "debug") {
-      changeScene(context, "${progressKey}_test");
-      return;
-    }
-
+    UserInfo.continuePuzzle.add(progressKey);
+    UserInfo.continuePuzzleDate[progressKey] = DateTime.now().toIso8601String().substring(0, 10);
+    UserInfo.saveContinuePuzzle();
+    onUpdate();
     changeScene(context, progressKey);
   }
 
   /// Continue game action for new UI
   void continueGame(BuildContext context) {
     changeScene(context, progressKey, isContinue: true);
+  }
+
+  /// Show bottom sheet to select and manage in-progress puzzles
+  void showContinueSheet(BuildContext context, Map<String, Color> palette, bool isDark, AppLocalizations loc) {
+    progressPuzzle = UserInfo.getContinuePuzzle().isEmpty ? [""] : UserInfo.getContinuePuzzle().toList();
+    if (progressKey.isEmpty || !progressPuzzle.contains(progressKey)) {
+      progressKey = progressPuzzle[0];
+    }
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF1E1E3A) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            final puzzles = UserInfo.getContinuePuzzle().toList();
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40, height: 4,
+                      decoration: BoxDecoration(
+                        color: palette['divider'],
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Icon(Icons.history_rounded, color: palette['primary'], size: 22),
+                      const SizedBox(width: 8),
+                      Text(
+                        loc.translate('MainUI_btnContinue_title'),
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: palette['onSurface']),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.4,
+                    ),
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: puzzles.length,
+                      separatorBuilder: (_, __) => Divider(height: 1, color: palette['divider']!.withOpacity(0.3)),
+                      itemBuilder: (context, index) {
+                        final key = puzzles[index];
+                        final tokens = key.split("_");
+                        // "square_generate_10x10_normal" → type, size, difficulty
+                        final type = tokens.isNotEmpty ? tokens[0] : "";
+                        final size = tokens.length >= 3 ? tokens[2] : "";
+                        final difficulty = tokens.length >= 4 ? tokens[3] : "";
+                        final date = UserInfo.getPuzzleCreatedDate(key);
+
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          title: Text(
+                            "$size  $difficulty",
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: palette['onSurface']),
+                          ),
+                          subtitle: Text(
+                            "${type.toUpperCase()}${date.isNotEmpty ? '  ·  $date' : ''}",
+                            style: TextStyle(fontSize: 12, color: palette['onSurfaceDim']),
+                          ),
+                          trailing: IconButton(
+                            icon: Icon(Icons.delete_outline_rounded, color: palette['onSurfaceDim'], size: 20),
+                            onPressed: () {
+                              UserInfo.clearPuzzle(key);
+                              if (UserInfo.getContinuePuzzle().isEmpty) {
+                                Navigator.pop(context);
+                                onUpdate();
+                              } else {
+                                setState(() {});
+                              }
+                            },
+                          ),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          onTap: () {
+                            Navigator.pop(context);
+                            progressKey = key;
+                            changeScene(context, key, isContinue: true);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   /// Modern settings dialog

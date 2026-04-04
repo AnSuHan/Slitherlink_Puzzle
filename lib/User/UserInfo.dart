@@ -26,6 +26,7 @@ class UserInfo {
   };   //finish progress
   //set value when pushing start button & reset when complete puzzle
   static Set<String> continuePuzzle = {};
+  static Map<String, String> continuePuzzleDate = {};
   static Map<String, String> setting = {
     "theme" : "default",
     "language" : "english",
@@ -76,6 +77,7 @@ class UserInfo {
 
     //remember setting
     loadSetting();
+    loadContinuePuzzle();
   }
 
   ///shape`_`size
@@ -100,6 +102,8 @@ class UserInfo {
     // ignore: avoid_print
     print("in clearPuzzle : $key");
     continuePuzzle.remove(key);
+    continuePuzzleDate.remove(key);
+    saveContinuePuzzle();
     updateContinueWidget = true;
   }
 
@@ -109,11 +113,42 @@ class UserInfo {
     continuePuzzle.add(input);
     var token = input.split("_");
     String mapKey = "${token[0]}_${token[1]}";
-    progress[mapKey] = progress[mapKey]! + 1;
+    if (progress.containsKey(mapKey)) {
+      progress[mapKey] = progress[mapKey]! + 1;
+    }
+    saveContinuePuzzle();
   }
 
   static Set<String> getContinuePuzzle() {
     return continuePuzzle;
+  }
+
+  static Future<void> saveContinuePuzzle() async {
+    final prefs = ExtractData();
+    await prefs.saveDataToLocal(
+      "continuePuzzle", jsonEncode(continuePuzzle.toList()),
+    );
+    await prefs.saveDataToLocal(
+      "continuePuzzleDate", jsonEncode(continuePuzzleDate),
+    );
+  }
+
+  static Future<void> loadContinuePuzzle() async {
+    final prefs = ExtractData();
+    String? data = await prefs.getDataFromLocal("continuePuzzle");
+    if (data != null) {
+      List<dynamic> list = jsonDecode(data);
+      continuePuzzle = list.map((e) => e.toString()).toSet();
+    }
+    String? dateData = await prefs.getDataFromLocal("continuePuzzleDate");
+    if (dateData != null) {
+      Map<String, dynamic> map = jsonDecode(dateData);
+      continuePuzzleDate = map.map((k, v) => MapEntry(k, v.toString()));
+    }
+  }
+
+  static String getPuzzleCreatedDate(String key) {
+    return continuePuzzleDate[key] ?? "";
   }
 
   static Map<String, String> getSettingAll() {

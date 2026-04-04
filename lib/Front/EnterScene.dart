@@ -178,7 +178,6 @@ class _MainScreenContent extends StatelessWidget {
       builder: (context, prov, _) {
         final palette = ThemeColor().getPalette();
         final isDark = ThemeColor().isDark();
-        final isGenerate = prov.selectedSize == "generate";
 
         return Scaffold(
           body: Container(
@@ -247,77 +246,68 @@ class _MainScreenContent extends StatelessWidget {
                           _card(palette, isDark, Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _sectionHeader(Icons.play_arrow_rounded, loc.translate('MainUI_btnStart'), palette),
-                              const SizedBox(height: 16),
-
-                              // Mode selector
-                              _modeSelector(palette, isDark, loc, prov),
-                              const SizedBox(height: 16),
-
-                              // Generate options
-                              if (isGenerate) ...[
-                                _miniLabel(loc.translate('MainUI_difficulty'), palette),
-                                const SizedBox(height: 8),
-                                _difficultySelector(palette, isDark, prov),
-                                const SizedBox(height: 16),
-
-                                _miniLabel("${prov.generateRows} x ${prov.generateCols}", palette, isBold: true),
-                                const SizedBox(height: 4),
-                                _sizeSliders(palette, prov),
-                                const SizedBox(height: 8),
-                              ],
-
-                              // Start button
-                              SizedBox(
-                                width: double.infinity,
-                                height: 52,
-                                child: ElevatedButton.icon(
-                                  icon: const Icon(Icons.play_arrow_rounded, size: 22),
-                                  label: Text(
-                                    loc.translate('MainUI_btnStart'),
-                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, letterSpacing: 1),
-                                  ),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: palette['buttonBg'],
-                                    foregroundColor: palette['buttonText'],
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                    elevation: 0,
-                                  ),
-                                  onPressed: () => ui.startGame(context),
+                              // Continue & New Game buttons
+                              IntrinsicHeight(
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (UserInfo.getContinuePuzzle().isNotEmpty) ...[
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          icon: Icon(Icons.history_rounded, size: 22, color: palette['primary']),
+                                          label: Padding(
+                                            padding: const EdgeInsets.symmetric(vertical: 14),
+                                            child: Text(
+                                              loc.translate('MainUI_btnContinue'),
+                                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: palette['primary']),
+                                            ),
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            side: BorderSide(color: palette['primary']!, width: 1.5),
+                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                          ),
+                                          onPressed: () => ui.showContinueSheet(context, palette, isDark, loc),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                    ],
+                                    Expanded(
+                                      child: ElevatedButton.icon(
+                                        icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                                        label: Padding(
+                                          padding: const EdgeInsets.symmetric(vertical: 14),
+                                          child: Text(
+                                            loc.translate('MainUI_btnStart'),
+                                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                                          ),
+                                        ),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: palette['buttonBg'],
+                                          foregroundColor: palette['buttonText'],
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                          elevation: 0,
+                                        ),
+                                        onPressed: () => ui.startGame(context),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                              const SizedBox(height: 20),
+
+                              // Difficulty selector
+                              _miniLabel(loc.translate('MainUI_difficulty'), palette),
+                              const SizedBox(height: 8),
+                              _difficultySelector(palette, isDark, prov),
+                              const SizedBox(height: 16),
+
+                              _miniLabel("${prov.generateRows} x ${prov.generateCols}", palette, isBold: true),
+                              const SizedBox(height: 4),
+                              _sizeSliders(palette, prov),
+                              const SizedBox(height: 8),
+
                             ],
                           )),
-
-                          const SizedBox(height: 14),
-
-                          // ===== Continue Card =====
-                          if (UserInfo.getContinuePuzzle().isNotEmpty)
-                            _card(palette, isDark, Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _sectionHeader(Icons.history_rounded, loc.translate('MainUI_btnContinue_title'), palette),
-                                const SizedBox(height: 12),
-                                ui.getContinueList(context, palette),
-                                const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  height: 48,
-                                  child: OutlinedButton.icon(
-                                    icon: Icon(Icons.play_arrow_rounded, size: 20, color: palette['primary']),
-                                    label: Text(
-                                      loc.translate('MainUI_btnContinue'),
-                                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: palette['primary']),
-                                    ),
-                                    style: OutlinedButton.styleFrom(
-                                      side: BorderSide(color: palette['primary']!, width: 1.5),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                    ),
-                                    onPressed: () => ui.continueGame(context),
-                                  ),
-                                ),
-                              ],
-                            )),
 
                           const SizedBox(height: 32),
                         ],

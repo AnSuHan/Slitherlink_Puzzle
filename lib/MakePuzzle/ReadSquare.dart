@@ -31,6 +31,11 @@ class ReadSquare {
     this.puzzle = puzzle;
   }
 
+  /// 생성된 퍼즐 정답을 SharedPreferences에 저장
+  Future<void> saveAnswer(String key, List<List<int>> answer) async {
+    await read.writeIntData(answer, key);
+  }
+
   Future<void> savePuzzle(String key) async {
     puzzle = squareProvider.getPuzzle();
     lineData = await readSubmit(puzzle);
@@ -52,9 +57,28 @@ class ReadSquare {
     }
 
     List<String> tokens = key.split("_");
+    bool isContinueKey = tokens.last == "continue";
+
+    // continue 데이터는 항상 SharedPreferences에서 로드
+    if (isContinueKey) {
+      final ExtractData prefs = ExtractData();
+      String? temp = (await prefs.getDataFromLocal(key))?.toString();
+      if (temp != null) {
+        List<dynamic> decodedJson = jsonDecode(temp);
+        return decodedJson.map<List<int>>((row) => List<int>.from(row)).toList();
+      }
+      return [];
+    }
 
     // generate mode: "square_generate_10x10_normal"
     if (tokens.length >= 3 && tokens[1] == "generate") {
+      // 저장된 정답이 있으면 복원
+      final ExtractData prefs = ExtractData();
+      String? saved = (await prefs.getDataFromLocal(key))?.toString();
+      if (saved != null) {
+        List<dynamic> decodedJson = jsonDecode(saved);
+        return decodedJson.map<List<int>>((row) => List<int>.from(row)).toList();
+      }
       data = await read.readData(key);
       return data.map((row) => row.map((b) => b ? 1 : 0).toList()).toList();
     }

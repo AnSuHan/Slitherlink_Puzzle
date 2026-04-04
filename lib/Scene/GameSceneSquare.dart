@@ -167,6 +167,9 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
       submit = List.generate(answer.length, (row) =>
           List.filled(answer[row].length, 0),
       );
+
+      // 생성된 퍼즐 정답을 저장 (이어하기 시 복원용)
+      await readSquare.saveAnswer(widget.loadKey, answer);
     }
     else {
       answer = await readSquare.loadPuzzle(widget.loadKey);
