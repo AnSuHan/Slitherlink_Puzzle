@@ -1853,21 +1853,27 @@ class SquareProvider with ChangeNotifier {
   ///조건이 참이면 -1로 설정 후 set에 추가
   Future<void> checkCurrentPathSet() async {
     List<List<dynamic>> minusSet = findMinusOneLine();
-    //print("minusSet $minusSet");
-    List<List<dynamic>> nearSet, needCheckLine = [];
-    int needCheckLength = 0, prevCheckLength = 0;
 
     do {
-      //save previous length whether needCheckLine list is extended
-      prevCheckLength = needCheckLength;
+      List<List<dynamic>> nearSet = getMinusNearLine(minusSet);
+      if (nearSet.isEmpty) break;
 
-      nearSet = getMinusNearLine(minusSet);
-      needCheckLine = checkLineValid(nearSet);
-      needCheckLength = needCheckLine.length;
+      List<List<dynamic>> validLines = checkLineValid(nearSet);
 
-      //prepare next repeat
-      minusSet = needCheckLine;
-    } while (needCheckLength > prevCheckLength);
+      // 새로 비활성화된 라인 = nearSet - validLines
+      Set<String> validKeys = {};
+      for (var line in validLines) {
+        validKeys.add("${line[0]},${line[1]},${line[2]}");
+      }
+
+      minusSet = [];
+      for (var line in nearSet) {
+        String key = "${line[0]},${line[1]},${line[2]}";
+        if (!validKeys.contains(key)) {
+          minusSet.add(line);
+        }
+      }
+    } while (minusSet.isNotEmpty);
   }
 
   ///lineValue가 -1인 모든 라인을 찾아 반환
