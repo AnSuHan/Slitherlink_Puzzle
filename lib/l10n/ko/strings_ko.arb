@@ -65,5 +65,11 @@
   "howToPlay_Step2": "3단계: 다음으로는, 색칠된 박스가 이어져야 할 방향을 봐야 합니다. 왼쪽 라인을 이어야 하기 때문에, 위쪽 라인을 클릭해 주세요!",
   "howToPlay_Step3": "4단계: 이제 기존에 클릭한 선을 따라가야 합니다. 각 박스에는 두 개의 라인이 남아 있으니, 남은 라인들을 모두 클릭해서 연결을 완성하세요.",
   "howToPlay_Step4": "5단계: 마지막 단계입니다! 두 개의 색칠된 박스에서 남은 라인들을 클릭하고, 하나의 큰 사이클을 만들어 퍼즐을 해결하세요.",
-  "howToPlay_Step5" : "축하합니다! 튜토리얼을 모두 완료하였습니다."
+  "howToPlay_Step5" : "축하합니다! 튜토리얼을 모두 완료하였습니다.",
+  "game_complete_title": "퍼즐 완료!",
+  "game_complete_message": "축하합니다!\n퍼즐을 풀었습니다.",
+  "game_complete_ok": "확인",
+  "progress_title": "진행 현황",
+  "progress_completed": "완료",
+  "progress_puzzles": "퍼즐"
 }

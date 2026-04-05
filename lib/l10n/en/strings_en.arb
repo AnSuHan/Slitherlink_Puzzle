@@ -65,5 +65,11 @@
   "howToPlay_Step2": "Step 3: Next, you need to check the direction that the colored boxes should connect to. Since you need to continue the left line, please click on the upper line!",
   "howToPlay_Step3": "Step 4: Now, you need to follow the lines you've already clicked. Each box has two lines remaining, so click on the remaining lines to complete the connection.",
   "howToPlay_Step4": "Step 5: This is the final step! Click on the remaining lines in the two colored boxes and create one large cycle to solve the puzzle.",
-  "howToPlay_Step5": "Congratulations! You have completed the tutorial."
+  "howToPlay_Step5": "Congratulations! You have completed the tutorial.",
+  "game_complete_title": "Puzzle Complete!",
+  "game_complete_message": "Congratulations!\nYou solved the puzzle.",
+  "game_complete_ok": "OK",
+  "progress_title": "Progress",
+  "progress_completed": "Completed",
+  "progress_puzzles": "puzzles"
 }

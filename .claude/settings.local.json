@@ -23,7 +23,10 @@
       "Bash(\"C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/Microsoft.VCToolsVersion.default.txt\")",
       "Read(//c/Program Files/Microsoft Visual Studio/2022/Community/VC/Auxiliary/Build/**)",
       "Read(//c/Program Files/Microsoft Visual Studio/**)",
-      "Read(//c/Program Files \\(x86\\)/Microsoft Visual Studio/**)"
+      "Read(//c/Program Files \\(x86\\)/Microsoft Visual Studio/**)",
+      "Bash(flutter run:*)",
+      "Bash(flutter sdk-path:*)",
+      "Bash(where flutter:*)"
     ]
   }
 }

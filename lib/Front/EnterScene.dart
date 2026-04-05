@@ -309,6 +309,41 @@ class _MainScreenContent extends StatelessWidget {
                             ],
                           )),
 
+                          // ===== Progress Card =====
+                          if (UserInfo.getTotalCompleted() > 0) ...[
+                            const SizedBox(height: 16),
+                            _card(palette, isDark, Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _sectionHeader(Icons.emoji_events_rounded, loc.translate('progress_title'), palette),
+                                const SizedBox(height: 12),
+                                ...UserInfo.completed.entries.map((entry) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 6),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        entry.key,
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: palette['onSurfaceDim'],
+                                        ),
+                                      ),
+                                      Text(
+                                        '${entry.value}',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w700,
+                                          color: palette['primary'],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                )),
+                              ],
+                            )),
+                          ],
+
                           const SizedBox(height: 32),
                         ],
                       ),

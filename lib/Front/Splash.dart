@@ -74,6 +74,19 @@ class SplashState extends State<Splash> {
 
   Future<void> clearKeys() async {
     //remove SharedPreference's keys | web local storage's keys
-    await ExtractData().removeKeyAll();
+    //이어하기, 설정, 진행도 등 보존이 필요한 키는 유지
+    await ExtractData().removeKeyAllExcept((key) =>
+      key.contains("_continue") ||
+      key.contains("_doValue") ||
+      key.contains("_doSubmit") ||
+      key.contains("_do") ||
+      key == "continuePuzzle" ||
+      key == "continuePuzzleDate" ||
+      key == "completed" ||
+      key == "setting" ||
+      key == "progress" ||
+      key.startsWith("square_generate_") ||
+      key.startsWith("square_small_")
+    );
   }
 }

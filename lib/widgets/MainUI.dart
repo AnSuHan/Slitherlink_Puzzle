@@ -154,6 +154,7 @@ class MainUI {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(24),
                     ),
+                    clipBehavior: Clip.antiAlias,
                     //showDialog의 height-overflow를 처리하기 위해 사용
                     child: SingleChildScrollView(
                       child: LayoutBuilder(
@@ -360,13 +361,13 @@ class MainUI {
                                           const SizedBox(height: 20),
                                           Row(
                                             children: [
-                                              SizedBox(
-                                                height: buttonHeight,
+                                              Expanded(
                                                 child: OutlinedButton(
                                                   style: OutlinedButton.styleFrom(
                                                     foregroundColor: palette['onSurface'],
                                                     side: BorderSide(color: palette['divider']!),
                                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                    padding: const EdgeInsets.symmetric(vertical: 14),
                                                   ),
                                                   onPressed: () async {
                                                     auth.setScreenSize(screenSize);
@@ -384,23 +385,22 @@ class MainUI {
                                                   child: Text(
                                                     appLocalizations.translate('sign_up'),
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 14,
                                                       fontWeight: FontWeight.bold,
                                                       color: palette['onSurface'],
                                                     ),
                                                     textAlign: TextAlign.center,
-                                                    overflow: TextOverflow.visible,
                                                   ),
                                                 ),
                                               ),
-                                              const Spacer(),
-                                              SizedBox(
-                                                height: buttonHeight,
+                                              const SizedBox(width: 12),
+                                              Expanded(
                                                 child: OutlinedButton(
                                                   style: OutlinedButton.styleFrom(
                                                     foregroundColor: palette['onSurface'],
                                                     side: BorderSide(color: palette['divider']!),
                                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                    padding: const EdgeInsets.symmetric(vertical: 14),
                                                   ),
                                                   onPressed: () async {
                                                     auth.setScreenSize(screenSize);
@@ -418,14 +418,13 @@ class MainUI {
                                                   child: Text(
                                                     appLocalizations.translate('reset_password'),
                                                     style: TextStyle(
-                                                      fontSize: 16,
+                                                      fontSize: 14,
                                                       fontWeight: FontWeight.bold,
                                                       color: palette['onSurface'],
                                                     ),
                                                     textAlign: TextAlign.center,
                                                     maxLines: 2,
                                                     softWrap: true,
-                                                    overflow: TextOverflow.visible,
                                                   ),
                                                 ),
                                               ),
@@ -514,7 +513,7 @@ class MainUI {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                appLocalizations.translate('progressTitle'),
+                                appLocalizations.translate('progress_completed'),
                                 style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600,
@@ -522,8 +521,9 @@ class MainUI {
                                 ),
                               ),
                               Text(
-                                UserInfo.getAllProgress(),
+                                UserInfo.getCompletedSummary(),
                                 style: TextStyle(color: acctPalette['onSurface']),
+                                textAlign: TextAlign.end,
                               ),
                             ],
                           ),

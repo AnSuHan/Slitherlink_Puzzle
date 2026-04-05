@@ -56,6 +56,18 @@ class ExtractData {
     //print("Local storage keys cleared. : ${html.window.localStorage.keys}");
   }
 
+  Future<void> removeKeyAllExcept(bool Function(String key) shouldKeep) async {
+    List<String> keysToRemove = [];
+    for(var key in html.window.localStorage.keys) {
+      if(!shouldKeep(key)) {
+        keysToRemove.add(key);
+      }
+    }
+    for(var key in keysToRemove) {
+      html.window.localStorage.remove(key);
+    }
+  }
+
   Future<bool> containsKey(String key) async {
     return html.window.localStorage.containsKey(key);
   }

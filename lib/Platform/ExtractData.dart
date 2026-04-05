@@ -127,6 +127,17 @@ class ExtractData {
     //print("now key : ${prefs.getKeys().toList()}");
   }
 
+  Future<void> removeKeyAllExcept(bool Function(String key) shouldKeep) async {
+    final SharedPreferences prefs = await SharedPreferences.getInstance();
+    List<String> keys = prefs.getKeys().toList();
+
+    for(var key in keys) {
+      if(!shouldKeep(key)) {
+        await prefs.remove(key);
+      }
+    }
+  }
+
   Future<bool> containsKey(String key) async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.containsKey(key);

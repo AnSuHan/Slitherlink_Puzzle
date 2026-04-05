@@ -9,6 +9,7 @@ import '../Platform/ExtractData.dart'
 import '../Scene/GameSceneSquare.dart';
 import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
+import '../l10n/app_localizations.dart';
 import '../widgets/MainUI.dart';
 import '../widgets/SquareBox.dart';
 
@@ -232,50 +233,20 @@ class SquareProvider with ChangeNotifier {
   }
 
   void checkCompletePuzzle(BuildContext context) {
-    //showComplete(context);
-    //refresh submit
-    for(int i = 0 ; i < puzzle.length ; i++) {
-      for(int j = 0 ; j < puzzle[i].length ; j++) {
-
-        if(i != 0 && j != 0) {
-          submit[i + 3][j] = puzzle[i][j].down;
-          //(1,19)->(3,19)  //(2,19)->(5,19)
-          submit[i + 2][j] = puzzle[i][j].right;
-        }
-        else if(i == 0 && j != 0) {
-          submit[i][j] = puzzle[i][j].up;
-          submit[i + 2][j] = puzzle[i][j].down;
-          submit[i + 1][j + 1] = puzzle[i][j].right;
-        }
-        else if(i != 0 && j == 0) {
-          submit[i + 3][j] = puzzle[i][j].down;
-          submit[i + 2][j] = puzzle[i][j].left;
-          submit[i + 2][j + 1] = puzzle[i][j].right;
-        }
-        else if(i == 0 && j == 0) {
-          submit[i][j] = puzzle[i][j].up;
-          submit[i + 2][j] = puzzle[i][j].down;
-          submit[i + 1][j] = puzzle[i][j].left;
-          submit[i + 1][j + 1] = puzzle[i][j].right;
-        }
-      }
-    }
-
-    //compare submit and answer
+    //submit is already populated by readSquare.readSubmit(puzzle) in refreshSubmit()
+    //compare: answer 1 == submit > 0 (selected), answer 0 == submit <= 0 (not selected)
     for(int i = 0 ; i < answer.length ; i++) {
       for(int j = 0 ; j < answer[i].length ; j++) {
-        if(submit[i][j] != answer[i][j]) {
+        bool answerSelected = answer[i][j] == 1;
+        bool submitSelected = submit[i][j] > 0;
+        if(answerSelected != submitSelected) {
           return;
         }
       }
     }
 
     //complete puzzle
-    //print("complete puzzle!");
-    //clear continue puzzle
-    //isComplete = true;
     showComplete(context);
-    //UserInfo.ContinuePuzzle();
   }
 
   ///for getting hint item : [row, col, dir, `isWrongSubmit : bool`]
@@ -439,6 +410,7 @@ class SquareProvider with ChangeNotifier {
       gameStateSquare!.isComplete = true;
     }
     UserInfo.clearPuzzle(loadKey);
+    UserInfo.incrementCompleted(loadKey);
 
     //delete sharedPreference key about label
     ExtractData prefs = ExtractData();
@@ -461,27 +433,72 @@ class SquareProvider with ChangeNotifier {
     //clear submit data
     await clearDoSubmit();
 
-    // Show AlertDialog if isComplete is true
+    // Show completion dialog with theme
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      final palette = ThemeColor().getPalette();
+      final isDark = ThemeColor().isDark();
+      final l10n = AppLocalizations.of(context);
+
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Game Completed'),
-            content: const Text('Congratulations! You have completed the game.'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();  //close popup
-                  shutdown = true;
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    Navigator.of(context).popUntil((route) => route.isFirst);
-                  });
-                },
-                child: const Text('OK'),
+          return Dialog(
+            backgroundColor: isDark ? const Color(0xFF1E1E3A) : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.celebration_rounded, color: palette['primary'], size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    l10n?.translate('game_complete_title') ?? 'Puzzle Complete!',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w700,
+                      color: palette['onSurface'],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    l10n?.translate('game_complete_message') ?? 'Congratulations!\nYou solved the puzzle.',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: palette['onSurfaceDim'],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: palette['buttonBg'],
+                        foregroundColor: palette['buttonText'],
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        shutdown = true;
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          Navigator.of(context).popUntil((route) => route.isFirst);
+                        });
+                      },
+                      child: Text(
+                        l10n?.translate('game_complete_ok') ?? 'OK',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           );
         },
       );

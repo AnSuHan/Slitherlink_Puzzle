@@ -24,6 +24,7 @@ class UserInfo {
     "square_small" : 0,
     "triangle_small" : 0
   };   //finish progress
+  static Map<String, int> completed = {};  //completed puzzle count by type
   //set value when pushing start button & reset when complete puzzle
   static Set<String> continuePuzzle = {};
   static Map<String, String> continuePuzzleDate = {};
@@ -78,6 +79,7 @@ class UserInfo {
     //remember setting
     loadSetting();
     loadContinuePuzzle();
+    loadCompleted();
   }
 
   ///shape`_`size
@@ -111,12 +113,47 @@ class UserInfo {
   /// input should be "puzzleShape`_`puzzleSize`_`puzzleLevel
   static void addContinuePuzzle(String input) {
     continuePuzzle.add(input);
-    var token = input.split("_");
-    String mapKey = "${token[0]}_${token[1]}";
-    if (progress.containsKey(mapKey)) {
-      progress[mapKey] = progress[mapKey]! + 1;
-    }
     saveContinuePuzzle();
+  }
+
+  /// increment completed count when puzzle is solved
+  static void incrementCompleted(String loadKey) {
+    var token = loadKey.split("_");
+    String category;
+    if (token.length >= 3 && token[1] == "generate") {
+      category = "${token[0]}_${token[2]}"; // e.g. "square_10x10"
+    } else {
+      category = "${token[0]}_${token[1]}"; // e.g. "square_small"
+    }
+    completed[category] = (completed[category] ?? 0) + 1;
+    saveCompleted();
+  }
+
+  static Future<void> saveCompleted() async {
+    await ExtractData().saveDataToLocal("completed", jsonEncode(completed));
+  }
+
+  static Future<void> loadCompleted() async {
+    String? data = await ExtractData().getDataFromLocal("completed");
+    if (data != null) {
+      Map<String, dynamic> map = jsonDecode(data);
+      completed = map.map((k, v) => MapEntry(k, v as int));
+    }
+  }
+
+  static String getCompletedSummary() {
+    if (completed.isEmpty) return "0";
+    StringBuffer buffer = StringBuffer();
+    completed.forEach((key, value) {
+      buffer.write('$key : $value\n');
+    });
+    return buffer.toString().trim();
+  }
+
+  static int getTotalCompleted() {
+    int total = 0;
+    completed.forEach((_, value) { total += value; });
+    return total;
   }
 
   static Set<String> getContinuePuzzle() {
