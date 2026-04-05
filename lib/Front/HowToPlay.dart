@@ -111,15 +111,24 @@ class HowToPlayState extends State<HowToPlay> {
               _provider = provider;
               screenSize = MediaQuery.of(context).size;
 
+              final palette = ThemeColor().getPalette();
+              final isDark = ThemeColor().isDark();
+
               return Scaffold(
+                backgroundColor: palette['background'],
                 appBar: AppBar(
+                  backgroundColor: palette['appBar'],
+                  foregroundColor: palette['appIcon'],
                   leading: IconButton(
                     onPressed: () {
                       Navigator.pop(context);
                     },
-                    icon: const Icon(Icons.keyboard_backspace),
+                    icon: Icon(Icons.keyboard_backspace, color: palette['appIcon']),
                   ),
-                  title: Text(AppLocalizations.of(context)!.translate("MainUI_menuHowToPlay")),
+                  title: Text(
+                    AppLocalizations.of(context)!.translate("MainUI_menuHowToPlay"),
+                    style: TextStyle(color: palette['appIcon']),
+                  ),
                   centerTitle: true,
                 ),
                 body: Column(
@@ -137,7 +146,7 @@ class HowToPlayState extends State<HowToPlay> {
                                 horizontal: screenSize.width * 0.05,
                               ),
                               child: Container(
-                                color: ThemeColor().getColor()["background"],
+                                color: palette['background'],
                                 child: widget,
                               )),
                           ),
@@ -150,8 +159,9 @@ class HowToPlayState extends State<HowToPlay> {
                             ),
                             child: Text(
                               stepText,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 16,
+                                color: palette['onSurface'],
                               ),
                               textAlign: TextAlign.start,
                               softWrap: true,
@@ -171,7 +181,7 @@ class HowToPlayState extends State<HowToPlay> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.center,
-                          children: const [CircularProgressIndicator()],
+                          children: [CircularProgressIndicator(color: palette['primary'])],
                         ),
                       ),
                     ]
@@ -188,15 +198,27 @@ class HowToPlayState extends State<HowToPlay> {
                             children: [
                               Container(
                                 margin: const EdgeInsets.all(20),
-                                color: Colors.red,
+                                decoration: BoxDecoration(
+                                  color: palette['cardBg'],
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: palette['divider']!),
+                                ),
                               ),
                               Container(
                                 margin: const EdgeInsets.all(20),
-                                color: Colors.green,
+                                decoration: BoxDecoration(
+                                  color: palette['cardBg'],
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: palette['divider']!),
+                                ),
                               ),
                               Container(
                                 margin: const EdgeInsets.all(20),
-                                color: Colors.blue,
+                                decoration: BoxDecoration(
+                                  color: palette['cardBg'],
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: palette['divider']!),
+                                ),
                               ),
                             ],
                           ),

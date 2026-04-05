@@ -139,6 +139,8 @@ class MainUI {
           final TextEditingController passwordInput = TextEditingController();
           int errType = -1;
           String popupMsg = "";
+          final palette = ThemeColor().getPalette();
+          final isDark = ThemeColor().isDark();
 
           // ignore: use_build_context_synchronously
           showDialog(
@@ -148,8 +150,9 @@ class MainUI {
               return StatefulBuilder(
                 builder: (BuildContext context, StateSetter setState) {
                   return Dialog(
+                    backgroundColor: isDark ? const Color(0xFF1E1E3A) : Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(24),
                     ),
                     //showDialog의 height-overflow를 처리하기 위해 사용
                     child: SingleChildScrollView(
@@ -195,18 +198,26 @@ class MainUI {
 
                             return Container(
                                 width: containerWidth,
-                                padding: const EdgeInsets.all(20),
+                                padding: const EdgeInsets.all(24),
                                 child: Column(
                                     mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        appLocalizations.translate('MainUI_login'),
-                                        style: const TextStyle(
-                                          fontSize: 24,
-                                          fontWeight: FontWeight.bold,
-                                        ),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.login_rounded, color: palette['primary'], size: 28),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            appLocalizations.translate('MainUI_login'),
+                                            style: TextStyle(
+                                              fontSize: 22,
+                                              fontWeight: FontWeight.w700,
+                                              color: palette['onSurface'],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 20),
+                                      const SizedBox(height: 24),
                                       Column(
                                         crossAxisAlignment: CrossAxisAlignment.stretch,
                                         children: [
@@ -216,9 +227,11 @@ class MainUI {
                                               alignment: Alignment.centerLeft,
                                               child: Text(
                                                 appLocalizations.translate('email'),
-                                                style: const TextStyle(
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.bold,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: palette['onSurfaceDim'],
+                                                  letterSpacing: 0.5,
                                                 ),
                                               ),
                                             ),
@@ -227,23 +240,40 @@ class MainUI {
                                             padding: const EdgeInsets.only(top: 8),
                                             child: TextField(
                                               controller: emailInput,
-                                              decoration: const InputDecoration(
-                                                border: OutlineInputBorder(),
+                                              style: TextStyle(color: palette['onSurface']),
+                                              decoration: InputDecoration(
+                                                border: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderSide: BorderSide(color: palette['divider']!),
+                                                ),
+                                                enabledBorder: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderSide: BorderSide(color: palette['divider']!),
+                                                ),
+                                                focusedBorder: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderSide: BorderSide(color: palette['primary']!, width: 2),
+                                                ),
                                                 labelText: "example@example.com",
+                                                labelStyle: TextStyle(color: palette['onSurfaceDim']),
+                                                filled: true,
+                                                fillColor: palette['surfaceLight'],
                                               ),
                                             ),
                                           ),
                                           Padding(
-                                            padding: const EdgeInsets.only(top: 8),
+                                            padding: const EdgeInsets.only(top: 12),
                                             child: SizedBox(
                                               width: labelWidth,
                                               child: Align(
                                                 alignment: Alignment.centerLeft,
                                                 child: Text(
                                                   appLocalizations.translate('password'),
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w600,
+                                                    color: palette['onSurfaceDim'],
+                                                    letterSpacing: 0.5,
                                                   ),
                                                   maxLines: 1,
                                                   overflow: TextOverflow.visible,
@@ -255,9 +285,25 @@ class MainUI {
                                             padding: const EdgeInsets.only(top: 8.0),
                                             child: TextField(
                                               controller: passwordInput,
-                                              decoration: const InputDecoration(
-                                                border: OutlineInputBorder(),
+                                              obscureText: true,
+                                              style: TextStyle(color: palette['onSurface']),
+                                              decoration: InputDecoration(
+                                                border: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderSide: BorderSide(color: palette['divider']!),
+                                                ),
+                                                enabledBorder: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderSide: BorderSide(color: palette['divider']!),
+                                                ),
+                                                focusedBorder: OutlineInputBorder(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  borderSide: BorderSide(color: palette['primary']!, width: 2),
+                                                ),
                                                 labelText: "password",
+                                                labelStyle: TextStyle(color: palette['onSurfaceDim']),
+                                                filled: true,
+                                                fillColor: palette['surfaceLight'],
                                               ),
                                             ),
                                           ),
@@ -273,15 +319,22 @@ class MainUI {
                                             errType == 14 ? appLocalizations.translate('errMsg_Sign06') :
                                             "",
                                             style: const TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.w600,
                                               color: Colors.red,
                                             ),
                                           ),
-                                          const SizedBox(height: 10),
+                                          const SizedBox(height: 16),
                                           SizedBox(
                                             width: containerWidth * 0.6,
                                             child: ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: palette['buttonBg'],
+                                                foregroundColor: palette['buttonText'],
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                                elevation: 0,
+                                              ),
                                               onPressed: () async {
                                                 auth.setScreenSize(screenSize);
                                                 errType = await auth.signInEmail(context, emailInput.text, passwordInput.text);
@@ -309,7 +362,12 @@ class MainUI {
                                             children: [
                                               SizedBox(
                                                 height: buttonHeight,
-                                                child: ElevatedButton(
+                                                child: OutlinedButton(
+                                                  style: OutlinedButton.styleFrom(
+                                                    foregroundColor: palette['onSurface'],
+                                                    side: BorderSide(color: palette['divider']!),
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                  ),
                                                   onPressed: () async {
                                                     auth.setScreenSize(screenSize);
                                                     errType = await auth.signUpEmail(context, emailInput.text, passwordInput.text);
@@ -325,9 +383,10 @@ class MainUI {
                                                   },
                                                   child: Text(
                                                     appLocalizations.translate('sign_up'),
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontSize: 16,
                                                       fontWeight: FontWeight.bold,
+                                                      color: palette['onSurface'],
                                                     ),
                                                     textAlign: TextAlign.center,
                                                     overflow: TextOverflow.visible,
@@ -337,7 +396,12 @@ class MainUI {
                                               const Spacer(),
                                               SizedBox(
                                                 height: buttonHeight,
-                                                child: ElevatedButton(
+                                                child: OutlinedButton(
+                                                  style: OutlinedButton.styleFrom(
+                                                    foregroundColor: palette['onSurface'],
+                                                    side: BorderSide(color: palette['divider']!),
+                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                  ),
                                                   onPressed: () async {
                                                     auth.setScreenSize(screenSize);
                                                     errType = await auth.resetPasswordEmail(context, emailInput.text);
@@ -353,9 +417,10 @@ class MainUI {
                                                   },
                                                   child: Text(
                                                     appLocalizations.translate('reset_password'),
-                                                    style: const TextStyle(
+                                                    style: TextStyle(
                                                       fontSize: 16,
                                                       fontWeight: FontWeight.bold,
+                                                      color: palette['onSurface'],
                                                     ),
                                                     textAlign: TextAlign.center,
                                                     maxLines: 2,
@@ -395,31 +460,52 @@ class MainUI {
           showDialog(
             context: context,
             builder: (BuildContext context) {
+              final acctPalette = ThemeColor().getPalette();
+              final acctIsDark = ThemeColor().isDark();
               return Dialog(
+                backgroundColor: acctIsDark ? const Color(0xFF1E1E3A) : Colors.white,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(24),
                 ),
                 child: Container(
-                  width: 300, // 원하는 너비로 설정
-                  padding: const EdgeInsets.all(20),
+                  width: 320,
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        appLocalizations.translate('MainUI_menuAccount'),
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      Row(
+                        children: [
+                          Icon(Icons.account_circle_rounded, color: acctPalette['primary'], size: 28),
+                          const SizedBox(width: 10),
+                          Text(
+                            appLocalizations.translate('MainUI_menuAccount'),
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: acctPalette['onSurface'],
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
                       Column(
                         children: [
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(appLocalizations.translate('MainUI_menuAccount')),
-                              Text(FirebaseAuth.instance.currentUser!.email.toString()),
+                              Text(
+                                appLocalizations.translate('MainUI_menuAccount'),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: acctPalette['onSurfaceDim'],
+                                ),
+                              ),
+                              Text(
+                                FirebaseAuth.instance.currentUser!.email.toString(),
+                                style: TextStyle(color: acctPalette['onSurface']),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 10),
@@ -427,55 +513,82 @@ class MainUI {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(appLocalizations.translate('progressTitle')),
-                              Text(UserInfo.getAllProgress()),
+                              Text(
+                                appLocalizations.translate('progressTitle'),
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: acctPalette['onSurfaceDim'],
+                                ),
+                              ),
+                              Text(
+                                UserInfo.getAllProgress(),
+                                style: TextStyle(color: acctPalette['onSurface']),
+                              ),
                             ],
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          TextButton(
-                            child: Text(appLocalizations.translate('sign_out')),
-                            onPressed: () async {
-                              auth.setScreenSize(screenSize);
-                              errType = await auth.signOutEmail(context);
-                              onUpdate();
-                              popupMsg = appLocalizations.translate('complete_sign_out');
-                              if(errType == 0) {
-                                // ignore: use_build_context_synchronously
-                                Navigator.of(context).pop();
-                              }
-                            },
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: acctPalette['onSurfaceDim'],
+                                side: BorderSide(color: acctPalette['divider']!),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              onPressed: () async {
+                                auth.setScreenSize(screenSize);
+                                errType = await auth.signOutEmail(context);
+                                onUpdate();
+                                popupMsg = appLocalizations.translate('complete_sign_out');
+                                if(errType == 0) {
+                                  // ignore: use_build_context_synchronously
+                                  Navigator.of(context).pop();
+                                }
+                              },
+                              child: Text(appLocalizations.translate('sign_out')),
+                            ),
                           ),
-                          TextButton(
-                            child: Text(appLocalizations.translate('withdraw')),
-                            onPressed: () async {
-                              auth.setScreenSize(screenSize);
-                              errType = await auth.withdrawEmail(context);
-                              popupMsg = appLocalizations.translate('complete_withdraw');
-                              onUpdate();
-                              if(errType == 0) {
-                                // ignore: use_build_context_synchronously
-                                Navigator.of(context).pop();
-                              }
-                            },
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.red,
+                                side: const BorderSide(color: Colors.red),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                              ),
+                              onPressed: () async {
+                                auth.setScreenSize(screenSize);
+                                errType = await auth.withdrawEmail(context);
+                                popupMsg = appLocalizations.translate('complete_withdraw');
+                                onUpdate();
+                                if(errType == 0) {
+                                  // ignore: use_build_context_synchronously
+                                  Navigator.of(context).pop();
+                                }
+                              },
+                              child: Text(appLocalizations.translate('withdraw')),
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          TextButton(
-                            child: Text(appLocalizations.translate('MainUI_btnClose')),
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton(
+                          style: TextButton.styleFrom(
+                            foregroundColor: acctPalette['onSurfaceDim'],
                           ),
-                        ],
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          child: Text(appLocalizations.translate('MainUI_btnClose')),
+                        ),
                       ),
                     ],
                   ),

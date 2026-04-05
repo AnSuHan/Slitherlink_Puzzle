@@ -1202,7 +1202,7 @@ class SquareProvider with ChangeNotifier {
     //marking number with answer
     setNumWithAnswer(puzzle);
     //setDefaultLineStep1(puzzle);
-    clearLineForStart();
+    await clearLineForStart();
 
     //apply saved submit lines
     if(isContinue) {
