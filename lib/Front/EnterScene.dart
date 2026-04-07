@@ -557,10 +557,10 @@ class _MainScreenContent extends StatelessWidget {
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
             ),
             child: Slider(
-              value: value.toDouble(),
-              min: 3,
+              value: value.clamp(5, 20).toDouble(),
+              min: 5,
               max: 20,
-              divisions: 17,
+              divisions: 15,
               onChanged: onChanged,
             ),
           ),

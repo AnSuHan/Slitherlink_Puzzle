@@ -1197,10 +1197,10 @@ class MainUI {
                   trackHeight: 3,
                 ),
                 child: Slider(
-                  value: generateRows.toDouble(),
-                  min: 3,
+                  value: generateRows.clamp(5, 20).toDouble(),
+                  min: 5,
                   max: 20,
-                  divisions: 17,
+                  divisions: 15,
                   label: "$generateRows",
                   onChanged: (v) {
                     generateRows = v.round();
@@ -1230,10 +1230,10 @@ class MainUI {
                   trackHeight: 3,
                 ),
                 child: Slider(
-                  value: generateCols.toDouble(),
-                  min: 3,
+                  value: generateCols.clamp(5, 20).toDouble(),
+                  min: 5,
                   max: 20,
-                  divisions: 17,
+                  divisions: 15,
                   label: "$generateCols",
                   onChanged: (v) {
                     generateCols = v.round();

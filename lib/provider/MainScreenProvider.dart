@@ -30,14 +30,14 @@ class MainScreenProvider with ChangeNotifier {
   }
 
   void setRows(int rows) {
-    _generateRows = rows;
-    MainUI.generateRows = rows;
+    _generateRows = rows.clamp(5, 20);
+    MainUI.generateRows = _generateRows;
     notifyListeners();
   }
 
   void setCols(int cols) {
-    _generateCols = cols;
-    MainUI.generateCols = cols;
+    _generateCols = cols.clamp(5, 20);
+    MainUI.generateCols = _generateCols;
     notifyListeners();
   }
 

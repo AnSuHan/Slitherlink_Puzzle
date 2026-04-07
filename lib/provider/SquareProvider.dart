@@ -970,6 +970,9 @@ class SquareProvider with ChangeNotifier {
       // ignore: avoid_print
       print("update updateSquareBox : $_isUpdating");
     }
+
+    //check puzzle completion after user input
+    checkCompletePuzzle(context);
   }
 
   /// 라인(row, col, dir)의 값을 읽는 헬퍼
@@ -1732,6 +1735,117 @@ class SquareProvider with ChangeNotifier {
     }
     await checkMaxLine();
     await checkCurrentPathSet();
+    await propagateLookAhead();
+  }
+
+  ///셀(num) 규칙과 꼭짓점(차수=2) 규칙을 fixed-point 까지 시뮬레이션해서
+  ///사용자가 그린 라인은 건드리지 않고, 비활성(-1) 표시만 더 적극적으로 반영한다.
+  ///
+  ///가상 강제선(2)은 시뮬레이션 내부 추론용으로만 사용되며 실제 puzzle 에는 기록하지 않는다.
+  Future<void> propagateLookAhead() async {
+    int rows = puzzle.length;
+    int cols = puzzle[0].length;
+    if (rows == 0 || cols == 0) return;
+
+    List<List<int>> edge = await readSquare.readSubmit(puzzle);
+    List<List<int>> orig = edge.map((r) => List<int>.from(r)).toList();
+
+    // 작업용 그리드: 1 = 그어짐, 2 = 가상 강제선, 0 = 미정, -1 = 비활성
+    List<List<int>> w = edge.map((row) => row.map((v) {
+      if (v >= 1) return 1;
+      if (v == 0) return 0;
+      return -1;
+    }).toList()).toList();
+
+    bool changed = true;
+    int iter = 0;
+    while (changed && iter < 30) {
+      changed = false;
+      iter++;
+
+      // 셀 규칙
+      for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+          int num = puzzle[i][j].num;
+          if (num < 0 || num > 4) continue;
+          List<List<int>> es = [
+            [2 * i, j], [2 * i + 2, j], [2 * i + 1, j], [2 * i + 1, j + 1],
+          ];
+          int dr = 0, un = 0, xc = 0;
+          for (var e in es) {
+            int v = w[e[0]][e[1]];
+            if (v == 1 || v == 2) {
+              dr++;
+            } else if (v == 0) {
+              un++;
+            } else {
+              xc++;
+            }
+          }
+          if (un == 0) continue;
+          if (dr == num) {
+            for (var e in es) {
+              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
+            }
+          } else if (4 - xc == num) {
+            for (var e in es) {
+              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = 2; changed = true; }
+            }
+          }
+        }
+      }
+
+      // 꼭짓점 규칙 (차수는 0 또는 2)
+      for (int vi = 0; vi <= rows; vi++) {
+        for (int vj = 0; vj <= cols; vj++) {
+          List<List<int>> ve = [];
+          if (vj > 0) ve.add([2 * vi, vj - 1]);
+          if (vj < cols) ve.add([2 * vi, vj]);
+          if (vi > 0) ve.add([2 * vi - 1, vj]);
+          if (vi < rows) ve.add([2 * vi + 1, vj]);
+          int dr = 0, un = 0;
+          for (var e in ve) {
+            int v = w[e[0]][e[1]];
+            if (v == 1 || v == 2) {
+              dr++;
+            } else if (v == 0) {
+              un++;
+            }
+          }
+          if (un == 0) continue;
+          if (dr >= 2) {
+            for (var e in ve) {
+              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
+            }
+          } else if (dr == 1 && un == 1) {
+            for (var e in ve) {
+              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = 2; changed = true; }
+            }
+          } else if (dr == 0 && un == 1) {
+            for (var e in ve) {
+              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
+            }
+          }
+        }
+      }
+    }
+
+    // 새로 -1 이 된 칸만 실제 puzzle 에 반영 (가상 강제선 2 는 무시)
+    bool anyChanged = false;
+    for (int i = 0; i < edge.length; i++) {
+      for (int j = 0; j < edge[i].length; j++) {
+        if (orig[i][j] == 0 && w[i][j] == -1) {
+          edge[i][j] = -1;
+          anyChanged = true;
+        }
+      }
+    }
+
+    if (anyChanged) {
+      await readSquare.writeSubmit(puzzle, edge);
+      submit = await readSquare.readSubmit(puzzle);
+      notifyListeners();
+    }
   }
 
   ///각 박스마다 lineValue가 1이상인 값을 세고, 해당 박스의 num 이상인 경우 남은 0 라인을 -1로 변경
