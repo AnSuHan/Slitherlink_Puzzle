@@ -104,7 +104,39 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     });
 
     _transformationController = TransformationController();
+    _transformationController.addListener(_syncZoomFromController);
     WidgetsBinding.instance.addObserver(this);
+  }
+
+  double _zoomSlider = 1.0;
+  bool _suppressZoomSync = false;
+
+  void _syncZoomFromController() {
+    if (_suppressZoomSync) return;
+    final s = _transformationController.value.getMaxScaleOnAxis();
+    if ((s - _zoomSlider).abs() > 0.001) {
+      if (mounted) setState(() => _zoomSlider = s.clamp(0.3, 2.0));
+    }
+  }
+
+  void _applyZoom(double newScale) {
+    newScale = newScale.clamp(0.3, 2.0);
+    final old = _transformationController.value.clone();
+    final oldScale = old.getMaxScaleOnAxis();
+    if (oldScale == 0) return;
+    final factor = newScale / oldScale;
+    final size = MediaQuery.of(context).size;
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final updated = Matrix4.identity()
+      ..translate(cx, cy)
+      ..scale(factor)
+      ..translate(-cx, -cy)
+      ..multiply(old);
+    _suppressZoomSync = true;
+    _transformationController.value = updated;
+    _suppressZoomSync = false;
+    setState(() => _zoomSlider = newScale);
   }
 
   @override
@@ -396,7 +428,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
                             : InteractiveViewer(
                             transformationController: _transformationController,
                             minScale: 0.3,
-                            maxScale: 5.0,
+                            maxScale: 2.0,
                             boundaryMargin: EdgeInsets.symmetric(
                               horizontal: screenSize.width * 0.5,
                               vertical: screenSize.height * 0.5,
@@ -462,6 +494,30 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
                               await _provider.redo();
                             },
                             child: const Icon(Icons.redo),
+                          ),
+                        ),
+                        // One-handed zoom slider (vertical)
+                        Positioned(
+                          width: 40,
+                          height: 220,
+                          left: UserInfo.getButtonAlignment() ? 20
+                              : ui.getScreenSize().width - 60,
+                          bottom: 290,
+                          child: RotatedBox(
+                            quarterTurns: 3,
+                            child: SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 4,
+                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 9),
+                                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                              ),
+                              child: Slider(
+                                min: 0.3,
+                                max: 2.0,
+                                value: _zoomSlider,
+                                onChanged: (v) => _applyZoom(v),
+                              ),
+                            ),
                           ),
                         ),
                         if(extractData)
