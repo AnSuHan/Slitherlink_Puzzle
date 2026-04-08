@@ -128,11 +128,26 @@ class Authentication {
       return 11;
     }
     try {
-      await FirebaseAuth.instance.setLanguageCode(Intl.getCurrentLocale());  //set email language
-      await FirebaseAuth.instance
-          .sendPasswordResetEmail(email: email);
+      lastErrorMessage = '';
+      lastErrorCode = '';
+      await FirebaseAuth.instance.setLanguageCode(Intl.getCurrentLocale());
+      // Firebase 가 이메일로 비밀번호 재설정 링크 (oobCode) 를 발송한다.
+      // 사용자는 메일의 링크를 눌러 Firebase 호스팅 페이지에서 새 비밀번호를 입력 → 검증 후 적용.
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
       return 1;
-    } catch(e) {
+    } on FirebaseAuthException catch (e) {
+      // ignore: avoid_print
+      print('resetPasswordEmail FirebaseAuthException: ${e.code} ${e.message}');
+      if (e.code == 'user-not-found') {
+        lastErrorMessage = '해당 이메일로 가입된 계정이 없습니다.';
+      } else {
+        lastErrorMessage = _mapAuthError(e);
+      }
+      return 13;
+    } catch (e) {
+      // ignore: avoid_print
+      print('resetPasswordEmail error: $e');
+      lastErrorMessage = '재설정 메일 전송 중 오류가 발생했습니다: $e';
       return 13;
     }
   }

@@ -450,13 +450,72 @@ class MainUI {
                                                       padding: const EdgeInsets.symmetric(vertical: 14),
                                                     ),
                                                     onPressed: () async {
+                                                      // 입력 검증 및 확인 다이얼로그
+                                                      if (emailInput.text.isEmpty) {
+                                                        setState(() => errType = 14);
+                                                        return;
+                                                      }
+                                                      if (!auth.isEmail(emailInput.text)) {
+                                                        setState(() => errType = 11);
+                                                        return;
+                                                      }
+                                                      final ok = await showDialog<bool>(
+                                                        context: context,
+                                                        builder: (ctx) {
+                                                          final dark = ThemeColor().isDark();
+                                                          return Dialog(
+                                                            backgroundColor: dark ? const Color(0xFF1E1E3A) : Colors.white,
+                                                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                                            child: Padding(
+                                                              padding: const EdgeInsets.all(24),
+                                                              child: Column(
+                                                                mainAxisSize: MainAxisSize.min,
+                                                                children: [
+                                                                  Icon(Icons.mark_email_unread_rounded, size: 56, color: palette['primary']),
+                                                                  const SizedBox(height: 16),
+                                                                  Text(
+                                                                    '비밀번호 재설정',
+                                                                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: dark ? Colors.white : Colors.black87),
+                                                                  ),
+                                                                  const SizedBox(height: 12),
+                                                                  Text(
+                                                                    '${emailInput.text}\n\n위 주소로 비밀번호 재설정 링크를 보냅니다.\n메일의 링크를 눌러 새 비밀번호를 설정하세요.',
+                                                                    textAlign: TextAlign.center,
+                                                                    style: TextStyle(fontSize: 14, color: dark ? Colors.white70 : Colors.black54),
+                                                                  ),
+                                                                  const SizedBox(height: 24),
+                                                                  Row(
+                                                                    children: [
+                                                                      Expanded(
+                                                                        child: OutlinedButton(
+                                                                          onPressed: () => Navigator.of(ctx).pop(false),
+                                                                          child: const Text('취소'),
+                                                                        ),
+                                                                      ),
+                                                                      const SizedBox(width: 12),
+                                                                      Expanded(
+                                                                        child: ElevatedButton(
+                                                                          onPressed: () => Navigator.of(ctx).pop(true),
+                                                                          child: const Text('전송'),
+                                                                        ),
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          );
+                                                        },
+                                                      );
+                                                      if (ok != true) return;
+
                                                       auth.setScreenSize(screenSize);
                                                       errType = await auth.resetPasswordEmail(context, emailInput.text);
 
                                                       setState(() {});
                                                       onUpdate();
                                                       if(errType == 1) {
-                                                        popupMsg = appLocalizations.translate('errMsg_Sign05');
+                                                        popupMsg = '비밀번호 재설정 메일을 보냈습니다.\n메일함을 확인해주세요.';
                                                         // ignore: use_build_context_synchronously
                                                         Navigator.of(context).pop();
                                                       }
