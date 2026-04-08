@@ -1463,10 +1463,9 @@ class MainUI {
   void startGame(BuildContext context) {
     progressKey = "${selectedType[0]}_generate_${generateRows}x${generateCols}_$selectedDifficulty";
 
-    // 같은 설정의 진행 중인 퍼즐이 있으면 이어하기
+    // 새 게임은 항상 새 퍼즐을 생성한다. 같은 키의 이전 진행분이 남아 있다면 정리.
     if (UserInfo.continuePuzzle.contains(progressKey)) {
-      changeScene(context, progressKey, isContinue: true);
-      return;
+      UserInfo.clearPuzzle(progressKey);
     }
 
     UserInfo.continuePuzzle.add(progressKey);
