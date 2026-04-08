@@ -43,43 +43,40 @@ class UserInfo {
     User? user = FirebaseAuth.instance.currentUser;
 
     if(user != null) {
+      authState = true;
       // Fetch the document for the current user
       DocumentSnapshot snapshot = await db.collection("users").doc(user.email).get();
 
       // Check if the document exists
       if (snapshot.exists) {
-        // Extract the progress data
         Map<String, dynamic>? data = snapshot.data() as Map<String, dynamic>?;
         if (data != null && data.containsKey('progress')) {
           Map<String, dynamic> instProgress = data['progress'];
-          int squareSmall = instProgress['square_small'];
-          int triangleSmall = instProgress['triangle_small'];
-
-          // Return the extracted values
+          int squareSmall = instProgress['square_small'] ?? 0;
+          int triangleSmall = instProgress['triangle_small'] ?? 0;
           progress["square_small"] = squareSmall;
           progress["triangle_small"] = triangleSmall;
+        } else {
+          progress = {"square_small": 0, "triangle_small": 0};
         }
-        else {
-          // Return default values if the document doesn't exist or the progress data is not found
-          progress = {
-            "square_small": 0,
-            "triangle_small": 0,
-          };
+        if (data != null && data.containsKey('completed') && data['completed'] is Map) {
+          Map<String, dynamic> instCompleted = Map<String, dynamic>.from(data['completed']);
+          completed = instCompleted.map((k, v) => MapEntry(k, (v as num).toInt()));
+        } else {
+          completed = {};
         }
+      } else {
+        progress = {"square_small": 0, "triangle_small": 0};
+        completed = {};
       }
-      else {
-        // Return default values if the document doesn't exist or the progress data is not found
-        progress = {
-          "square_small": 0,
-          "triangle_small": 0,
-        };
-      }
+    } else {
+      // 로그아웃 상태: 로컬에서만 완료 이력 로드
+      await loadCompleted();
     }
 
     //remember setting
     loadSetting();
     loadContinuePuzzle();
-    loadCompleted();
   }
 
   ///shape`_`size
@@ -130,14 +127,41 @@ class UserInfo {
   }
 
   static Future<void> saveCompleted() async {
-    await ExtractData().saveDataToLocal("completed", jsonEncode(completed));
+    if (authState) {
+      // 로그인 상태: Firestore 에 저장 (기기 변경 시에도 유지)
+      User? user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          await FirebaseFirestore.instance
+              .collection("users")
+              .doc(user.email)
+              .set({"completed": completed}, SetOptions(merge: true));
+        } catch (e) {
+          // ignore: avoid_print
+          print('saveCompleted remote failed: $e');
+        }
+      }
+    } else {
+      // 비로그인 상태: 로컬에만 저장
+      await ExtractData().saveDataToLocal("completed", jsonEncode(completed));
+    }
   }
 
   static Future<void> loadCompleted() async {
     String? data = await ExtractData().getDataFromLocal("completed");
     if (data != null) {
       Map<String, dynamic> map = jsonDecode(data);
-      completed = map.map((k, v) => MapEntry(k, v as int));
+      completed = map.map((k, v) => MapEntry(k, (v as num).toInt()));
+    } else {
+      completed = {};
+    }
+  }
+
+  /// 로컬 SharedPreferences 의 completed 키를 제거
+  static Future<void> clearLocalCompleted() async {
+    final prefs = ExtractData();
+    if (await prefs.containsKey("completed")) {
+      await prefs.removeKey("completed");
     }
   }
 

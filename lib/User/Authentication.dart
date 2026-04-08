@@ -73,12 +73,16 @@ class Authentication {
     try {
       lastErrorMessage = '';
       lastErrorCode = '';
+      // 회원가입 직전 비로그인 상태에서 쌓인 로컬 완료 이력을 캡처해 새 계정으로 이관
+      final Map<String, int> migrating = Map<String, int>.from(UserInfo.completed);
       UserCredential userCredential =
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
-      await makeDB();
+      await makeDB(initialCompleted: migrating);
+      // 로컬 저장본은 비워서 다음 비로그인 세션에 잔존하지 않도록 함
+      await UserInfo.clearLocalCompleted();
       UserInfo.authState = true;
       await UserInfo.init();
       return 0;
@@ -102,6 +106,9 @@ class Authentication {
         email: email,
         password: password,
       );
+      // 비로그인 상태에서 쌓인 로컬 이력은 초기화
+      await UserInfo.clearLocalCompleted();
+      UserInfo.completed = {};
       UserInfo.authState = true;
       await UserInfo.init();
       return 0;
@@ -134,6 +141,9 @@ class Authentication {
     try {
       await FirebaseAuth.instance.signOut();
       UserInfo.authState = false;
+      // 로그아웃 시 완료 이력은 화면에 노출되지 않도록 메모리/로컬 모두 정리
+      UserInfo.completed = {};
+      await UserInfo.clearLocalCompleted();
       return 0;
     } catch (e) {
       return 400;
@@ -246,7 +256,7 @@ class Authentication {
     return emailRegExp.hasMatch(input);
   }
 
-  Future<void> makeDB() async {
+  Future<void> makeDB({Map<String, int>? initialCompleted}) async {
     FirebaseFirestore db = FirebaseFirestore.instance;
     User user = FirebaseAuth.instance.currentUser!;
 
@@ -262,6 +272,7 @@ class Authentication {
     final userData = {
       "account": account,
       "progress": progress,
+      "completed": initialCompleted ?? <String, int>{},
     };
 
     await db.collection("users").doc(user.email).set(userData).then((_) =>
