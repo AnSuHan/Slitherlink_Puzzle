@@ -202,6 +202,8 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
 
       // 생성된 퍼즐 정답을 저장 (이어하기 시 복원용)
       await readSquare.saveAnswer(widget.loadKey, answer);
+      // 중복 방지를 위해 해시를 seen 집합에 등록
+      await PuzzleCache.instance.markPuzzleSeen(answer);
     }
     else {
       answer = await readSquare.loadPuzzle(widget.loadKey);

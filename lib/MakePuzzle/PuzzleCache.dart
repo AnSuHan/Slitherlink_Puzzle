@@ -22,7 +22,40 @@ class PuzzleCache {
   final Map<String, List<List<List<int>>>> _cache = {};
   bool _assetLoaded = false;
 
+  // Seen puzzle hashes to prevent serving duplicates across sessions
+  final Set<int> _seenHashes = <int>{};
+  bool _seenLoaded = false;
+
   static const String _storagePrefix = 'puzzle_cache_';
+  static const String _seenKey = 'puzzle_seen_hashes';
+
+  int _hashPuzzle(List<List<int>> puzzle) {
+    int h = 0;
+    for (final row in puzzle) {
+      for (final v in row) {
+        h = (h * 31 + v) & 0x7FFFFFFF;
+      }
+    }
+    return h;
+  }
+
+  Future<void> _loadSeen() async {
+    if (_seenLoaded) return;
+    _seenLoaded = true;
+    final prefs = ExtractData();
+    final stored = await prefs.getDataFromLocal(_seenKey);
+    if (stored != null) {
+      try {
+        final List<dynamic> list = jsonDecode(stored.toString());
+        _seenHashes.addAll(list.map((e) => (e as num).toInt()));
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _saveSeen() async {
+    final prefs = ExtractData();
+    await prefs.saveDataToLocal(_seenKey, jsonEncode(_seenHashes.toList()));
+  }
 
   /// Load bundled puzzles from assets (called once)
   Future<void> _loadAssets() async {
@@ -90,28 +123,54 @@ class PuzzleCache {
   /// Returns null if no cached puzzle available (caller should generate).
   Future<List<List<int>>?> getPuzzle(int rows, int cols) async {
     await _loadAssets();
+    await _loadSeen();
     final sizeKey = '${rows}x$cols';
 
-    if (_cache.containsKey(sizeKey) && _cache[sizeKey]!.isNotEmpty) {
-      // Take one puzzle from cache
-      final puzzle = _cache[sizeKey]!.removeAt(0);
-      // Save updated cache
+    if (_cache.containsKey(sizeKey)) {
+      // 캐시 앞에서부터 꺼내며, 이미 본 해시는 건너뛴다.
+      while (_cache[sizeKey]!.isNotEmpty) {
+        final puzzle = _cache[sizeKey]!.removeAt(0);
+        final h = _hashPuzzle(puzzle);
+        if (_seenHashes.contains(h)) {
+          // 중복 — 폐기하고 다음 후보 검사
+          continue;
+        }
+        _seenHashes.add(h);
+        await _saveSeen();
+        await _saveLocalCache(sizeKey);
+        // 백그라운드 보충
+        _generateReplacement(rows, cols);
+        return puzzle;
+      }
       await _saveLocalCache(sizeKey);
-      // Generate replacement in background
-      _generateReplacement(rows, cols);
-      return puzzle;
     }
 
-    return null; // No cached puzzle available
+    return null; // 사용 가능한 캐시 없음 → 호출자가 직접 생성
+  }
+
+  /// 외부에서 직접 생성한 퍼즐도 seen 처리해 캐시 중복 방지에 반영.
+  Future<void> markPuzzleSeen(List<List<int>> puzzle) async {
+    await _loadSeen();
+    final h = _hashPuzzle(puzzle);
+    if (_seenHashes.add(h)) {
+      await _saveSeen();
+    }
   }
 
   /// Generate a replacement puzzle in the background and add to cache
   void _generateReplacement(int rows, int cols) {
-    compute(_generateInIsolate, {'rows': rows, 'cols': cols}).then((result) {
+    compute(_generateInIsolate, {'rows': rows, 'cols': cols}).then((result) async {
+      await _loadSeen();
+      final h = _hashPuzzle(result);
+      if (_seenHashes.contains(h)) {
+        // 이미 본 해시면 캐시에 추가하지 않고 다시 생성 시도
+        _generateReplacement(rows, cols);
+        return;
+      }
       final sizeKey = '${rows}x$cols';
       _cache.putIfAbsent(sizeKey, () => []);
       _cache[sizeKey]!.add(result);
-      _saveLocalCache(sizeKey);
+      await _saveLocalCache(sizeKey);
     }).catchError((_) {
       // Generation failed - will try again next time
     });
