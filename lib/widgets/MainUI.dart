@@ -143,6 +143,7 @@ class MainUI {
           final isDark = ThemeColor().isDark();
 
           bool isSignUpMode = false;
+          bool obscurePassword = true;
           // ignore: use_build_context_synchronously
           showDialog(
             context: context,
@@ -291,7 +292,7 @@ class MainUI {
                                             padding: const EdgeInsets.only(top: 8.0),
                                             child: TextField(
                                               controller: passwordInput,
-                                              obscureText: true,
+                                              obscureText: obscurePassword,
                                               style: TextStyle(color: palette['onSurface']),
                                               decoration: InputDecoration(
                                                 border: OutlineInputBorder(
@@ -310,6 +311,14 @@ class MainUI {
                                                 labelStyle: TextStyle(color: palette['onSurfaceDim']),
                                                 filled: true,
                                                 fillColor: palette['surfaceLight'],
+                                                suffixIcon: IconButton(
+                                                  icon: Icon(
+                                                    obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                                                    color: palette['onSurfaceDim'],
+                                                  ),
+                                                  onPressed: () => setState(() => obscurePassword = !obscurePassword),
+                                                  tooltip: obscurePassword ? 'Show' : 'Hide',
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -600,13 +609,81 @@ class MainUI {
                                 padding: const EdgeInsets.symmetric(vertical: 12),
                               ),
                               onPressed: () async {
+                                // 확인 다이얼로그
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (BuildContext confirmCtx) {
+                                    final dark = ThemeColor().isDark();
+                                    return Dialog(
+                                      backgroundColor: dark ? const Color(0xFF1E1E3A) : Colors.white,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(24),
+                                        child: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Icon(Icons.warning_amber_rounded, size: 56, color: Colors.red),
+                                            const SizedBox(height: 16),
+                                            Text(
+                                              appLocalizations.translate('withdraw'),
+                                              style: TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.w700,
+                                                color: dark ? Colors.white : Colors.black87,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              '계정과 모든 데이터가 영구적으로 삭제됩니다.\n정말 탈퇴하시겠습니까?',
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: dark ? Colors.white70 : Colors.black54,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 24),
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: OutlinedButton(
+                                                    onPressed: () => Navigator.of(confirmCtx).pop(false),
+                                                    child: const Text('취소'),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: ElevatedButton(
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor: Colors.red,
+                                                      foregroundColor: Colors.white,
+                                                    ),
+                                                    onPressed: () => Navigator.of(confirmCtx).pop(true),
+                                                    child: const Text('탈퇴'),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                                if (confirm != true) return;
+
                                 auth.setScreenSize(screenSize);
                                 errType = await auth.withdrawEmail(context);
-                                popupMsg = appLocalizations.translate('complete_withdraw');
                                 onUpdate();
                                 if(errType == 0) {
+                                  popupMsg = appLocalizations.translate('complete_withdraw');
                                   // ignore: use_build_context_synchronously
                                   Navigator.of(context).pop();
+                                } else {
+                                  // 실패 시 사용자에게 원인 알림
+                                  // ignore: use_build_context_synchronously
+                                  auth.popup(context, auth.lastErrorMessage.isNotEmpty
+                                      ? auth.lastErrorMessage
+                                      : '탈퇴에 실패했습니다.');
                                 }
                               },
                               child: Text(appLocalizations.translate('withdraw')),

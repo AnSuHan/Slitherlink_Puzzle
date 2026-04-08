@@ -142,20 +142,46 @@ class Authentication {
 
   Future<int> withdrawEmail(BuildContext context) async {
     try {
+      lastErrorMessage = '';
+      lastErrorCode = '';
       User? user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await deleteDB();
-        await user.delete();
-        UserInfo.authState = false;
-        return 0;
+      if (user == null) {
+        lastErrorMessage = '로그인된 계정이 없습니다.';
+        return 400;
       }
-    } catch(e) {
+      // Firestore 문서 먼저 삭제
+      try {
+        await deleteDB();
+      } catch (e) {
+        // ignore: avoid_print
+        print('deleteDB during withdraw failed: $e');
+      }
+      // Firebase 계정 삭제
+      await user.delete();
+      // 로컬 상태 정리
+      UserInfo.authState = false;
+      UserInfo.completed = {};
+      UserInfo.continuePuzzle.clear();
+      UserInfo.continuePuzzleDate.clear();
+      try {
+        await FirebaseAuth.instance.signOut();
+      } catch (_) {}
+      return 0;
+    } on FirebaseAuthException catch (e) {
       // ignore: avoid_print
-      print("Error during withdrawal: $e");
+      print('withdrawEmail FirebaseAuthException: ${e.code} ${e.message}');
+      if (e.code == 'requires-recent-login') {
+        lastErrorMessage = '보안을 위해 최근 로그인이 필요합니다. 로그아웃 후 다시 로그인한 뒤 탈퇴를 시도해주세요.';
+      } else {
+        lastErrorMessage = _mapAuthError(e);
+      }
+      return 400;
+    } catch (e) {
+      // ignore: avoid_print
+      print('withdrawEmail error: $e');
+      lastErrorMessage = '탈퇴 중 오류가 발생했습니다: $e';
       return 400;
     }
-
-    return 400;
   }
 
   void popup(BuildContext context, String msg) {
