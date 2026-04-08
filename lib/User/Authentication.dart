@@ -24,6 +24,40 @@ import 'UserInfo.dart';
 class Authentication {
   late Size screenSize;
 
+  /// 마지막 인증 에러에 대한 사용자용 메시지 (한국어 기본)
+  String lastErrorMessage = '';
+  String lastErrorCode = '';
+
+  String _mapAuthError(Object e) {
+    if (e is FirebaseAuthException) {
+      lastErrorCode = e.code;
+      switch (e.code) {
+        case 'email-already-in-use':
+          return '이미 가입된 이메일입니다. 로그인하거나 다른 이메일을 사용하세요.';
+        case 'invalid-email':
+          return '이메일 형식이 올바르지 않습니다.';
+        case 'operation-not-allowed':
+          return '이메일/비밀번호 가입이 비활성화되어 있습니다. 관리자에게 문의하세요. (Firebase 콘솔에서 Email/Password 로그인 활성화 필요)';
+        case 'weak-password':
+          return '비밀번호가 너무 약합니다. 6자 이상으로 설정하세요.';
+        case 'network-request-failed':
+          return '네트워크 연결을 확인해주세요.';
+        case 'too-many-requests':
+          return '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.';
+        case 'user-disabled':
+          return '비활성화된 계정입니다.';
+        case 'user-not-found':
+        case 'wrong-password':
+        case 'invalid-credential':
+          return '이메일 또는 비밀번호가 올바르지 않습니다.';
+        default:
+          return '인증 오류: ${e.message ?? e.code}';
+      }
+    }
+    lastErrorCode = 'unknown';
+    return '알 수 없는 오류: $e';
+  }
+
   void setScreenSize(Size size) {
     screenSize = size;
   }
@@ -37,6 +71,8 @@ class Authentication {
     }
 
     try {
+      lastErrorMessage = '';
+      lastErrorCode = '';
       UserCredential userCredential =
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
@@ -47,6 +83,9 @@ class Authentication {
       await UserInfo.init();
       return 0;
     } catch (e) {
+      // ignore: avoid_print
+      print('signUpEmail error: $e');
+      lastErrorMessage = _mapAuthError(e);
       return 400;
     }
   }
@@ -56,6 +95,8 @@ class Authentication {
       return 10;
     }
     try {
+      lastErrorMessage = '';
+      lastErrorCode = '';
       UserCredential userCredential =
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
@@ -65,6 +106,9 @@ class Authentication {
       await UserInfo.init();
       return 0;
     } catch (e) {
+      // ignore: avoid_print
+      print('signInEmail error: $e');
+      lastErrorMessage = _mapAuthError(e);
       return 13;
     }
   }
@@ -115,28 +159,52 @@ class Authentication {
   }
 
   void popup(BuildContext context, String msg) {
+    // 사용자가 직접 닫는 완료 다이얼로그. 닫으면 호출 화면(메인)으로 돌아간다.
+    // 자동 닫힘 + 잘못된 context.pop 으로 메인으로 못 돌아가던 문제 수정.
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        // 2초 후에 자동으로 닫히는 타이머 설정
-        Future.delayed(const Duration(seconds: 1), () {
-          Navigator.of(context).pop(true);
-        });
+      barrierDismissible: true,
+      builder: (BuildContext dialogContext) {
+        final isDark = MediaQuery.of(dialogContext).platformBrightness == Brightness.dark;
         return Dialog(
-          backgroundColor: Colors.transparent, // 투명 배경
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFFB0E0E6), // SnackBar 배경 색상
-              borderRadius: BorderRadius.all(Radius.circular(10.0)),
-            ),
-            width: screenSize.width * 0.4,
-            height: screenSize.height * 0.2,
-            child: Center(
-              child: Text(
-                msg,
-                style: const TextStyle(fontSize: 28, color: Colors.black),
-                textAlign: TextAlign.center,
-              ),
+          backgroundColor: isDark ? const Color(0xFF1E1E3A) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check_circle_rounded,
+                  size: 56,
+                  color: isDark ? const Color(0xFF80E0B0) : const Color(0xFF2E7D32),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  msg,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isDark ? const Color(0xFF3949AB) : const Color(0xFF5C6BC0),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      elevation: 0,
+                    ),
+                    onPressed: () => Navigator.of(dialogContext).pop(),
+                    child: const Text('OK', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
             ),
           ),
         );

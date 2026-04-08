@@ -142,6 +142,7 @@ class MainUI {
           final palette = ThemeColor().getPalette();
           final isDark = ThemeColor().isDark();
 
+          bool isSignUpMode = false;
           // ignore: use_build_context_synchronously
           showDialog(
             context: context,
@@ -206,10 +207,14 @@ class MainUI {
                                     children: [
                                       Row(
                                         children: [
-                                          Icon(Icons.login_rounded, color: palette['primary'], size: 28),
+                                          Icon(
+                                            isSignUpMode ? Icons.person_add_alt_1_rounded : Icons.login_rounded,
+                                            color: palette['primary'],
+                                            size: 28,
+                                          ),
                                           const SizedBox(width: 10),
                                           Text(
-                                            appLocalizations.translate('MainUI_login'),
+                                            appLocalizations.translate(isSignUpMode ? 'sign_up' : 'MainUI_login'),
                                             style: TextStyle(
                                               fontSize: 22,
                                               fontWeight: FontWeight.w700,
@@ -314,8 +319,8 @@ class MainUI {
                                             errType == 0 ? "" :
                                             errType == 11 ? appLocalizations.translate('errMsg_Sign04') :
                                             errType == 10 ? appLocalizations.translate('errMsg_Sign01') :
-                                            errType == 13 ? appLocalizations.translate('errMsg_Sign02') :
-                                            errType == 400 ? appLocalizations.translate('errMsg_Sign03') :
+                                            errType == 13 ? (auth.lastErrorMessage.isNotEmpty ? auth.lastErrorMessage : appLocalizations.translate('errMsg_Sign02')) :
+                                            errType == 400 ? (auth.lastErrorMessage.isNotEmpty ? auth.lastErrorMessage : appLocalizations.translate('errMsg_Sign03')) :
                                             errType == 1 ? appLocalizations.translate('errMsg_Sign05') :
                                             errType == 14 ? appLocalizations.translate('errMsg_Sign06') :
                                             "",
@@ -338,19 +343,28 @@ class MainUI {
                                               ),
                                               onPressed: () async {
                                                 auth.setScreenSize(screenSize);
-                                                errType = await auth.signInEmail(context, emailInput.text, passwordInput.text);
-
-                                                setState(() {});
-                                                onUpdate();
-                                                //print("errType : $errType");
-                                                if(errType == 0) {
-                                                  popupMsg = appLocalizations.translate('complete_sign_in');
-                                                  // ignore: use_build_context_synchronously
-                                                  Navigator.of(context).pop();
+                                                if (isSignUpMode) {
+                                                  errType = await auth.signUpEmail(context, emailInput.text, passwordInput.text);
+                                                  setState(() {});
+                                                  onUpdate();
+                                                  if (errType == 0) {
+                                                    popupMsg = appLocalizations.translate('complete_sign_up');
+                                                    // ignore: use_build_context_synchronously
+                                                    Navigator.of(context).pop();
+                                                  }
+                                                } else {
+                                                  errType = await auth.signInEmail(context, emailInput.text, passwordInput.text);
+                                                  setState(() {});
+                                                  onUpdate();
+                                                  if (errType == 0) {
+                                                    popupMsg = appLocalizations.translate('complete_sign_in');
+                                                    // ignore: use_build_context_synchronously
+                                                    Navigator.of(context).pop();
+                                                  }
                                                 }
                                               },
                                               child: Text(
-                                                appLocalizations.translate('sign_in'),
+                                                appLocalizations.translate(isSignUpMode ? 'sign_up' : 'sign_in'),
                                                 style: const TextStyle(
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.bold,
@@ -359,77 +373,100 @@ class MainUI {
                                             ),
                                           ),
                                           const SizedBox(height: 20),
-                                          Row(
-                                            children: [
-                                              Expanded(
-                                                child: OutlinedButton(
-                                                  style: OutlinedButton.styleFrom(
-                                                    foregroundColor: palette['onSurface'],
-                                                    side: BorderSide(color: palette['divider']!),
-                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                                  ),
-                                                  onPressed: () async {
-                                                    auth.setScreenSize(screenSize);
-                                                    errType = await auth.signUpEmail(context, emailInput.text, passwordInput.text);
-
-                                                    setState(() {});
-                                                    onUpdate();
-                                                    //print("errType : $errType");
-                                                    if(errType == 0) {
-                                                      popupMsg = appLocalizations.translate('complete_sign_up');
-                                                      // ignore: use_build_context_synchronously
-                                                      Navigator.of(context).pop();
-                                                    }
-                                                  },
-                                                  child: Text(
-                                                    appLocalizations.translate('sign_up'),
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: palette['onSurface'],
+                                          if (isSignUpMode)
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: OutlinedButton.icon(
+                                                    style: OutlinedButton.styleFrom(
+                                                      foregroundColor: palette['onSurface'],
+                                                      side: BorderSide(color: palette['divider']!),
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                      padding: const EdgeInsets.symmetric(vertical: 14),
                                                     ),
-                                                    textAlign: TextAlign.center,
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        isSignUpMode = false;
+                                                        errType = -1;
+                                                      });
+                                                    },
+                                                    icon: const Icon(Icons.arrow_back, size: 16),
+                                                    label: Text(
+                                                      appLocalizations.translate('sign_in'),
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: palette['onSurface'],
+                                                      ),
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                              const SizedBox(width: 12),
-                                              Expanded(
-                                                child: OutlinedButton(
-                                                  style: OutlinedButton.styleFrom(
-                                                    foregroundColor: palette['onSurface'],
-                                                    side: BorderSide(color: palette['divider']!),
-                                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                                    padding: const EdgeInsets.symmetric(vertical: 14),
-                                                  ),
-                                                  onPressed: () async {
-                                                    auth.setScreenSize(screenSize);
-                                                    errType = await auth.resetPasswordEmail(context, emailInput.text);
-
-                                                    setState(() {});
-                                                    onUpdate();
-                                                    //print("errType : $errType");
-                                                    if(errType == 1) {
-                                                      popupMsg = appLocalizations.translate('errMsg_Sign05');
-                                                      // ignore: use_build_context_synchronously
-                                                      Navigator.of(context).pop();
-                                                    }
-                                                  },
-                                                  child: Text(
-                                                    appLocalizations.translate('reset_password'),
-                                                    style: TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight: FontWeight.bold,
-                                                      color: palette['onSurface'],
+                                              ],
+                                            )
+                                          else
+                                            Row(
+                                              children: [
+                                                Expanded(
+                                                  child: OutlinedButton(
+                                                    style: OutlinedButton.styleFrom(
+                                                      foregroundColor: palette['onSurface'],
+                                                      side: BorderSide(color: palette['divider']!),
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                      padding: const EdgeInsets.symmetric(vertical: 14),
                                                     ),
-                                                    textAlign: TextAlign.center,
-                                                    maxLines: 2,
-                                                    softWrap: true,
+                                                    onPressed: () {
+                                                      setState(() {
+                                                        isSignUpMode = true;
+                                                        errType = -1;
+                                                      });
+                                                    },
+                                                    child: Text(
+                                                      appLocalizations.translate('sign_up'),
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: palette['onSurface'],
+                                                      ),
+                                                      textAlign: TextAlign.center,
+                                                    ),
                                                   ),
                                                 ),
-                                              ),
-                                            ],
-                                          ),
+                                                const SizedBox(width: 12),
+                                                Expanded(
+                                                  child: OutlinedButton(
+                                                    style: OutlinedButton.styleFrom(
+                                                      foregroundColor: palette['onSurface'],
+                                                      side: BorderSide(color: palette['divider']!),
+                                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                                    ),
+                                                    onPressed: () async {
+                                                      auth.setScreenSize(screenSize);
+                                                      errType = await auth.resetPasswordEmail(context, emailInput.text);
+
+                                                      setState(() {});
+                                                      onUpdate();
+                                                      if(errType == 1) {
+                                                        popupMsg = appLocalizations.translate('errMsg_Sign05');
+                                                        // ignore: use_build_context_synchronously
+                                                        Navigator.of(context).pop();
+                                                      }
+                                                    },
+                                                    child: Text(
+                                                      appLocalizations.translate('reset_password'),
+                                                      style: TextStyle(
+                                                        fontSize: 14,
+                                                        fontWeight: FontWeight.bold,
+                                                        color: palette['onSurface'],
+                                                      ),
+                                                      textAlign: TextAlign.center,
+                                                      maxLines: 2,
+                                                      softWrap: true,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
                                         ],
                                       ),
                                     ]
