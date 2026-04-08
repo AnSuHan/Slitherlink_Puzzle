@@ -1,6 +1,7 @@
 // ignore_for_file: file_names
 import 'package:firebase_auth/firebase_auth.dart' hide UserInfo;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
@@ -247,6 +248,7 @@ class MainUI {
                                             padding: const EdgeInsets.only(top: 8),
                                             child: TextField(
                                               controller: emailInput,
+                                              onTap: () => SystemChannels.textInput.invokeMethod('TextInput.show'),
                                               style: TextStyle(color: palette['onSurface']),
                                               decoration: InputDecoration(
                                                 border: OutlineInputBorder(
@@ -292,6 +294,7 @@ class MainUI {
                                             padding: const EdgeInsets.only(top: 8.0),
                                             child: TextField(
                                               controller: passwordInput,
+                                              onTap: () => SystemChannels.textInput.invokeMethod('TextInput.show'),
                                               obscureText: obscurePassword,
                                               style: TextStyle(color: palette['onSurface']),
                                               decoration: InputDecoration(
