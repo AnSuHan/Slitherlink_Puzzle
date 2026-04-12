@@ -1750,7 +1750,8 @@ class SquareProvider with ChangeNotifier {
     List<List<int>> edge = await readSquare.readSubmit(puzzle);
     List<List<int>> orig = edge.map((r) => List<int>.from(r)).toList();
 
-    // 작업용 그리드: 1 = 그어짐, 2 = 가상 강제선, 0 = 미정, -1 = 비활성
+    // 작업용 그리드: 1 = 그어짐, 0 = 미정, -1 = 비활성
+    // 가상 강제선(2)을 제거하여 연쇄 추론으로 정답이 노출되는 문제 방지
     List<List<int>> w = edge.map((row) => row.map((v) {
       if (v >= 1) return 1;
       if (v == 0) return 0;
@@ -1763,7 +1764,7 @@ class SquareProvider with ChangeNotifier {
       changed = false;
       iter++;
 
-      // 셀 규칙
+      // 셀 규칙: 이미 그어진 라인 수가 셀 숫자와 같으면 나머지 비활성
       for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
           int num = puzzle[i][j].num;
@@ -1771,15 +1772,13 @@ class SquareProvider with ChangeNotifier {
           List<List<int>> es = [
             [2 * i, j], [2 * i + 2, j], [2 * i + 1, j], [2 * i + 1, j + 1],
           ];
-          int dr = 0, un = 0, xc = 0;
+          int dr = 0, un = 0;
           for (var e in es) {
             int v = w[e[0]][e[1]];
-            if (v == 1 || v == 2) {
+            if (v == 1) {
               dr++;
             } else if (v == 0) {
               un++;
-            } else {
-              xc++;
             }
           }
           if (un == 0) continue;
@@ -1787,15 +1786,12 @@ class SquareProvider with ChangeNotifier {
             for (var e in es) {
               if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
             }
-          } else if (4 - xc == num) {
-            for (var e in es) {
-              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = 2; changed = true; }
-            }
           }
         }
       }
 
       // 꼭짓점 규칙 (차수는 0 또는 2)
+      // 그어진 라인만 기준으로 판단 (가상 강제선 없음)
       for (int vi = 0; vi <= rows; vi++) {
         for (int vj = 0; vj <= cols; vj++) {
           List<List<int>> ve = [];
@@ -1806,7 +1802,7 @@ class SquareProvider with ChangeNotifier {
           int dr = 0, un = 0;
           for (var e in ve) {
             int v = w[e[0]][e[1]];
-            if (v == 1 || v == 2) {
+            if (v == 1) {
               dr++;
             } else if (v == 0) {
               un++;
@@ -1817,10 +1813,6 @@ class SquareProvider with ChangeNotifier {
             for (var e in ve) {
               if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
             }
-          } else if (dr == 1 && un == 1) {
-            for (var e in ve) {
-              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = 2; changed = true; }
-            }
           } else if (dr == 0 && un == 1) {
             for (var e in ve) {
               if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
@@ -1830,7 +1822,7 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
-    // 새로 -1 이 된 칸만 실제 puzzle 에 반영 (가상 강제선 2 는 무시)
+    // 새로 -1 이 된 칸만 실제 puzzle 에 반영
     bool anyChanged = false;
     for (int i = 0; i < edge.length; i++) {
       for (int j = 0; j < edge[i].length; j++) {
