@@ -7,6 +7,8 @@ import '../Answer/Answer.dart';
 import '../Front/EnterScene.dart';
 import '../Front/HowToPlay.dart';
 import '../Scene/GameSceneSquare.dart';
+import '../Scene/GameSceneTriangle.dart';
+import '../Scene/GameSceneHexagon.dart';
 import '../ThemeColor.dart';
 import '../User/Authentication.dart';
 import '../User/UserInfo.dart';
@@ -21,8 +23,8 @@ class MainUI {
   List<String> puzzleMode = ["debug", "release"];
   String selectedMode= "release";
 
-  List<String> puzzleType = ["square", "triangle"];
-  static List<String> _puzzleType = ["square", "triangle"];
+  List<String> puzzleType = ["square", "triangle", "hexagon"];
+  static List<String> _puzzleType = ["square", "triangle", "hexagon"];
   List<String> puzzleSize = ["small", "generate"];
   static List<String> _puzzleSize = ["small", "generate"];
   ///shape, size
@@ -812,7 +814,8 @@ class MainUI {
     //main local
     _puzzleType = [
       appLocalizations.translate('MainUI_puzzleShape_square'),
-      appLocalizations.translate('MainUI_puzzleShape_triangle')
+      appLocalizations.translate('MainUI_puzzleShape_triangle'),
+      appLocalizations.translate('MainUI_puzzleShape_hexagon'),
     ];
     switch(_selectedType[0]) {
       case "square":
@@ -824,6 +827,11 @@ class MainUI {
       case "삼각형":
         _selectedType[0] = appLocalizations.translate('MainUI_puzzleShape_triangle');
         selectedType[0] = "triangle";
+        break;
+      case "hexagon":
+      case "육각형":
+        _selectedType[0] = appLocalizations.translate('MainUI_puzzleShape_hexagon');
+        selectedType[0] = "hexagon";
         break;
     }
     _puzzleSize = [
@@ -1077,6 +1085,11 @@ class MainUI {
       case "삼각형":
         selectedType[0] = "triangle";
         break;
+
+      case "hexagon":
+      case "육각형":
+        selectedType[0] = "hexagon";
+        break;
     }
     onUpdate();
   }
@@ -1219,7 +1232,15 @@ class MainUI {
         Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (context) => GameSceneSquare(isContinue: isContinue, loadKey: key),
+              builder: (context) => GameSceneTriangle(isContinue: isContinue, loadKey: key),
+            )
+        );
+        break;
+      case "hexagon":
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GameSceneHexagon(isContinue: isContinue, loadKey: key),
             )
         );
         break;
@@ -1248,26 +1269,46 @@ class MainUI {
   /// Chip-style puzzle type selector (shape + size)
   Widget getPuzzleTypeChips(BuildContext context, VoidCallback onUpdate, Map<String, Color> palette) {
     applyLanguageCode();
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+
+    List<String> shapes = ["square", "triangle", "hexagon"];
+    List<String> shapeLabels = [
+      appLocalizations.translate('MainUI_puzzleShape_square'),
+      appLocalizations.translate('MainUI_puzzleShape_triangle'),
+      appLocalizations.translate('MainUI_puzzleShape_hexagon'),
+    ];
+    List<IconData> shapeIcons = [Icons.grid_4x4_rounded, Icons.change_history_rounded, Icons.hexagon_outlined];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabel(appLocalizations.translate('MainUI_puzzleShape_square'), palette),
-        ..._buildChipGroup(
-          items: ["small", "generate"],
-          labels: [
-            appLocalizations.translate('MainUI_puzzleSize_small'),
-            appLocalizations.translate('MainUI_puzzleSize_generate'),
-          ],
-          selected: selectedType[1],
-          palette: palette,
-          onSelected: (value) {
-            selectedType[1] = value;
-            _selectedType[1] = value == "small"
-                ? appLocalizations.translate('MainUI_puzzleSize_small')
-                : appLocalizations.translate('MainUI_puzzleSize_generate');
-            onUpdate();
-          },
+        // Shape selector
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: List.generate(shapes.length, (i) {
+            bool isSelected = selectedType[0] == shapes[i];
+            return ChoiceChip(
+              avatar: Icon(shapeIcons[i], size: 18, color: isSelected ? palette['accent'] : palette['onSurfaceDim']),
+              label: Text(shapeLabels[i]),
+              selected: isSelected,
+              selectedColor: palette['accent']!.withOpacity(0.2),
+              backgroundColor: palette['surface']!.withOpacity(0.5),
+              labelStyle: TextStyle(
+                color: isSelected ? palette['accent'] : palette['onSurfaceDim'],
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
+              side: BorderSide(
+                color: isSelected ? palette['accent']! : palette['divider']!,
+                width: isSelected ? 1.5 : 1,
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              onSelected: (_) {
+                selectedType[0] = shapes[i];
+                _selectedType[0] = shapeLabels[i];
+                onUpdate();
+              },
+            );
+          }),
         ),
       ],
     );

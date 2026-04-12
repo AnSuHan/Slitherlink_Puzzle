@@ -295,6 +295,12 @@ class _MainScreenContent extends StatelessWidget {
                               ),
                               const SizedBox(height: 20),
 
+                              // Puzzle shape selector
+                              _miniLabel(loc.translate('MainUI_puzzleShape'), palette),
+                              const SizedBox(height: 8),
+                              _shapeSelector(palette, isDark, prov),
+                              const SizedBox(height: 16),
+
                               // Difficulty selector
                               _miniLabel(loc.translate('MainUI_difficulty'), palette),
                               const SizedBox(height: 8),
@@ -475,6 +481,59 @@ class _MainScreenContent extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  // Puzzle shape selector
+  Widget _shapeSelector(Map<String, Color> palette, bool isDark, MainScreenProvider prov) {
+    final items = [
+      {"key": "square", "icon": Icons.grid_4x4_rounded, "color": const Color(0xFF42A5F5)},
+      {"key": "triangle", "icon": Icons.change_history_rounded, "color": const Color(0xFF66BB6A)},
+      {"key": "hexagon", "icon": Icons.hexagon_outlined, "color": const Color(0xFFAB47BC)},
+    ];
+    return Row(
+      children: items.map((item) {
+        String key = item["key"] as String;
+        bool isSelected = MainUI.selectedType[0] == key;
+        Color color = item["color"] as Color;
+
+        return Expanded(
+          child: GestureDetector(
+            onTap: () {
+              MainUI.selectedType[0] = key;
+              prov.refresh();
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: EdgeInsets.only(right: key != "hexagon" ? 8 : 0),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected ? color.withOpacity(0.15) : (isDark ? const Color(0xFF2A2A4A) : const Color(0xFFF0F0F5)),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isSelected ? color : Colors.transparent,
+                  width: 2,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Icon(item["icon"] as IconData, color: isSelected ? color : palette['onSurfaceDim'], size: 20),
+                  const SizedBox(height: 2),
+                  Text(
+                    loc.translate('MainUI_puzzleShape_$key'),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
+                      color: isSelected ? color : palette['onSurfaceDim'],
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
