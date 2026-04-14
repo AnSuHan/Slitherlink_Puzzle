@@ -2279,15 +2279,16 @@ class SquareProvider with ChangeNotifier {
 
   ///enable이 true로 호출되는 경우 호출되는 함수
   ///
-  ///findBlockEnableDisable의 checkCurrentPath()에서 다시 계산을 할 수 있도록 모든 -1 값을 0으로 변경
+  ///셀 주변의 -1 을 0 으로 되돌리고 checkMaxLine() 을 돌려 제약을 재적용한다.
   ///
-  ///setLineEnable() 호출 직후 checkMaxLine()를 호출함
+  ///순서가 중요: 먼저 스테일 -1 을 clear 해서 재평가를 가능하게 한 뒤, checkMaxLine 이
+  ///현재 상태 기반으로 다시 -1 을 올바르게 마킹하도록 한다. (역순이면 방금 세팅한 -1 이
+  ///즉시 지워진 채 끝나는 경우가 발생한다.)
   Future<bool> setLineEnable(int row, int col) async {
     if(UserInfo.debugMode["print_methodName"]!) {
       // ignore: avoid_print
       print("call setLineEnable($row, $col)");
     }
-    await checkMaxLine();
     bool isChanged = false;
 
     if(row != 0 && col != 0) {
@@ -2363,6 +2364,7 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
+    await checkMaxLine();
     return isChanged;
   }
 }
