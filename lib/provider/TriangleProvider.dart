@@ -148,11 +148,11 @@ class TriangleProvider with ChangeNotifier {
     _undoStack.add(submit.map((r) => List<int>.from(r)).toList());
     _redoStack.clear();
 
-    // Update the puzzle widget
-    switch (edgeIdx) {
-      case 0: puzzle[row][idx].edge0 = value; break;
-      case 1: puzzle[row][idx].edge1 = value; break;
-      case 2: puzzle[row][idx].edge2 = value; break;
+    // Update the tapped triangle and its shared neighbor (edge-sharing rule)
+    _setEdgeValue(row, idx, edgeIdx, value);
+    final mirror = _sharedEdge(row, idx, edgeIdx);
+    if (mirror != null) {
+      _setEdgeValue(mirror[0], mirror[1], mirror[2], value);
     }
 
     // Update submit data
@@ -161,6 +161,49 @@ class TriangleProvider with ChangeNotifier {
 
     // Check completion
     _checkComplete();
+  }
+
+  /// Write a single triangle-local edge value without side effects.
+  void _setEdgeValue(int row, int idx, int edgeIdx, int value) {
+    switch (edgeIdx) {
+      case 0: puzzle[row][idx].edge0 = value; break;
+      case 1: puzzle[row][idx].edge1 = value; break;
+      case 2: puzzle[row][idx].edge2 = value; break;
+    }
+  }
+
+  /// Map a triangle-local edge to the neighbouring triangle's equivalent edge,
+  /// following `TriangleGenerator` vertex semantics:
+  ///   Up(r, 2c):   e0=(TL,TR) top,  e1=(TR,BL) diagonal, e2=(TL,BL) left
+  ///   Down(r,2c+1):e0=(TR,BL) diag, e1=(BL,BR) bottom,   e2=(TR,BR) right
+  /// Returns [row, idx, edgeIdx] of the shared neighbour, or null on boundary.
+  List<int>? _sharedEdge(int row, int idx, int edgeIdx) {
+    final bool isUp = idx % 2 == 0;
+    final int c = idx ~/ 2;
+    if (isUp) {
+      switch (edgeIdx) {
+        case 0: // top horizontal ↔ Down(r-1, 2c+1).e1 (bottom horizontal of above-down)
+          if (row - 1 >= 0) return [row - 1, 2 * c + 1, 1];
+          return null;
+        case 1: // diagonal ↔ Down(r, 2c+1).e0
+          return [row, 2 * c + 1, 0];
+        case 2: // left vertical ↔ Down(r, 2c-1).e2
+          if (c > 0) return [row, 2 * c - 1, 2];
+          return null;
+      }
+    } else {
+      switch (edgeIdx) {
+        case 0: // diagonal ↔ Up(r, 2c).e1
+          return [row, 2 * c, 1];
+        case 1: // bottom horizontal ↔ Up(r+1, 2c).e0
+          if (row + 1 < rows) return [row + 1, 2 * c, 0];
+          return null;
+        case 2: // right vertical ↔ Up(r, 2(c+1)).e2
+          if (c + 1 < cols) return [row, 2 * (c + 1), 2];
+          return null;
+      }
+    }
+    return null;
   }
 
   void _checkComplete() {
@@ -251,11 +294,10 @@ class TriangleProvider with ChangeNotifier {
         int base = i * 3;
         for (int e = 0; e < 3; e++) {
           if (answer[r][base + e] == 1 && submit[r][base + e] <= 0) {
-            // Show this edge as hint
-            switch (e) {
-              case 0: puzzle[r][i].edge0 = -3; break;
-              case 1: puzzle[r][i].edge1 = -3; break;
-              case 2: puzzle[r][i].edge2 = -3; break;
+            _setEdgeValue(r, i, e, -3);
+            final mirror = _sharedEdge(r, i, e);
+            if (mirror != null) {
+              _setEdgeValue(mirror[0], mirror[1], mirror[2], -3);
             }
             notifyListeners();
             return;
