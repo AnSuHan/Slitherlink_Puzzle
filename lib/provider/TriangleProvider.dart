@@ -57,6 +57,7 @@ class TriangleProvider with ChangeNotifier {
 
   Future<void> init() async {
     _buildPuzzle();
+    _applyConstraints();
     notifyListeners();
   }
 
@@ -155,12 +156,159 @@ class TriangleProvider with ChangeNotifier {
       _setEdgeValue(mirror[0], mirror[1], mirror[2], value);
     }
 
+    // Re-derive auto-disable (-1) marks based on cell + vertex constraints
+    _applyConstraints();
+
     // Update submit data
     submit = _readSubmit();
     notifyListeners();
 
     // Check completion
     _checkComplete();
+  }
+
+  int _getEdge(int row, int idx, int edgeIdx) {
+    switch (edgeIdx) {
+      case 0: return puzzle[row][idx].edge0;
+      case 1: return puzzle[row][idx].edge1;
+      case 2: return puzzle[row][idx].edge2;
+    }
+    return 0;
+  }
+
+  /// Constraint propagation entry point. Wipes prior auto-disables (-1) and
+  /// then iterates the cell rule and vertex-degree rule until a fixed point.
+  /// User annotations (-2, -4) are preserved throughout.
+  void _applyConstraints() {
+    // Step 1: wipe prior -1 so rules can re-evaluate cleanly.
+    for (int r = 0; r < rows; r++) {
+      for (int i = 0; i < triPerRow; i++) {
+        for (int e = 0; e < 3; e++) {
+          if (_getEdge(r, i, e) == -1) _setEdgeValue(r, i, e, 0);
+        }
+      }
+    }
+
+    // Step 2: iterate rules until no more changes (or iteration cap).
+    for (int iter = 0; iter < 30; iter++) {
+      bool changed = false;
+      if (_runCellRule()) changed = true;
+      if (_runVertexRule()) changed = true;
+      if (!changed) break;
+    }
+  }
+
+  /// Cell rule: if drawn edge count (value ≥ 1) reaches the clue number,
+  /// remaining undecided (value 0) edges become -1.
+  bool _runCellRule() {
+    bool anyChange = false;
+    for (int r = 0; r < rows; r++) {
+      for (int i = 0; i < triPerRow; i++) {
+        final int num = puzzle[r][i].num;
+        int active = 0;
+        for (int e = 0; e < 3; e++) {
+          if (_getEdge(r, i, e) >= 1) active++;
+        }
+        if (active < num) continue;
+        for (int e = 0; e < 3; e++) {
+          if (_getEdge(r, i, e) == 0) {
+            _setEdgeValue(r, i, e, -1);
+            final m = _sharedEdge(r, i, e);
+            if (m != null) _setEdgeValue(m[0], m[1], m[2], -1);
+            anyChange = true;
+          }
+        }
+      }
+    }
+    return anyChange;
+  }
+
+  /// Vertex-degree rule: a Slitherlink vertex must end at degree 0 or 2.
+  /// If two edges at a vertex are already drawn, remaining undecided edges
+  /// become -1. If fewer than two edges can possibly be drawn (active +
+  /// undecided < 2), the remaining undecided edges also become -1.
+  bool _runVertexRule() {
+    bool anyChange = false;
+    for (int vr = 0; vr <= rows; vr++) {
+      for (int vc = 0; vc <= cols; vc++) {
+        final edges = _incidentEdges(vr, vc);
+        if (edges.isEmpty) continue;
+
+        int active = 0, undecided = 0;
+        for (final e in edges) {
+          final v = _getEdge(e[0], e[1], e[2]);
+          if (v >= 1) {
+            active++;
+          } else if (v == 0) {
+            undecided++;
+          }
+        }
+
+        final bool satisfied = active >= 2;
+        final bool starved = active + undecided < 2;
+        if (!satisfied && !starved) continue;
+
+        for (final e in edges) {
+          if (_getEdge(e[0], e[1], e[2]) == 0) {
+            _setEdgeValue(e[0], e[1], e[2], -1);
+            final m = _sharedEdge(e[0], e[1], e[2]);
+            if (m != null) _setEdgeValue(m[0], m[1], m[2], -1);
+            anyChange = true;
+          }
+        }
+      }
+    }
+    return anyChange;
+  }
+
+  /// Return one (row, idx, edgeIdx) representative per unique edge incident
+  /// to grid vertex v(vr, vc). Up to six edges for interior vertices; fewer
+  /// at boundaries. Picks whichever adjacent triangle is in bounds.
+  List<List<int>> _incidentEdges(int vr, int vc) {
+    final List<List<int>> out = [];
+
+    // v(vr,vc) → v(vr, vc-1): horizontal to the left
+    if (vc > 0) {
+      if (vr < rows) {
+        out.add([vr, 2 * (vc - 1), 0]);          // Up(vr, 2(vc-1)).e0
+      } else if (vr > 0) {
+        out.add([vr - 1, 2 * vc - 1, 1]);        // Down(vr-1, 2vc-1).e1
+      }
+    }
+    // v(vr,vc) → v(vr, vc+1): horizontal to the right
+    if (vc < cols) {
+      if (vr < rows) {
+        out.add([vr, 2 * vc, 0]);                // Up(vr, 2vc).e0
+      } else if (vr > 0) {
+        out.add([vr - 1, 2 * vc + 1, 1]);        // Down(vr-1, 2vc+1).e1
+      }
+    }
+    // v(vr,vc) → v(vr-1, vc): vertical upward
+    if (vr > 0) {
+      if (vc < cols) {
+        out.add([vr - 1, 2 * vc, 2]);            // Up(vr-1, 2vc).e2
+      } else if (vc > 0) {
+        out.add([vr - 1, 2 * vc - 1, 2]);        // Down(vr-1, 2vc-1).e2
+      }
+    }
+    // v(vr,vc) → v(vr+1, vc): vertical downward
+    if (vr < rows) {
+      if (vc < cols) {
+        out.add([vr, 2 * vc, 2]);                // Up(vr, 2vc).e2
+      } else if (vc > 0) {
+        out.add([vr, 2 * vc - 1, 2]);            // Down(vr, 2vc-1).e2
+      }
+    }
+    // v(vr,vc) → v(vr-1, vc+1): diagonal up-right
+    if (vr > 0 && vc < cols) {
+      out.add([vr - 1, 2 * vc, 1]);              // Up(vr-1, 2vc).e1
+    }
+    // v(vr,vc) → v(vr+1, vc-1): diagonal down-left
+    if (vr < rows && vc > 0) {
+      out.add([vr, 2 * (vc - 1), 1]);            // Up(vr, 2(vc-1)).e1
+    }
+
+    return out;
   }
 
   /// Write a single triangle-local edge value without side effects.
@@ -257,6 +405,7 @@ class TriangleProvider with ChangeNotifier {
     _redoStack.add(submit.map((r) => List<int>.from(r)).toList());
     submit = _undoStack.removeLast();
     _applySubmit();
+    _applyConstraints();
     notifyListeners();
   }
 
@@ -265,6 +414,7 @@ class TriangleProvider with ChangeNotifier {
     _undoStack.add(submit.map((r) => List<int>.from(r)).toList());
     submit = _redoStack.removeLast();
     _applySubmit();
+    _applyConstraints();
     notifyListeners();
   }
 
@@ -277,6 +427,7 @@ class TriangleProvider with ChangeNotifier {
       }
     }
     _applySubmit();
+    _applyConstraints();
     notifyListeners();
   }
 
