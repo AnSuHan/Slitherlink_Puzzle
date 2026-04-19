@@ -328,7 +328,7 @@ class HowToPlayState extends State<HowToPlay> {
       case -3:
         _provider.setLineColorBox(1, 1, "down", isOn ? -3 : 0);
         break;
-    }
+      }
     switch(_provider.getLineColorBox(0, 1, "down")) {
       case 0:
       case -3:

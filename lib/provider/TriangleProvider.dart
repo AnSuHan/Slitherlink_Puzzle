@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import '../MakePuzzle/TriangleGenerator.dart';
 import '../Platform/ExtractData.dart'
   if (dart.library.html) '../Platform/ExtractDataWeb.dart';
 import '../ThemeColor.dart';
@@ -12,6 +11,16 @@ import '../l10n/app_localizations.dart';
 import '../widgets/MainUI.dart';
 import '../widgets/TriangleBox.dart';
 
+/// State + constraint engine for the equilateral-triangle zigzag Slitherlink.
+///
+/// The geometry is shared with `TrianglePuzzle` / `TriangleGenerator`:
+///   • `isUp(r, i) = (r + i).isEven` — orientation flips every row AND column,
+///     giving the ▲▽▲▽ / ▽▲▽▲ zigzag that tiles without gaps.
+///   • Vertex grid: v(vr, vi) with `vi ∈ [0, triPerRow + 1]`, positioned at
+///     `(vi * w/2, vr * h)`. A vertex exists only when `vr + vi` is odd.
+///   • Edge indices (matching the painter):
+///       Up:   e0=base,   e1=left-diagonal, e2=right-diagonal
+///       Down: e0=top,    e1=left-diagonal, e2=right-diagonal
 class TriangleProvider with ChangeNotifier {
   late BuildContext context;
   final String loadKey;
@@ -30,6 +39,8 @@ class TriangleProvider with ChangeNotifier {
   int cols = 0;
   int get triPerRow => 2 * cols;
 
+  bool isUp(int row, int idx) => (row + idx).isEven;
+
   /// puzzle[row][idx] = TriangleBox widget
   List<List<TriangleBox>> puzzle = [];
 
@@ -42,13 +53,13 @@ class TriangleProvider with ChangeNotifier {
   List<Widget> triangleField = [];
 
   /// Undo/redo stacks
-  List<List<List<int>>> _undoStack = [];
-  List<List<List<int>>> _redoStack = [];
+  final List<List<List<int>>> _undoStack = [];
+  final List<List<List<int>>> _redoStack = [];
 
   void setAnswer(List<List<int>> answer) {
     this.answer = answer;
     rows = answer.length;
-    cols = answer[0].length ~/ 6; // each triangle has 3 edges, 2*cols triangles per row => 6*cols values
+    cols = answer[0].length ~/ 6; // triPerRow * 3 = 6 * cols
   }
 
   void setSubmit(List<List<int>> submit) {
@@ -66,47 +77,54 @@ class TriangleProvider with ChangeNotifier {
     triangleField = [];
 
     for (int r = 0; r < rows; r++) {
-      List<TriangleBox> row = [];
+      final List<TriangleBox> row = [];
       for (int i = 0; i < triPerRow; i++) {
-        bool isUp = i % 2 == 0;
-        TriangleBox box = TriangleBox(row: r, idx: i, isUp: isUp);
+        final TriangleBox box = TriangleBox(row: r, idx: i, isUp: isUp(r, i));
         row.add(box);
       }
       puzzle.add(row);
     }
 
-    // Apply answer to set numbers
     _setNumbers();
+    if (isContinue) _applySubmit();
 
-    // Apply submit state if continuing
-    if (isContinue) {
-      _applySubmit();
-    }
+    // Equilateral zigzag layout: triangle (r, i) occupies the box at
+    // (i * w/2, r * h). Overlap between Up and Down at adjacent i is handled
+    // by the painter's hitTest so taps on triangle-exterior pixels fall
+    // through to the underlying neighbour.
+    const double w = TriangleBoxState.cellSize;
+    const double h = TriangleBoxState.cellSize * TriangleBoxState.heightRatio;
+    final double stackWidth = (triPerRow + 1) * w / 2;
+    final double stackHeight = rows * h;
 
-    // Build widget tree
+    final List<Widget> positioned = [];
     for (int r = 0; r < rows; r++) {
-      List<Widget> rowChildren = [];
       for (int i = 0; i < triPerRow; i++) {
-        bool isUp = i % 2 == 0;
-        rowChildren.add(Transform.translate(
-          offset: Offset(0, isUp ? 0 : -TriangleBoxState.cellSize * 0.866 * 0.0),
+        positioned.add(Positioned(
+          left: i * w / 2,
+          top: r * h,
+          width: w,
+          height: h,
           child: puzzle[r][i],
         ));
       }
-      triangleField.add(Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: rowChildren,
-      ));
     }
+
+    triangleField.add(SizedBox(
+      width: stackWidth,
+      height: stackHeight,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: positioned,
+      ),
+    ));
   }
 
   void _setNumbers() {
     for (int r = 0; r < rows; r++) {
       for (int i = 0; i < triPerRow; i++) {
-        // Count active answer edges for this triangle
         int count = 0;
-        int base = i * 3;
+        final int base = i * 3;
         for (int e = 0; e < 3; e++) {
           if (answer[r][base + e] == 1) count++;
         }
@@ -118,7 +136,7 @@ class TriangleProvider with ChangeNotifier {
   void _applySubmit() {
     for (int r = 0; r < rows; r++) {
       for (int i = 0; i < triPerRow; i++) {
-        int base = i * 3;
+        final int base = i * 3;
         puzzle[r][i].edge0 = submit[r][base];
         puzzle[r][i].edge1 = submit[r][base + 1];
         puzzle[r][i].edge2 = submit[r][base + 2];
@@ -126,11 +144,10 @@ class TriangleProvider with ChangeNotifier {
     }
   }
 
-  /// Read current state from puzzle widgets
   List<List<int>> _readSubmit() {
-    List<List<int>> result = [];
+    final List<List<int>> result = [];
     for (int r = 0; r < rows; r++) {
-      List<int> rowData = [];
+      final List<int> rowData = [];
       for (int i = 0; i < triPerRow; i++) {
         rowData.add(puzzle[r][i].edge0);
         rowData.add(puzzle[r][i].edge1);
@@ -145,25 +162,20 @@ class TriangleProvider with ChangeNotifier {
 
   /// Called when user taps an edge
   Future<void> updateEdge(int row, int idx, int edgeIdx, int value) async {
-    // Save undo state
     _undoStack.add(submit.map((r) => List<int>.from(r)).toList());
     _redoStack.clear();
 
-    // Update the tapped triangle and its shared neighbor (edge-sharing rule)
     _setEdgeValue(row, idx, edgeIdx, value);
     final mirror = _sharedEdge(row, idx, edgeIdx);
     if (mirror != null) {
       _setEdgeValue(mirror[0], mirror[1], mirror[2], value);
     }
 
-    // Re-derive auto-disable (-1) marks based on cell + vertex constraints
     _applyConstraints();
 
-    // Update submit data
     submit = _readSubmit();
     notifyListeners();
 
-    // Check completion
     _checkComplete();
   }
 
@@ -180,7 +192,6 @@ class TriangleProvider with ChangeNotifier {
   /// then iterates the cell rule and vertex-degree rule until a fixed point.
   /// User annotations (-2, -4) are preserved throughout.
   void _applyConstraints() {
-    // Step 1: wipe prior -1 so rules can re-evaluate cleanly.
     for (int r = 0; r < rows; r++) {
       for (int i = 0; i < triPerRow; i++) {
         for (int e = 0; e < 3; e++) {
@@ -189,7 +200,6 @@ class TriangleProvider with ChangeNotifier {
       }
     }
 
-    // Step 2: iterate rules until no more changes (or iteration cap).
     for (int iter = 0; iter < 30; iter++) {
       bool changed = false;
       if (_runCellRule()) changed = true;
@@ -230,8 +240,9 @@ class TriangleProvider with ChangeNotifier {
   bool _runVertexRule() {
     bool anyChange = false;
     for (int vr = 0; vr <= rows; vr++) {
-      for (int vc = 0; vc <= cols; vc++) {
-        final edges = _incidentEdges(vr, vc);
+      for (int vi = 0; vi <= triPerRow + 1; vi++) {
+        if ((vr + vi).isEven) continue; // only vr+vi odd are real vertices
+        final edges = _incidentEdges(vr, vi);
         if (edges.isEmpty) continue;
 
         int active = 0, undecided = 0;
@@ -261,51 +272,72 @@ class TriangleProvider with ChangeNotifier {
     return anyChange;
   }
 
-  /// Return one (row, idx, edgeIdx) representative per unique edge incident
-  /// to grid vertex v(vr, vc). Up to six edges for interior vertices; fewer
-  /// at boundaries. Picks whichever adjacent triangle is in bounds.
-  List<List<int>> _incidentEdges(int vr, int vc) {
+  /// One (row, idx, edgeIdx) representative per unique edge incident to v(vr, vi).
+  /// Up to six edges for an interior vertex; fewer at the boundary.
+  ///
+  /// Six possible directions (prefers the "lower/nearer" triangle; falls back
+  /// to the other representative when the first is out of bounds):
+  ///   1. up-right diagonal  → Up(vr-1, vi).e1      | Down(vr-1, vi-1).e2
+  ///   2. right horizontal   → Down(vr, vi).e0      | Up(vr-1, vi).e0
+  ///   3. down-right diagonal→ Down(vr, vi).e1      | Up(vr, vi-1).e2
+  ///   4. down-left diagonal → Up(vr, vi-1).e1      | Down(vr, vi-2).e2
+  ///   5. left horizontal    → Down(vr, vi-2).e0    | Up(vr-1, vi-2).e0
+  ///   6. up-left diagonal   → Down(vr-1, vi-1).e1  | Up(vr-1, vi-2).e2
+  List<List<int>> _incidentEdges(int vr, int vi) {
     final List<List<int>> out = [];
 
-    // v(vr,vc) → v(vr, vc-1): horizontal to the left
-    if (vc > 0) {
-      if (vr < rows) {
-        out.add([vr, 2 * (vc - 1), 0]);          // Up(vr, 2(vc-1)).e0
-      } else if (vr > 0) {
-        out.add([vr - 1, 2 * vc - 1, 1]);        // Down(vr-1, 2vc-1).e1
+    // 1. up-right
+    if (vr >= 1) {
+      if (vi < triPerRow) {
+        out.add([vr - 1, vi, 1]);
+      } else if (vi - 1 >= 0 && vi - 1 < triPerRow) {
+        out.add([vr - 1, vi - 1, 2]);
       }
     }
-    // v(vr,vc) → v(vr, vc+1): horizontal to the right
-    if (vc < cols) {
-      if (vr < rows) {
-        out.add([vr, 2 * vc, 0]);                // Up(vr, 2vc).e0
-      } else if (vr > 0) {
-        out.add([vr - 1, 2 * vc + 1, 1]);        // Down(vr-1, 2vc+1).e1
+
+    // 2. right horizontal
+    if (vi + 2 <= triPerRow + 1) {
+      if (vr < rows && vi < triPerRow) {
+        out.add([vr, vi, 0]);
+      } else if (vr >= 1 && vi < triPerRow) {
+        out.add([vr - 1, vi, 0]);
       }
     }
-    // v(vr,vc) → v(vr-1, vc): vertical upward
-    if (vr > 0) {
-      if (vc < cols) {
-        out.add([vr - 1, 2 * vc, 2]);            // Up(vr-1, 2vc).e2
-      } else if (vc > 0) {
-        out.add([vr - 1, 2 * vc - 1, 2]);        // Down(vr-1, 2vc-1).e2
-      }
-    }
-    // v(vr,vc) → v(vr+1, vc): vertical downward
+
+    // 3. down-right
     if (vr < rows) {
-      if (vc < cols) {
-        out.add([vr, 2 * vc, 2]);                // Up(vr, 2vc).e2
-      } else if (vc > 0) {
-        out.add([vr, 2 * vc - 1, 2]);            // Down(vr, 2vc-1).e2
+      if (vi < triPerRow) {
+        out.add([vr, vi, 1]);
+      } else if (vi - 1 >= 0 && vi - 1 < triPerRow) {
+        out.add([vr, vi - 1, 2]);
       }
     }
-    // v(vr,vc) → v(vr-1, vc+1): diagonal up-right
-    if (vr > 0 && vc < cols) {
-      out.add([vr - 1, 2 * vc, 1]);              // Up(vr-1, 2vc).e1
+
+    // 4. down-left
+    if (vr < rows && vi >= 1) {
+      if (vi - 1 < triPerRow) {
+        out.add([vr, vi - 1, 1]);
+      } else if (vi - 2 >= 0 && vi - 2 < triPerRow) {
+        out.add([vr, vi - 2, 2]);
+      }
     }
-    // v(vr,vc) → v(vr+1, vc-1): diagonal down-left
-    if (vr < rows && vc > 0) {
-      out.add([vr, 2 * (vc - 1), 1]);            // Up(vr, 2(vc-1)).e1
+
+    // 5. left horizontal
+    if (vi >= 2) {
+      if (vr < rows && vi - 2 < triPerRow) {
+        out.add([vr, vi - 2, 0]);
+      } else if (vr >= 1 && vi - 2 < triPerRow) {
+        out.add([vr - 1, vi - 2, 0]);
+      }
+    }
+
+    // 6. up-left
+    if (vr >= 1 && vi >= 1) {
+      if (vi - 1 < triPerRow) {
+        out.add([vr - 1, vi - 1, 1]);
+      } else if (vi - 2 >= 0 && vi - 2 < triPerRow) {
+        out.add([vr - 1, vi - 2, 2]);
+      }
     }
 
     return out;
@@ -320,34 +352,38 @@ class TriangleProvider with ChangeNotifier {
     }
   }
 
-  /// Map a triangle-local edge to the neighbouring triangle's equivalent edge,
-  /// following `TriangleGenerator` vertex semantics:
-  ///   Up(r, 2c):   e0=(TL,TR) top,  e1=(TR,BL) diagonal, e2=(TL,BL) left
-  ///   Down(r,2c+1):e0=(TR,BL) diag, e1=(BL,BR) bottom,   e2=(TR,BR) right
-  /// Returns [row, idx, edgeIdx] of the shared neighbour, or null on boundary.
+  /// Map a triangle-local edge to the neighbouring triangle's equivalent edge.
+  /// Geometry (matches the painter, `isUp = (r+i).isEven`):
+  ///   Up:   e0=base  (r+1 side) ↔ Down(r+1, i).e0
+  ///         e1=left-diag         ↔ Down(r, i-1).e2
+  ///         e2=right-diag        ↔ Down(r, i+1).e1
+  ///   Down: e0=top   (r-1 side) ↔ Up(r-1, i).e0
+  ///         e1=left-diag         ↔ Up(r, i-1).e2
+  ///         e2=right-diag        ↔ Up(r, i+1).e1
+  /// Returns null when the neighbour is off-grid.
   List<int>? _sharedEdge(int row, int idx, int edgeIdx) {
-    final bool isUp = idx % 2 == 0;
-    final int c = idx ~/ 2;
-    if (isUp) {
+    if (isUp(row, idx)) {
       switch (edgeIdx) {
-        case 0: // top horizontal ↔ Down(r-1, 2c+1).e1 (bottom horizontal of above-down)
-          if (row - 1 >= 0) return [row - 1, 2 * c + 1, 1];
+        case 0:
+          if (row + 1 < rows) return [row + 1, idx, 0];
           return null;
-        case 1: // diagonal ↔ Down(r, 2c+1).e0
-          return [row, 2 * c + 1, 0];
-        case 2: // left vertical ↔ Down(r, 2c-1).e2
-          if (c > 0) return [row, 2 * c - 1, 2];
+        case 1:
+          if (idx - 1 >= 0) return [row, idx - 1, 2];
+          return null;
+        case 2:
+          if (idx + 1 < triPerRow) return [row, idx + 1, 1];
           return null;
       }
     } else {
       switch (edgeIdx) {
-        case 0: // diagonal ↔ Up(r, 2c).e1
-          return [row, 2 * c, 1];
-        case 1: // bottom horizontal ↔ Up(r+1, 2c).e0
-          if (row + 1 < rows) return [row + 1, 2 * c, 0];
+        case 0:
+          if (row - 1 >= 0) return [row - 1, idx, 0];
           return null;
-        case 2: // right vertical ↔ Up(r, 2(c+1)).e2
-          if (c + 1 < cols) return [row, 2 * (c + 1), 2];
+        case 1:
+          if (idx - 1 >= 0) return [row, idx - 1, 2];
+          return null;
+        case 2:
+          if (idx + 1 < triPerRow) return [row, idx + 1, 1];
           return null;
       }
     }
@@ -357,19 +393,16 @@ class TriangleProvider with ChangeNotifier {
   void _checkComplete() {
     for (int r = 0; r < rows; r++) {
       for (int i = 0; i < triPerRow; i++) {
-        int base = i * 3;
+        final int base = i * 3;
         for (int e = 0; e < 3; e++) {
-          int ansVal = answer[r][base + e];
-          int subVal = submit[r][base + e];
-          // Answer edge is 1, submit must be >= 1 (any color)
+          final int ansVal = answer[r][base + e];
+          final int subVal = submit[r][base + e];
           if (ansVal == 1 && subVal <= 0) return;
-          // Answer edge is 0, submit must be <= 0 (not drawn)
           if (ansVal == 0 && subVal >= 1) return;
         }
       }
     }
 
-    // Puzzle complete!
     showComplete(context);
   }
 
@@ -431,18 +464,16 @@ class TriangleProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Save progress
   Future<void> saveProgress() async {
     submit = _readSubmit();
     final prefs = ExtractData();
     await prefs.saveDataToLocal("${MainUI.getProgressKey()}_continue", jsonEncode(submit));
   }
 
-  /// Show hint: find a missing edge and flash it
   Future<void> showHint(BuildContext context) async {
     for (int r = 0; r < rows; r++) {
       for (int i = 0; i < triPerRow; i++) {
-        int base = i * 3;
+        final int base = i * 3;
         for (int e = 0; e < 3; e++) {
           if (answer[r][base + e] == 1 && submit[r][base + e] <= 0) {
             _setEdgeValue(r, i, e, -3);

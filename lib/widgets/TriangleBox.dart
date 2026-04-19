@@ -6,12 +6,18 @@ import '../ThemeColor.dart';
 import '../provider/TriangleProvider.dart';
 
 /// A single triangle cell in the Slitherlink triangle grid.
-/// Up triangles ▲ have edges: 0=top, 1=left, 2=right
-/// Down triangles ▽ have edges: 0=bottom, 1=left, 2=right
+///
+/// Edge semantics (shared with `TriangleProvider` / `TrianglePuzzle`):
+///   Up ▲:   e0 = base (bottom horizontal)
+///           e1 = left diagonal (apex ↘ bottom-left)
+///           e2 = right diagonal (apex ↘ bottom-right)
+///   Down ▽: e0 = top (horizontal)
+///           e1 = left diagonal (top-left ↘ apex)
+///           e2 = right diagonal (top-right ↘ apex)
 // ignore: must_be_immutable
 class TriangleBox extends StatefulWidget {
   final int row;
-  final int idx; // triangle index within row (0..2*cols-1)
+  final int idx;
   final bool isUp;
 
   /// Edge values: 0=normal, 1+=selected, -1=disable, -3=hint, -4=x, -5=wrong hint
@@ -59,8 +65,10 @@ class TriangleBoxState extends State<TriangleBox> with SingleTickerProviderState
     super.dispose();
   }
 
+  /// Width of one triangle's bounding box. An equilateral triangle has
+  /// height w * sqrt(3)/2 ≈ w * 0.866.
   static const double cellSize = 50.0;
-  static const double edgeThickness = 8.0;
+  static const double heightRatio = 0.866;
 
   int _cycleEdge(int current) {
     if (current == 0 || current == -3) return 1;
@@ -99,9 +107,13 @@ class TriangleBoxState extends State<TriangleBox> with SingleTickerProviderState
           animation: _hintAnimation,
           builder: (context, child) {
             return GestureDetector(
+              // deferToChild → only claim hits that pass the painter's
+              // triangle-interior check. Clicks in the rectangle's corners
+              // (outside the triangle) fall through to the Stack neighbour.
+              behavior: HitTestBehavior.deferToChild,
               onTapUp: (details) => _handleTap(details, provider),
               child: CustomPaint(
-                size: const Size(cellSize, cellSize * 0.866),
+                size: const Size(cellSize, cellSize * heightRatio),
                 painter: _TrianglePainter(
                   isUp: widget.isUp,
                   edge0: widget.edge0,
@@ -122,11 +134,10 @@ class TriangleBoxState extends State<TriangleBox> with SingleTickerProviderState
 
   void _handleTap(TapUpDetails details, TriangleProvider provider) {
     final pos = details.localPosition;
-    final w = cellSize;
-    final h = cellSize * 0.866;
+    const double w = cellSize;
+    const double h = cellSize * heightRatio;
 
-    // Determine which edge was tapped based on position within the triangle
-    int edgeIdx = _hitTestEdge(pos, w, h);
+    final int edgeIdx = _hitTestEdge(pos, w, h);
     if (edgeIdx < 0) return;
 
     setState(() {
@@ -143,33 +154,64 @@ class TriangleBoxState extends State<TriangleBox> with SingleTickerProviderState
       }
     });
 
-    int value = edgeIdx == 0 ? widget.edge0 : edgeIdx == 1 ? widget.edge1 : widget.edge2;
+    final int value =
+        edgeIdx == 0 ? widget.edge0 : edgeIdx == 1 ? widget.edge1 : widget.edge2;
     provider.updateEdge(widget.row, widget.idx, edgeIdx, value);
   }
 
-  /// Hit test: which edge (0, 1, 2) was tapped?
+  /// Pick the edge (0, 1, 2) whose line segment is closest to the tap point.
+  /// The painter's hitTest has already verified the tap is inside the triangle
+  /// before this method runs.
   int _hitTestEdge(Offset pos, double w, double h) {
-    // For up triangle ▲: edge0=top(horizontal), edge1=left(diagonal), edge2=right(diagonal)
-    // For down triangle ▽: edge0=bottom(horizontal), edge1=left(diagonal), edge2=right(diagonal)
-    double x = pos.dx;
-    double y = pos.dy;
-    double cx = w / 2;
+    return pickClosestEdge(widget.isUp, pos, w, h);
+  }
 
-    if (widget.isUp) {
-      // Top edge region: upper 1/3
-      if (y < h * 0.33) return 0;
-      // Left edge: left of center
-      if (x < cx) return 1;
-      // Right edge: right of center
-      return 2;
-    } else {
-      // Bottom edge region: lower 1/3
-      if (y > h * 0.67) return 0;
-      // Left edge: left of center
-      if (x < cx) return 1;
-      // Right edge: right of center
-      return 2;
-    }
+  /// Pure-geometry picker exposed for unit tests. Returns the index (0/1/2)
+  /// of the edge whose segment is closest to [pos] inside a triangle of
+  /// orientation [isUp] sized (w, h).
+  ///
+  /// Edge layout (matches the painter):
+  ///   Up:   e0 = p1-p2 (base),   e1 = p0-p1 (left),  e2 = p0-p2 (right)
+  ///   Down: e0 = p0-p1 (top),    e1 = p0-p2 (left),  e2 = p1-p2 (right)
+  @visibleForTesting
+  static int pickClosestEdge(bool isUp, Offset pos, double w, double h) {
+    final verts = _TrianglePainter.vertices(isUp, w, h);
+    final p0 = verts[0], p1 = verts[1], p2 = verts[2];
+
+    final double d0 = isUp
+        ? _distToSegment(pos, p1, p2)
+        : _distToSegment(pos, p0, p1);
+    final double d1 = isUp
+        ? _distToSegment(pos, p0, p1)
+        : _distToSegment(pos, p0, p2);
+    final double d2 = isUp
+        ? _distToSegment(pos, p0, p2)
+        : _distToSegment(pos, p1, p2);
+
+    if (d0 <= d1 && d0 <= d2) return 0;
+    if (d1 <= d2) return 1;
+    return 2;
+  }
+
+  /// Pure-geometry interior test exposed for unit tests. Mirrors what the
+  /// painter's hitTest uses to drop taps that fall in the bounding-box
+  /// corners (so deferToChild can pass them to the underlying neighbour).
+  @visibleForTesting
+  static bool pointInTriangle(bool isUp, Offset pos, double w, double h) {
+    final verts = _TrianglePainter.vertices(isUp, w, h);
+    return _TrianglePainter._pointInTriangle(pos, verts[0], verts[1], verts[2]);
+  }
+
+  static double _distToSegment(Offset p, Offset a, Offset b) {
+    final double dx = b.dx - a.dx;
+    final double dy = b.dy - a.dy;
+    final double lenSq = dx * dx + dy * dy;
+    if (lenSq == 0) return (p - a).distance;
+    double t = ((p.dx - a.dx) * dx + (p.dy - a.dy) * dy) / lenSq;
+    if (t < 0) t = 0;
+    if (t > 1) t = 1;
+    final proj = Offset(a.dx + t * dx, a.dy + t * dy);
+    return (p - proj).distance;
   }
 }
 
@@ -192,61 +234,63 @@ class _TrianglePainter extends CustomPainter {
     required this.numColor,
   });
 
+  /// Triangle vertex positions inside a (w, h) box.
+  ///   Up:   p0 = apex top, p1 = bot-left,  p2 = bot-right
+  ///   Down: p0 = top-left, p1 = top-right, p2 = apex bottom
+  static List<Offset> vertices(bool isUp, double w, double h) {
+    if (isUp) {
+      return [Offset(w / 2, 0), Offset(0, h), Offset(w, h)];
+    }
+    return [const Offset(0, 0), Offset(w, 0), Offset(w / 2, h)];
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
     final w = size.width;
     final h = size.height;
 
-    // Triangle vertices
-    Offset p0, p1, p2;
-    if (isUp) {
-      p0 = Offset(w / 2, 0);     // top
-      p1 = Offset(0, h);         // bottom-left
-      p2 = Offset(w, h);         // bottom-right
-    } else {
-      p0 = Offset(0, 0);         // top-left
-      p1 = Offset(w, 0);         // top-right
-      p2 = Offset(w / 2, h);     // bottom
-    }
+    final verts = vertices(isUp, w, h);
+    final p0 = verts[0], p1 = verts[1], p2 = verts[2];
 
-    // Fill triangle
-    final bgPaint = Paint()..color = bgColor..style = PaintingStyle.fill;
-    final path = Path()..moveTo(p0.dx, p0.dy)..lineTo(p1.dx, p1.dy)..lineTo(p2.dx, p2.dy)..close();
+    final bgPaint = Paint()
+      ..color = bgColor
+      ..style = PaintingStyle.fill;
+    final path = Path()
+      ..moveTo(p0.dx, p0.dy)
+      ..lineTo(p1.dx, p1.dy)
+      ..lineTo(p2.dx, p2.dy)
+      ..close();
     canvas.drawPath(path, bgPaint);
 
-    // Draw edges
-    final edgePaint = Paint()..strokeWidth = 4.0..strokeCap = StrokeCap.round;
+    final edgePaint = Paint()
+      ..strokeWidth = 4.0
+      ..strokeCap = StrokeCap.round;
 
-    // Edge 0: top/bottom horizontal edge
     if (isUp) {
-      // edge0 = bottom (p1 to p2)
+      // e0 base (p1-p2), e1 left diagonal (p0-p1), e2 right diagonal (p0-p2)
       edgePaint.color = edgeColorFn(edge0);
       canvas.drawLine(p1, p2, edgePaint);
-      // edge1 = left (p0 to p1)
       edgePaint.color = edgeColorFn(edge1);
       canvas.drawLine(p0, p1, edgePaint);
-      // edge2 = right (p0 to p2)
       edgePaint.color = edgeColorFn(edge2);
       canvas.drawLine(p0, p2, edgePaint);
     } else {
-      // edge0 = top (p0 to p1)
+      // e0 top (p0-p1), e1 left diagonal (p0-p2), e2 right diagonal (p1-p2)
       edgePaint.color = edgeColorFn(edge0);
       canvas.drawLine(p0, p1, edgePaint);
-      // edge1 = left (p0 to p2)
       edgePaint.color = edgeColorFn(edge1);
       canvas.drawLine(p0, p2, edgePaint);
-      // edge2 = right (p1 to p2)
       edgePaint.color = edgeColorFn(edge2);
       canvas.drawLine(p1, p2, edgePaint);
     }
 
-    // Draw vertices (dots)
-    final dotPaint = Paint()..color = Colors.grey..style = PaintingStyle.fill;
+    final dotPaint = Paint()
+      ..color = Colors.grey
+      ..style = PaintingStyle.fill;
     canvas.drawCircle(p0, 3, dotPaint);
     canvas.drawCircle(p1, 3, dotPaint);
     canvas.drawCircle(p2, 3, dotPaint);
 
-    // Draw number
     if (num >= 0) {
       final textSpan = TextSpan(
         text: num.toString(),
@@ -257,16 +301,42 @@ class _TrianglePainter extends CustomPainter {
         textDirection: TextDirection.ltr,
       )..layout();
 
-      // Center of triangle
-      double cx = (p0.dx + p1.dx + p2.dx) / 3;
-      double cy = (p0.dy + p1.dy + p2.dy) / 3;
+      final double cx = (p0.dx + p1.dx + p2.dx) / 3;
+      final double cy = (p0.dy + p1.dy + p2.dy) / 3;
       textPainter.paint(canvas, Offset(cx - textPainter.width / 2, cy - textPainter.height / 2));
     }
   }
 
+  /// Return true only when the tap is inside the triangle. Clicks in the
+  /// rectangular bounding box but outside the triangle fall through to the
+  /// next Stack child so overlapping neighbours can still receive taps.
+  @override
+  bool? hitTest(Offset position) {
+    const double w = TriangleBoxState.cellSize;
+    const double h = TriangleBoxState.cellSize * TriangleBoxState.heightRatio;
+    final verts = vertices(isUp, w, h);
+    return _pointInTriangle(position, verts[0], verts[1], verts[2]);
+  }
+
+  static double _sign(Offset p, Offset a, Offset b) {
+    return (p.dx - b.dx) * (a.dy - b.dy) - (a.dx - b.dx) * (p.dy - b.dy);
+  }
+
+  static bool _pointInTriangle(Offset p, Offset a, Offset b, Offset c) {
+    final double d1 = _sign(p, a, b);
+    final double d2 = _sign(p, b, c);
+    final double d3 = _sign(p, c, a);
+    final bool hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+    final bool hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+    return !(hasNeg && hasPos);
+  }
+
   @override
   bool shouldRepaint(covariant _TrianglePainter old) {
-    return old.edge0 != edge0 || old.edge1 != edge1 || old.edge2 != edge2 ||
-        old.num != num || old.isUp != isUp;
+    return old.edge0 != edge0 ||
+        old.edge1 != edge1 ||
+        old.edge2 != edge2 ||
+        old.num != num ||
+        old.isUp != isUp;
   }
 }
