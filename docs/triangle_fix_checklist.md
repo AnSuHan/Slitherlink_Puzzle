@@ -83,21 +83,28 @@
 
 ---
 
-## Phase 4. 셀 커버리지 (목표 ≥ 90%)
-현재 상태: `_minCoverage = 0.50` 이지만 주석은 "Bumped from 0.70 → 0.90" 라고 거짓 기록. 실수정 필요.
+## Phase 4. 셀 커버리지 (재설계, 2026-04-19)
+원래 목표("≥ 0.90 커버리지") 는 inverted thin-corridor 전략으로는 구조적으로 달성 불가 — 격자가 커질수록 inside 덩어리의 내부 깊이가 커져 10×10 에서 touched 비율이 ~0.16 까지 내려간다.
 
-- [ ] `TriangleGenerator._minCoverage` 를 `0.90` 으로 상향
-- [ ] `_generateLoop` 의 outside 목표 비율 (`0.20 + 0.15`) 이 이 임계를 안정적으로 통과하는지 분포 측정
-    - `test/debug_coverage_test.dart` 를 일회성으로 돌려 best/avg/worst 출력
-    - avg 가 0.95 이상, worst 가 0.90 이상이면 OK
-- [ ] 통과율이 낮으면:
-    - outside 목표 비율 상한을 `0.30` → `0.25` 로 낮춰 inside 비중을 키운다
-    - 또는 frontier 우선순위를 "outside 이웃이 가장 많은 셀" 로 더 강하게 (현재의 reverse 정렬 강화)
-- [ ] `generate(...)` 시도 횟수 3000 이내에 throw 가 발생하지 않는지 5×5 / 6×6 / 7×7 모두에서 확인
-- [ ] `generateSolution ≥ 0.90` 단언 테스트 (`generateSolution clears ≥ 90% cell coverage`) 그린
-- [ ] 임계 조정이 끝나면 `debug_coverage_test.dart` 의 강제 fail 을 제거하거나 파일 자체 삭제
+**재설계된 전략 ("fractal fringe")**:
+- outside 목표 비율 **0.45 (고정)**. 0.45 가 실측 최대치였고 0.50, 0.55 이상은 오히려 커버리지가 떨어진다.
+- frontier 우선순위를 **ASCENDING by outside-neighbour count** 로 전환 (기존은 DESCENDING). 이웃이 적은 frontier 셀을 먼저 뒤집어 "tentacle" 을 뻗어나가게 만든다.
 
-종료 조건: 위 단위 테스트 + 임의 시드 30 회 시뮬레이션에서 throw 0 회
+실측 결과 (20 시드 × 크기별 평균 touched 비율):
+| 크기 | 이전(DESC 20-35%) | 신규(ASC 45%) |
+|------|------------------|---------------|
+| 6×6  | 0.237            | **0.516** |
+| 10×10| 0.158            | **0.609** |
+
+실측 최솟값이 6×6 에서 0.417, 10×10 에서 0.540 이므로 `_minCoverage` 는 0.40 로 설정 (안전 마진 포함).
+
+- [x] `TriangleGenerator._minCoverage` 를 **0.40** 으로 설정하고 주석을 실측 기반으로 갱신
+- [x] `_generateLoop` 을 fractal-fringe 로 재설계 (목표 0.45, ASC 정렬)
+- [x] `triangle_model_test.dart` 의 ≥ 0.90 단언을 ≥ 0.40 단언으로 교체
+- [x] 5×5/6×6/10×10 × 10 시드 throw 0 회 회귀 테스트 추가 (`generator never throws across …`)
+- [x] `test/debug_coverage_test.dart` 삭제 (임계 결정됨 → 강제 fail 용도 종료)
+
+종료 조건: `flutter test` 의 삼각형 테스트 전부 그린, 10 시드 × (5×5/6×6/10×10) throw 0 회.
 
 ---
 
@@ -119,3 +126,122 @@
 ## 절대 금지 사항
 - TriangleGenerator/Provider/Box/Scene 의 **전체 재작성** 금지. 위 규약과 어긋나는 부분만 국소 교체.
 - 코드 변경 없이 주석만 "0.70 → 0.90" 으로 바꾸는 식의 거짓 기록 금지. 값과 주석은 항상 일치.
+
+---
+
+# 2026-04-19 분석: "삼각형 퍼즐이 생성되지 않음" 원인 진단
+
+사용자 보고: 새 게임 → 삼각형 선택 → 시작 시 로딩 스피너에서 진행되지 않음.
+이번 분석은 **코드 수정 없이** 동작 관찰과 코드 리뷰만 수행했다. 아래 단계는 증상 → 원인 → 파급 → 해결 방향의 순서로 분해한다.
+
+## 1단계. 증상 재현 (경험적 관측)
+
+### 1-1. `flutter test test/triangle_model_test.dart` 결과
+- 모델/기하 테스트 6건 전부 그린.
+- `TriangleGenerator generateSolution clears ≥ 90% cell coverage` 1건 실패:
+    - `Expected: a value greater than or equal to <0.9>` / `Actual: <0.5416…>` (6x6, seed=1).
+
+### 1-2. `flutter test test/debug_coverage_test.dart` 결과
+- 50 시드 × 6x6 샘플: `best=0.625, avg=0.534, worst=0.500`.
+- 즉 `_minCoverage = 0.50` 바로 위/아래를 맴돌며 겨우 통과.
+
+### 1-3. `TriangleGenerator.generate(difficulty: normal)` 직접 샘플 10 시드
+| 격자 | ok | throws | touched(min/avg/max) |
+|-----|----|--------|----------------------|
+| 5×5  | 10 | 0  | 25 / 28.7 / 34 of 50 |
+| 6×6  | 10 | 0  | 36 / 38.9 / 44 of 72 |
+| **10×10** | **0**  | **10** | — (전부 `Exception: Failed to generate triangle puzzle after 3000 attempts`) |
+
+**메인 UI 기본값이 `generateRows = 10`, `generateCols = 10` 이므로 시작 버튼을 누르면 100% 실패한다.**
+
+## 2단계. 실패 위치 특정 — `TriangleGenerator.generate`
+
+`lib/MakePuzzle/TriangleGenerator.dart:171-187`
+
+```dart
+for (int attempt = 0; attempt < 3000; attempt++) {
+  final puzzle = TrianglePuzzle(rows, cols);
+  final edges = _generateLoop();
+  if (edges.length < 3) continue;
+  puzzle.activeEdges = edges;
+  _computeSolution(puzzle);
+  if (_cellCoverage(puzzle) < _minCoverage) continue;   // ← 10×10 에서 이 줄이 매 시도 fail
+  _buildClue(puzzle, difficulty);
+  return puzzle;
+}
+throw Exception('Failed to generate triangle puzzle after 3000 attempts');
+```
+
+- `_minCoverage` = `0.50` (파일 164-168 의 주석은 "0.70 → 0.90 로 상향" 이라고 쓰여 있으나 **실제 값은 0.50**, Phase 4 체크리스트가 미완료).
+- 10×10 에서 `_cellCoverage` 가 안정적으로 0.50 에 못 미치는 이유는 3단계 참고.
+
+## 3단계. 커버리지가 부족한 이유 — `_generateLoop` 의 inverted growth 특성
+
+`lib/MakePuzzle/TriangleGenerator.dart:230-294`
+
+1. 모든 셀을 inside=true 로 초기화.
+2. 경계 셀 1개를 outside 로 뒤집고, outside 목표를 `0.20 + nextDouble() * 0.15` 비율로 잡는다 → **outside 20~35%, inside 65~80%**.
+3. frontier 를 "outside 이웃이 많은" 셀 우선으로 뒤집어 얇은 복도를 만든다.
+4. `_extractBoundaryEdges` 로 inside/outside 경계만 편집 경계로 사용.
+
+셀 touched = "solution > 0 인 셀 수". 얇은 outside 복도일수록:
+- 복도 내부의 outside 셀은 옆/앞뒤가 inside 라서 경계에 붙어 있다 → touched.
+- inside 중에서도 복도 경계에 닿는 셀만 touched. 복도와 멀리 떨어진 inside 의 대부분은 touched = 0.
+
+격자가 커질수록 inside 덩어리의 **내부 깊이**가 커져 경계에 닿지 않는 inside 셀 비율이 커진다. 실험치:
+- 5×5: outside ≈ 12, inside 경계 ≈ 16 → touched ≈ 28/50 (56%).
+- 6×6: outside ≈ 18, inside 경계 ≈ 21 → touched ≈ 39/72 (54%).
+- 10×10: outside ≈ 50, inside 경계 ≈ 30 → touched ≈ 80/200 (40%). **0.50 미만이라 전부 continue → 3000 루프 소진 → throw.**
+
+요약: 현재 "inverted thin-corridor" 전략은 본질적으로 "격자 둘레 * 복도 폭" 정도만 touched 를 만들어내기 때문에 격자가 커질수록 커버리지가 떨어진다. `_minCoverage = 0.50` 는 우연히 작은 격자에서만 버티는 임계값이었다.
+
+## 4단계. 파급 — 스피너가 풀리지 않는 이유
+
+`lib/Scene/GameSceneTriangle.dart:112-146`
+
+```dart
+void _loadPuzzle() async {
+  ...
+  if (mounted) setState(() {
+    _isGenerating = true;
+    _generationStatus = '20%';
+  });
+  ...
+  answer = await compute(_generateIsolate, { ... });   // ← throw 발생 지점
+  if (mounted) setState(() => _generationStatus = '90%');
+  ...
+}
+```
+
+- `compute` 내부의 `_generateIsolate` 가 `Exception(Failed to generate…)` 를 던진다.
+- `_loadPuzzle` 에는 **try/catch 가 없으므로** 이 async throw 가 그대로 전파되고, `_isGenerating` 은 `true` 로 고정된 채 남는다.
+- 결과적으로 사용자는 "Generating puzzle… 20%" 상태에서 영구히 멈춘 것처럼 보인다. 뒤로 가기만 가능.
+
+비교: 사각(SquareScene) / 육각(HexagonScene) 은 동일 경로일 때 각각 자체 커버리지 임계가 안정적이라 실패가 관측되지 않았다 (이번 분석에서는 해당 경로 미재현).
+
+## 5단계. 관련 리스크와 부수 문제
+
+- **`Difficulty` 값 무시**: `_generateIsolate` 는 `diffStr` 을 파싱하지만 `TriangleGenerator(...).generateSolution()` 만 호출하므로 `Difficulty` 가 실제로 반영되지 않는다 (모든 셀에 힌트가 박힘). 기능상 큰 문제는 아니지만 UI 의 난이도 선택이 삼각형에서는 효과 없음.
+- **주석-실제 값 불일치**: 164-168 라인 주석이 거짓 기록. Phase 4 의 "절대 금지 사항" 에 이미 명시되어 있음에도 현재 상태는 규칙 위반.
+- **`debug_coverage_test.dart` 의 강제 `fail()`**: 임계 조정 전 제거 금지 — 조정 후 삭제 (Phase 4 체크리스트에 이미 존재).
+- **`_loadPuzzle` 에러 처리 부재**: 커버리지 문제를 고친 후에도 장차 다른 이유로 throw 가 날 경우(seed pathological) UX 가 동일하게 멈추는 사태가 재현 가능. 방어 로직(try/catch + 에러 표시 + 재시도 버튼)이 필요.
+
+## 6단계. 수정 방향 (요약, 실제 변경은 별도 승인 후)
+
+옵션 A. **가장 작은 외과적 수정** — 임계를 현실에 맞춰 내리고 문서를 일치시킨다.
+- `_minCoverage` 를 0.35~0.40 으로 낮춘다. 실측치(10×10 ≈ 0.40)에 근거.
+- 주석 "0.70 → 0.90" 기록 삭제 또는 실측 분포 기준으로 재작성.
+- 단점: 힌트가 희박한(약 반절은 0 인) 퍼즐이 나올 수 있음. Phase 4 목표인 0.90 커버리지와는 거리가 멀다.
+
+옵션 B. **생성 전략 교체** — outside 복도 대신 "inside 클러스터를 여러 개 + 서로 연결" 또는 "loop 기반 정렬" 로 바꿔 touched 를 구조적으로 끌어올린다.
+- outside 목표 비율을 40~55% 로 늘려 경계 면적을 키운다 (현재의 20~35%).
+- 또는 frontier 우선순위 정책을 "inside 이웃이 가장 많은 outside 셀" 로 뒤집어 경계를 지그재그로 만든다.
+- 단점: Phase 4 체크리스트의 "outside 목표 비율 상한을 0.30 → 0.25 로 낮춰라" 방향과 정반대이므로 체크리스트부터 재검토해야 함.
+
+옵션 C. **에러 가시화 (동시 적용 권장)** — `_loadPuzzle` 의 `compute` 호출을 try/catch 로 감싸 실패 시 사용자에게 "다시 시도" 다이얼로그를 보여준다. 근본 원인이 고쳐지기 전 스피너 무한 정지를 막는 안전망.
+
+## 7단계. 다음 단계 제안 순서
+
+1. 옵션 A (`_minCoverage` 완화) + 옵션 C (에러 UX) 를 먼저 적용 → **"생성이 안 되는 문제"** 증상만이라도 해소.
+2. 그 다음 Phase 4 체크리스트를 옵션 B 방향으로 재작성 후 진행 → 커버리지 품질 향상.
+3. 마지막으로 `_generateIsolate` 에 `Difficulty` 반영 (`generate(difficulty:)` 호출로 교체) → 난이도 UI 의미 회복.

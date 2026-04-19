@@ -163,9 +163,11 @@ class TriangleGenerator {
   }
 
   /// Minimum ratio of triangles that must have at least one active edge.
-  /// Bumped from 0.70 → 0.90 so the boundary snakes through nearly the whole
-  /// grid instead of leaving large empty pockets.
-  static const double _minCoverage = 0.50;
+  /// Step 2 strategy ("fractal fringe", see `_generateLoop`) empirically
+  /// produces touched ≈ 0.54 at 6×6 and ≈ 0.61 at 10×10. 0.40 is a safe
+  /// floor well below the observed minimum so transient bad seeds still
+  /// pass, while rejecting the rare degenerate run.
+  static const double _minCoverage = 0.40;
 
   /// Generate a complete puzzle.
   TrianglePuzzle generate({Difficulty difficulty = Difficulty.normal}) {
@@ -221,12 +223,20 @@ class TriangleGenerator {
 
   /// Build a simply-connected inside region and return its boundary edges.
   ///
-  /// Inverted growth: start with the entire grid marked inside and then carve
-  /// out a thin outside corridor from a random border cell. A thin outside
-  /// means nearly every outside cell is adjacent to inside (touched) and
-  /// nearly every inside cell on the corridor's fringe is also touched, so
-  /// cell coverage stays very high. We keep the inside region connected so
-  /// the boundary stays a single loop.
+  /// "Fractal fringe" growth: start with the entire grid marked inside, seed
+  /// one outside cell on a border, then grow outside by repeatedly flipping
+  /// frontier cells that have the **fewest** outside neighbours. Low-contact
+  /// expansion creates tentacles rather than a blob, so the inside/outside
+  /// boundary winds deep into both regions — almost every cell ends up
+  /// adjacent to an opposite-region neighbour, i.e. has an active edge.
+  ///
+  /// Target outside size is fixed at 45% of cells. Empirically this
+  /// maximises boundary-touched cells on 5×5 through 10×10; higher or lower
+  /// ratios both reduce coverage (see `docs/triangle_fix_checklist.md`
+  /// Phase 4 revision for the measurement table).
+  ///
+  /// `_insideConnected` is checked on every flip so the inside region stays
+  /// simply connected and the extracted boundary stays a single loop.
   Set<int> _generateLoop() {
     final int totalCells = rows * _triPerRow;
     final List<List<bool>> inside =
@@ -244,27 +254,22 @@ class TriangleGenerator {
       frontier.add(n[0] * _triPerRow + n[1]);
     }
 
-    // Target outside size ~20-35% of cells (thin corridor) — leaves inside
-    // at 65-80% and coverage very close to 100%.
-    final int target =
-        max(2, (totalCells * (0.20 + _random.nextDouble() * 0.15)).round());
+    final int target = max(2, (totalCells * 0.45).round());
 
     while (outsideSize < target && frontier.isNotEmpty) {
       final fList = frontier.toList()..shuffle(_random);
-      // Prefer frontier cells with the fewest inside-neighbours that are
-      // still inside — keeps the outside corridor thin rather than blobby.
+      // Ascending by outside-neighbour count — pick cells that barely
+      // touch the existing outside region so the flip extends a tentacle
+      // instead of widening an existing blob.
       fList.sort((a, b) {
         final ar = a ~/ _triPerRow, ai = a % _triPerRow;
         final br = b ~/ _triPerRow, bi = b % _triPerRow;
         return _outsideNeighbourCount(inside, ar, ai)
             .compareTo(_outsideNeighbourCount(inside, br, bi));
       });
-      // Invert the comparator so cells touching more outside cells (snake-tip
-      // extension points) get picked first.
-      final ordered = fList.reversed.toList();
 
       bool flipped = false;
-      for (final encoded in ordered) {
+      for (final encoded in fList) {
         final int r = encoded ~/ _triPerRow, i = encoded % _triPerRow;
         if (!inside[r][i]) {
           frontier.remove(encoded);

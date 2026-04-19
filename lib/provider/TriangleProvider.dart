@@ -46,6 +46,9 @@ class TriangleProvider with ChangeNotifier {
 
   /// Answer edge data: answer[row] has triPerRow*3 ints (3 edges per triangle)
   late List<List<int>> answer;
+  /// Clue data: clue[row][idx] holds the displayed hint number; `-1` means the
+  /// clue is hidden (no number drawn, and no cell-rule constraint applied).
+  late List<List<int>> clue;
   /// User's current submission (same format as answer)
   late List<List<int>> submit;
 
@@ -60,6 +63,10 @@ class TriangleProvider with ChangeNotifier {
     this.answer = answer;
     rows = answer.length;
     cols = answer[0].length ~/ 6; // triPerRow * 3 = 6 * cols
+  }
+
+  void setClue(List<List<int>> clue) {
+    this.clue = clue;
   }
 
   void setSubmit(List<List<int>> submit) {
@@ -123,12 +130,8 @@ class TriangleProvider with ChangeNotifier {
   void _setNumbers() {
     for (int r = 0; r < rows; r++) {
       for (int i = 0; i < triPerRow; i++) {
-        int count = 0;
-        final int base = i * 3;
-        for (int e = 0; e < 3; e++) {
-          if (answer[r][base + e] == 1) count++;
-        }
-        puzzle[r][i].num = count;
+        // `clue[r][i]` is -1 when the hint is hidden by difficulty.
+        puzzle[r][i].num = clue[r][i];
       }
     }
   }
@@ -209,12 +212,14 @@ class TriangleProvider with ChangeNotifier {
   }
 
   /// Cell rule: if drawn edge count (value ≥ 1) reaches the clue number,
-  /// remaining undecided (value 0) edges become -1.
+  /// remaining undecided (value 0) edges become -1. Hidden clues (`num < 0`)
+  /// carry no constraint and are skipped.
   bool _runCellRule() {
     bool anyChange = false;
     for (int r = 0; r < rows; r++) {
       for (int i = 0; i < triPerRow; i++) {
         final int num = puzzle[r][i].num;
+        if (num < 0) continue;
         int active = 0;
         for (int e = 0; e < 3; e++) {
           if (_getEdge(r, i, e) >= 1) active++;

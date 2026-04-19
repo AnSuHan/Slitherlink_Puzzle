@@ -113,10 +113,15 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
     List<String> tokens = widget.loadKey.split("_");
 
     List<List<int>> answer;
+    List<List<int>> clue;
     List<List<int>> submit;
 
     if (widget.isContinue) {
       answer = await _loadSavedPuzzle(widget.loadKey);
+      clue = await _loadSavedPuzzle("${widget.loadKey}_clue");
+      if (clue.isEmpty) {
+        clue = _cluesFromAnswer(answer);
+      }
       submit = await _loadSavedPuzzle("${widget.loadKey}_continue");
     } else {
       if (mounted) setState(() {
@@ -129,19 +134,30 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
       int genCols = int.parse(sizeParts[1]);
       String diffStr = tokens.length >= 4 ? tokens[3] : "normal";
 
-      answer = await compute(_generateIsolate, {
-        'rows': genRows,
-        'cols': genCols,
-        'difficulty': diffStr,
-      });
+      Map<String, List<List<int>>> gen;
+      try {
+        gen = await compute(_generateIsolate, {
+          'rows': genRows,
+          'cols': genCols,
+          'difficulty': diffStr,
+        });
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _isGenerating = false);
+        await _showGenerationError(e);
+        return;
+      }
+      answer = gen['answer']!;
+      clue = gen['clue']!;
 
       if (mounted) setState(() => _generationStatus = '90%');
 
       submit = List.generate(answer.length, (r) => List.filled(answer[r].length, 0));
 
-      // Save answer for continue
+      // Save answer + clue for continue
       final prefs = ExtractData();
       await prefs.saveDataToLocal(widget.loadKey, jsonEncode(answer));
+      await prefs.saveDataToLocal("${widget.loadKey}_clue", jsonEncode(clue));
     }
 
     if (!mounted) return;
@@ -157,6 +173,7 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
     _debugPuzzleInfo = 'Hash: $puzzleHash | Edges: $activeEdges';
 
     _provider.setAnswer(answer);
+    _provider.setClue(clue);
     _provider.setSubmit(submit);
     _provider.init();
 
@@ -178,7 +195,64 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
     return [];
   }
 
-  static List<List<int>> _generateIsolate(Map<String, dynamic> params) {
+  /// Fallback for continue-loads saved before the clue column existed: derive
+  /// full-reveal clues (all solution counts) from the edge-format answer.
+  static List<List<int>> _cluesFromAnswer(List<List<int>> answer) {
+    final int rows = answer.length;
+    if (rows == 0) return [];
+    final int triPerRow = answer[0].length ~/ 3;
+    final List<List<int>> clue =
+        List.generate(rows, (_) => List.filled(triPerRow, 0));
+    for (int r = 0; r < rows; r++) {
+      for (int i = 0; i < triPerRow; i++) {
+        int count = 0;
+        final int base = i * 3;
+        for (int e = 0; e < 3; e++) {
+          if (answer[r][base + e] == 1) count++;
+        }
+        clue[r][i] = count;
+      }
+    }
+    return clue;
+  }
+
+  Future<void> _showGenerationError(Object error) async {
+    final loc = AppLocalizations.of(context);
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text(loc?.translate('generation_failed_title') ?? '생성 실패'),
+        content: Text(
+          '${loc?.translate('generation_failed_message') ?? '삼각형 퍼즐 생성에 실패했습니다. 다시 시도하거나 크기를 줄여보세요.'}\n\n$error',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              if (Navigator.canPop(context)) {
+                Navigator.of(context).pop();
+              }
+            },
+            child: Text(loc?.translate('close') ?? 'OK'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _loadPuzzle();
+            },
+            child: Text(loc?.translate('retry') ?? '다시 시도'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Returns a Map with:
+  ///   'answer' : List<List<int>> — toEdgeFormat payload (3 ints per triangle).
+  ///   'clue'   : List<List<int>> — per-triangle displayed hint, `-1` for hidden
+  ///                                (honours Difficulty.hintRatio).
+  static Map<String, List<List<int>>> _generateIsolate(Map<String, dynamic> params) {
     int rows = params['rows'];
     int cols = params['cols'];
     String diffStr = params['difficulty'];
@@ -191,8 +265,11 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
     }
 
     final generator = TriangleGenerator(rows, cols);
-    final puzzle = generator.generateSolution();
-    return puzzle.toEdgeFormat();
+    final puzzle = generator.generate(difficulty: difficulty);
+    return {
+      'answer': puzzle.toEdgeFormat(),
+      'clue': puzzle.clue,
+    };
   }
 
   void _fitToScreen() {
