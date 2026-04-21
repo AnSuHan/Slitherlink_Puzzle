@@ -71,7 +71,7 @@ class TriangleBoxState extends State<TriangleBox> with SingleTickerProviderState
   static const double heightRatio = 0.866;
 
   int _cycleEdge(int current) {
-    if (current == 0 || current == -3) return 1;
+    if (current == 0 || current == -3) return ThemeColor().getNormalRandom();
     if (current >= 1 || current == -5) return -4;
     if (current == -1) return -2;
     if (current == -2) return -1;
@@ -268,20 +268,14 @@ class _TrianglePainter extends CustomPainter {
 
     if (isUp) {
       // e0 base (p1-p2), e1 left diagonal (p0-p1), e2 right diagonal (p0-p2)
-      edgePaint.color = edgeColorFn(edge0);
-      canvas.drawLine(p1, p2, edgePaint);
-      edgePaint.color = edgeColorFn(edge1);
-      canvas.drawLine(p0, p1, edgePaint);
-      edgePaint.color = edgeColorFn(edge2);
-      canvas.drawLine(p0, p2, edgePaint);
+      _drawEdge(canvas, edgePaint, p1, p2, edge0);
+      _drawEdge(canvas, edgePaint, p0, p1, edge1);
+      _drawEdge(canvas, edgePaint, p0, p2, edge2);
     } else {
       // e0 top (p0-p1), e1 left diagonal (p0-p2), e2 right diagonal (p1-p2)
-      edgePaint.color = edgeColorFn(edge0);
-      canvas.drawLine(p0, p1, edgePaint);
-      edgePaint.color = edgeColorFn(edge1);
-      canvas.drawLine(p0, p2, edgePaint);
-      edgePaint.color = edgeColorFn(edge2);
-      canvas.drawLine(p1, p2, edgePaint);
+      _drawEdge(canvas, edgePaint, p0, p1, edge0);
+      _drawEdge(canvas, edgePaint, p0, p2, edge1);
+      _drawEdge(canvas, edgePaint, p1, p2, edge2);
     }
 
     final dotPaint = Paint()
@@ -292,9 +286,17 @@ class _TrianglePainter extends CustomPainter {
     canvas.drawCircle(p2, 3, dotPaint);
 
     if (num >= 0) {
+      int active = 0;
+      if (edge0 >= 1) active++;
+      if (edge1 >= 1) active++;
+      if (edge2 >= 1) active++;
+      // Cell rule is satisfied → remaining edges are auto-disabled. Dim the
+      // number so the player can see this cell is done.
+      final Color textColor =
+          active == num ? numColor.withOpacity(0.35) : numColor;
       final textSpan = TextSpan(
         text: num.toString(),
-        style: TextStyle(color: numColor, fontSize: 14, fontWeight: FontWeight.w500),
+        style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w500),
       );
       final textPainter = TextPainter(
         text: textSpan,
@@ -304,6 +306,21 @@ class _TrianglePainter extends CustomPainter {
       final double cx = (p0.dx + p1.dx + p2.dx) / 3;
       final double cy = (p0.dy + p1.dy + p2.dy) / 3;
       textPainter.paint(canvas, Offset(cx - textPainter.width / 2, cy - textPainter.height / 2));
+    }
+  }
+
+  void _drawEdge(Canvas canvas, Paint paint, Offset a, Offset b, int value) {
+    paint.color = edgeColorFn(value);
+    canvas.drawLine(a, b, paint);
+    if (value == -4) {
+      final mid = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+      final xPaint = Paint()
+        ..color = numColor
+        ..strokeWidth = 2.0
+        ..strokeCap = StrokeCap.round;
+      const double r = 4.0;
+      canvas.drawLine(mid.translate(-r, -r), mid.translate(r, r), xPaint);
+      canvas.drawLine(mid.translate(-r, r), mid.translate(r, -r), xPaint);
     }
   }
 

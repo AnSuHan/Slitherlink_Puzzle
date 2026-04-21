@@ -152,7 +152,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
 
                       setState(() {
                         if(up == 0 || up == -3) {
-                          up = 1;
+                          up = ThemeColor().getNormalRandom();
                         } else if(up >= 1 || up == -5) {
                           up = -4;
                         } else if(up == -1) {
@@ -222,7 +222,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
 
                       setState(() {
                         if(left == 0 || left == -3) {
-                          left = 1;
+                          left = ThemeColor().getNormalRandom();
                         } else if(left >= 1 || left == -5) {
                           left = -4;
                         } else if(left == -1) {
@@ -269,14 +269,26 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                     ),
                   ),
                 ),
-                Container(
-                  height: 50,
-                  width: 50,
-                  color: boxColor == 0 ? settingColor["box"] : settingColor["boxHighLight"],
-                  child: Center(
-                    child: Text(num.toString(), style: TextStyle(color: settingColor["number"])),
-                  ),
-                ),
+                Builder(builder: (_) {
+                  final int active =
+                      (up >= 1 ? 1 : 0) +
+                      (down >= 1 ? 1 : 0) +
+                      (left >= 1 ? 1 : 0) +
+                      (right >= 1 ? 1 : 0);
+                  // Cell rule is satisfied → remaining edges are auto-disabled.
+                  // Dim the number so the player can see this cell is done.
+                  final Color baseNumColor = settingColor["number"] ?? Colors.black;
+                  final Color textColor =
+                      active == num ? baseNumColor.withOpacity(0.35) : baseNumColor;
+                  return Container(
+                    height: 50,
+                    width: 50,
+                    color: boxColor == 0 ? settingColor["box"] : settingColor["boxHighLight"],
+                    child: Center(
+                      child: Text(num.toString(), style: TextStyle(color: textColor)),
+                    ),
+                  );
+                }),
                 SizedBox(
                   height: 50,
                   width: 10,
@@ -286,7 +298,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
 
                       setState(() {
                         if(right == 0 || right == -3) {
-                          right = 1;
+                          right = ThemeColor().getNormalRandom();
                         } else if(right >= 1 || right == -5) {
                           right = -4;
                         } else if(right == -1) {
@@ -360,7 +372,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
 
                       setState(() {
                         if(down == 0 || down == -3) {
-                          down = 1;
+                          down = ThemeColor().getNormalRandom();
                         } else if(down >= 1 || down == -5) {
                           down = -4;
                         } else if(down == -1) {

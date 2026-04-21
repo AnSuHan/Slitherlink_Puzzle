@@ -60,7 +60,7 @@ class HexagonBoxState extends State<HexagonBox> with SingleTickerProviderStateMi
   static const double cellSize = 40.0; // radius
 
   int _cycleEdge(int current) {
-    if (current == 0 || current == -3) return 1;
+    if (current == 0 || current == -3) return ThemeColor().getNormalRandom();
     if (current >= 1 || current == -5) return -4;
     if (current == -1) return -2;
     if (current == -2) return -1;
@@ -195,10 +195,22 @@ class _HexagonPainter extends CustomPainter {
 
     // Draw edges
     final edgePaint = Paint()..strokeWidth = 4.0..strokeCap = StrokeCap.round;
+    final xPaint = Paint()
+      ..color = numColor
+      ..strokeWidth = 2.0
+      ..strokeCap = StrokeCap.round;
     // Edge i connects vertex[i] to vertex[(i+1)%6]
     for (int i = 0; i < 6; i++) {
+      final a = vertices[i];
+      final b = vertices[(i + 1) % 6];
       edgePaint.color = edgeColorFn(edges[i]);
-      canvas.drawLine(vertices[i], vertices[(i + 1) % 6], edgePaint);
+      canvas.drawLine(a, b, edgePaint);
+      if (edges[i] == -4) {
+        final mid = Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+        const double xr = 4.0;
+        canvas.drawLine(mid.translate(-xr, -xr), mid.translate(xr, xr), xPaint);
+        canvas.drawLine(mid.translate(-xr, xr), mid.translate(xr, -xr), xPaint);
+      }
     }
 
     // Draw vertex dots
