@@ -504,5 +504,24 @@ class TriangleProvider with ChangeNotifier {
     }
   }
 
+  /// Deep copy of the current submit grid for bookmark save.
+  List<List<int>> snapshotSubmit() {
+    submit = _readSubmit();
+    return submit.map((r) => List<int>.from(r)).toList();
+  }
+
+  /// Apply a previously-saved submit grid (from a bookmark load).
+  /// Resets undo/redo stacks so history doesn't straddle two states.
+  Future<void> applyBookmarkSubmit(List<List<int>> newSubmit) async {
+    await removeHintLine();
+    _undoStack.clear();
+    _redoStack.clear();
+    submit = newSubmit.map((r) => List<int>.from(r)).toList();
+    _applySubmit();
+    _applyConstraints();
+    submit = _readSubmit();
+    notifyListeners();
+  }
+
   int getBoxColor(int row, int idx) => 0;
 }

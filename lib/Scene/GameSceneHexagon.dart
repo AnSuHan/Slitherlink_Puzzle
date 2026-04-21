@@ -14,6 +14,7 @@ import '../Platform/ExtractData.dart'
 import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
 import '../provider/HexagonProvider.dart';
+import '../widgets/PuzzleAppBar.dart';
 
 class GameSceneHexagon extends StatefulWidget {
   final bool isContinue;
@@ -43,6 +44,9 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
   Map<String, Color> settingColor = ThemeColor().getColor();
   bool showAppbar = true;
 
+  // Bookmark state: R, G, B — "save" means empty slot, "load" means occupied.
+  final List<String> _labelState = ["save", "save", "save"];
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +55,7 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
       context: context,
       loadKey: widget.loadKey,
     );
+    _initLabelState();
     _loadPuzzle();
 
     _shutdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
@@ -224,6 +229,79 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
     return true;
   }
 
+  Future<void> _initLabelState() async {
+    final prefs = ExtractData();
+    for (int i = 0; i < PuzzleAppBar.colorNames.length; i++) {
+      final key = "${widget.loadKey}_${PuzzleAppBar.colorNames[i]}";
+      if (await prefs.containsKey(key)) {
+        _labelState[i] = "load";
+      }
+    }
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _saveBookmark(int idx) async {
+    final color = PuzzleAppBar.colorNames[idx];
+    final key = "${widget.loadKey}_$color";
+    final prefs = ExtractData();
+    final snapshot = _provider.snapshotSubmit();
+    await prefs.saveDataToLocal(key, jsonEncode(snapshot));
+    setState(() => _labelState[idx] = "load");
+  }
+
+  Future<void> _loadBookmark(int idx) async {
+    final color = PuzzleAppBar.colorNames[idx];
+    final key = "${widget.loadKey}_$color";
+    final prefs = ExtractData();
+    final raw = await prefs.getDataFromLocal(key);
+    if (raw == null) return;
+    final List<dynamic> decoded = jsonDecode(raw.toString());
+    final List<List<int>> saved = decoded
+        .map<List<int>>((row) => (row as List).map<int>((v) => v as int).toList())
+        .toList();
+    await _provider.applyBookmarkSubmit(saved);
+  }
+
+  Future<void> _clearBookmark(int idx) async {
+    final color = PuzzleAppBar.colorNames[idx];
+    final key = "${widget.loadKey}_$color";
+    final prefs = ExtractData();
+    if (await prefs.containsKey(key)) {
+      await prefs.removeKey(key);
+    }
+    setState(() => _labelState[idx] = "save");
+  }
+
+  Future<void> _onExit() async {
+    if (!_isGenerating) {
+      await _provider.saveProgress();
+    }
+    if (mounted && Navigator.canPop(context)) {
+      Navigator.of(context).pop();
+    }
+  }
+
+  Future<void> _onNewGame() async {
+    await _provider.removeHintLine();
+    final prefs = ExtractData();
+    for (final suffix in ["", "_continue"]) {
+      final k = "${widget.loadKey}$suffix";
+      if (await prefs.containsKey(k)) {
+        await prefs.removeKey(k);
+      }
+    }
+    if (!mounted) return;
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => GameSceneHexagon(
+          isContinue: false,
+          loadKey: widget.loadKey,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = AppLocalizations.of(context);
@@ -236,23 +314,23 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
         child: Consumer<HexagonProvider>(
           builder: (context, provider, child) {
             return Scaffold(
-              appBar: !showAppbar ? null : AppBar(
-                backgroundColor: settingColor["appBar"],
-                iconTheme: IconThemeData(color: settingColor["appIcon"]),
-                title: Text(
-                  loc?.translate('game_title') ?? 'Hexagon Puzzle',
-                  style: TextStyle(color: settingColor["appIcon"]),
-                ),
-                actions: [
-                  IconButton(
-                    icon: Icon(Icons.lightbulb_outline, color: settingColor["appIcon"]),
-                    onPressed: () => provider.showHint(context),
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.refresh, color: settingColor["appIcon"]),
-                    onPressed: () => provider.restart(),
-                  ),
-                ],
+              appBar: !showAppbar || loc == null ? null : PuzzleAppBar.build(
+                context: context,
+                appbarColor: settingColor["appBar"]!,
+                iconColor: settingColor["appIcon"]!,
+                appLocalizations: loc,
+                labelState: _labelState,
+                onExit: () async {
+                  await _onExit();
+                },
+                onRestart: () => provider.restart(),
+                onNewGame: () async {
+                  await _onNewGame();
+                },
+                onHint: () => provider.showHint(context),
+                onSaveBookmark: _saveBookmark,
+                onLoadBookmark: _loadBookmark,
+                onClearBookmark: _clearBookmark,
               ),
               body: Stack(
                 children: [
