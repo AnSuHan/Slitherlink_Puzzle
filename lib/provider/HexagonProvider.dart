@@ -82,25 +82,24 @@ class HexagonProvider with ChangeNotifier {
 
     // Build widget tree with pointy-top hex grid layout.
     // Widget box: W = R·√3, H = 2R. Same-row hexagons abut (no gap).
-    // Odd rows shifted right by W/2 = R·√3/2. Vertical centre spacing = 3R/2,
-    // so rows overlap by R/2 — the Transform offset per row is -row·(R/2).
+    // Odd rows shifted right by W/2 via Transform (not SizedBox — keeping
+    // both rows the same layout width so Column centring puts them on the
+    // same baseline, then Transform nudges odd rows horizontally). Vertical
+    // centre spacing = 3R/2, so rows overlap by R/2 upward per row.
     final double hexR = HexagonBoxState.cellSize;
     final double hexW = hexR * 1.732; // R·√3
-    final double rowOverlapY = hexR / 2; // upward shift per row
+    final double rowOverlapY = hexR / 2;
 
     for (int r = 0; r < rows; r++) {
       bool isOddRow = r % 2 == 1;
 
       List<Widget> rowChildren = [];
-      if (isOddRow) {
-        rowChildren.add(SizedBox(width: hexW / 2));
-      }
       for (int c = 0; c < cols; c++) {
         rowChildren.add(puzzle[r][c]);
       }
 
       hexagonField.add(Transform.translate(
-        offset: Offset(0, -r * rowOverlapY),
+        offset: Offset(isOddRow ? hexW / 2 : 0, -r * rowOverlapY),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,

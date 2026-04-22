@@ -97,23 +97,38 @@ class HexagonBoxState extends State<HexagonBox> with SingleTickerProviderStateMi
 
     return Consumer<HexagonProvider>(
       builder: (context, provider, child) {
-        return AnimatedBuilder(
-          animation: _hintAnimation,
-          builder: (context, child) {
-            return GestureDetector(
-              onTapUp: (details) => _handleTap(details, provider, w, h),
-              child: CustomPaint(
-                size: Size(w, h),
-                painter: _HexagonPainter(
-                  edges: widget.edges,
-                  num: widget.num,
-                  edgeColorFn: _edgeColor,
-                  bgColor: ThemeColor().getColor()["box"] ?? Colors.black,
-                  numColor: ThemeColor().getColor()["number"] ?? Colors.white,
-                ),
+        final bool hasAnimEdge =
+            widget.edges.any((e) => e == -3 || e == -5);
+        Widget painted = CustomPaint(
+          size: Size(w, h),
+          painter: _HexagonPainter(
+            edges: List<int>.from(widget.edges),
+            num: widget.num,
+            edgeColorFn: _edgeColor,
+            bgColor: ThemeColor().getColor()["box"] ?? Colors.black,
+            numColor: ThemeColor().getColor()["number"] ?? Colors.white,
+          ),
+        );
+        if (hasAnimEdge) {
+          painted = AnimatedBuilder(
+            animation: _hintAnimation,
+            builder: (_, __) => CustomPaint(
+              size: Size(w, h),
+              painter: _HexagonPainter(
+                edges: List<int>.from(widget.edges),
+                num: widget.num,
+                edgeColorFn: _edgeColor,
+                bgColor: ThemeColor().getColor()["box"] ?? Colors.black,
+                numColor: ThemeColor().getColor()["number"] ?? Colors.white,
               ),
-            );
-          },
+            ),
+          );
+        }
+        return RepaintBoundary(
+          child: GestureDetector(
+            onTapUp: (details) => _handleTap(details, provider, w, h),
+            child: painted,
+          ),
         );
       },
     );
