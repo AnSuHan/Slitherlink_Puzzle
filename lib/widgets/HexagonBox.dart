@@ -90,9 +90,10 @@ class HexagonBoxState extends State<HexagonBox> with SingleTickerProviderStateMi
 
   @override
   Widget build(BuildContext context) {
+    // Pointy-top hexagon: width = R·√3, height = 2R.
     final r = cellSize;
-    final w = r * 2;
-    final h = r * sqrt(3);
+    final w = r * sqrt(3);
+    final h = r * 2;
 
     return Consumer<HexagonProvider>(
       builder: (context, provider, child) {
@@ -131,28 +132,23 @@ class HexagonBoxState extends State<HexagonBox> with SingleTickerProviderStateMi
   }
 
   /// Determine which of the 6 edges was tapped.
-  /// Divide the hexagon into 6 sectors from center.
+  /// Pointy-top: edge midpoints are at angles 60°, 0°, 300°, 240°, 180°, 120°
+  /// for edges 0..5 respectively. Each edge spans 60°.
   int _hitTestEdge(Offset pos, double w, double h) {
     double cx = w / 2;
     double cy = h / 2;
     double dx = pos.dx - cx;
     double dy = pos.dy - cy;
 
-    // Angle from center (0 = right, counterclockwise)
     double angle = atan2(-dy, dx); // flip y for screen coords
     if (angle < 0) angle += 2 * pi;
 
-    // Map angle to edge index:
-    // 0=top (60-120°), 1=topRight (0-60°), 2=bottomRight (300-360°),
-    // 3=bottom (240-300°), 4=bottomLeft (180-240°), 5=topLeft (120-180°)
-    if (angle >= pi / 3 && angle < 2 * pi / 3) return 0;       // top
-    if (angle >= 0 && angle < pi / 3) return 1;                 // topRight
-    if (angle >= 5 * pi / 3 && angle < 2 * pi) return 2;       // bottomRight
-    if (angle >= 4 * pi / 3 && angle < 5 * pi / 3) return 3;   // bottom
-    if (angle >= pi && angle < 4 * pi / 3) return 4;            // bottomLeft
-    if (angle >= 2 * pi / 3 && angle < pi) return 5;            // topLeft
-
-    return 0;
+    if (angle >= pi / 6 && angle < pi / 2) return 0;          // 30-90  top-right slant
+    if (angle < pi / 6 || angle >= 11 * pi / 6) return 1;     // -30-30 right vertical
+    if (angle >= 3 * pi / 2 && angle < 11 * pi / 6) return 2; // 270-330 bottom-right slant
+    if (angle >= 7 * pi / 6 && angle < 3 * pi / 2) return 3;  // 210-270 bottom-left slant
+    if (angle >= 5 * pi / 6 && angle < 7 * pi / 6) return 4;  // 150-210 left vertical
+    return 5;                                                  // 90-150 top-left slant
   }
 }
 
@@ -175,9 +171,10 @@ class _HexagonPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
     final cy = size.height / 2;
-    final r = size.width / 2;
+    // Pointy-top: vertex-distance R = half of box height.
+    final r = size.height / 2;
 
-    // Flat-top hexagon vertices (starting from top, clockwise)
+    // Pointy-top hexagon vertices (starting from top, clockwise)
     List<Offset> vertices = [];
     for (int i = 0; i < 6; i++) {
       double angle = (60 * i - 90) * pi / 180;

@@ -80,29 +80,27 @@ class HexagonProvider with ChangeNotifier {
       _applySubmit();
     }
 
-    // Build widget tree with hex grid layout
+    // Build widget tree with pointy-top hex grid layout.
+    // Widget box: W = R·√3, H = 2R. Same-row hexagons abut (no gap).
+    // Odd rows shifted right by W/2 = R·√3/2. Vertical centre spacing = 3R/2,
+    // so rows overlap by R/2 — the Transform offset per row is -row·(R/2).
     final double hexR = HexagonBoxState.cellSize;
-    final double hexW = hexR * 2;
-    final double hexH = hexR * 1.732; // sqrt(3)
+    final double hexW = hexR * 1.732; // R·√3
+    final double rowOverlapY = hexR / 2; // upward shift per row
 
     for (int r = 0; r < rows; r++) {
       bool isOddRow = r % 2 == 1;
-      double offsetX = isOddRow ? hexR : 0;
 
       List<Widget> rowChildren = [];
       if (isOddRow) {
-        rowChildren.add(SizedBox(width: offsetX));
+        rowChildren.add(SizedBox(width: hexW / 2));
       }
       for (int c = 0; c < cols; c++) {
         rowChildren.add(puzzle[r][c]);
-        // Small gap between hexagons
-        if (c < cols - 1) {
-          rowChildren.add(const SizedBox(width: 2));
-        }
       }
 
       hexagonField.add(Transform.translate(
-        offset: Offset(0, -r * hexH * 0.25), // Overlap rows for hex tiling
+        offset: Offset(0, -r * rowOverlapY),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
@@ -152,12 +150,41 @@ class HexagonProvider with ChangeNotifier {
 
   List<Widget> getHexagonField() => hexagonField;
 
+  /// Neighbour deltas per edge index (0..5) for pointy-top row-offset tiling
+  /// where odd rows are shifted right. Edge i of (r,c) is shared with the
+  /// neighbour at (r+dr, c+dc) on that neighbour's edge (i+3)%6.
+  static const List<List<int>> _nbEven = [
+    [-1, 0],  // 0 top-right slanted  -> NE
+    [0, 1],   // 1 right vertical      -> E
+    [1, 0],   // 2 bottom-right slanted-> SE
+    [1, -1],  // 3 bottom-left slanted -> SW
+    [0, -1],  // 4 left vertical       -> W
+    [-1, -1], // 5 top-left slanted    -> NW
+  ];
+  static const List<List<int>> _nbOdd = [
+    [-1, 1], [0, 1], [1, 1], [1, 0], [0, -1], [-1, 0],
+  ];
+
+  /// Returns (neighbourRow, neighbourCol, neighbourEdgeIdx) for the shared
+  /// edge, or null if the neighbour would fall outside the grid.
+  List<int>? _neighborEdge(int row, int col, int edgeIdx) {
+    final delta = (row & 1) == 0 ? _nbEven[edgeIdx] : _nbOdd[edgeIdx];
+    final nr = row + delta[0];
+    final nc = col + delta[1];
+    if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) return null;
+    return [nr, nc, (edgeIdx + 3) % 6];
+  }
+
   /// Called when user taps an edge
   Future<void> updateEdge(int row, int col, int edgeIdx, int value) async {
     _undoStack.add(submit.map((r) => List<int>.from(r)).toList());
     _redoStack.clear();
 
     puzzle[row][col].edges[edgeIdx] = value;
+    final nb = _neighborEdge(row, col, edgeIdx);
+    if (nb != null) {
+      puzzle[nb[0]][nb[1]].edges[nb[2]] = value;
+    }
     submit = _readSubmit();
     notifyListeners();
 
@@ -248,6 +275,10 @@ class HexagonProvider with ChangeNotifier {
         for (int e = 0; e < 6; e++) {
           if (answer[r][base + e] == 1 && submit[r][base + e] <= 0) {
             puzzle[r][c].edges[e] = -3;
+            final nb = _neighborEdge(r, c, e);
+            if (nb != null) {
+              puzzle[nb[0]][nb[1]].edges[nb[2]] = -3;
+            }
             notifyListeners();
             return;
           }

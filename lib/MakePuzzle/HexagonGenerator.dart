@@ -84,79 +84,30 @@ class HexagonGenerator {
   int _encodeEdge(int a, int b) => encodeEdgeStatic(a, b);
 
   /// Compute the 6 vertex indices for hex at (r, c).
-  /// Uses a systematic vertex numbering scheme.
   ///
-  /// For flat-top hex in offset coordinates (even-row offset):
-  /// Each vertex is shared by up to 3 hexagons.
-  /// We assign unique vertex IDs based on position.
+  /// Pointy-top hexagons with row-offset tiling (odd rows shifted right by
+  /// √3·R/2). Vertex positions are quantised to a lattice whose x-step is
+  /// √3·R/2 and y-step is R/2, so each vertex gets a unique (k, m) pair
+  /// and neighbours sharing the same vertex see the same ID.
   ///
-  /// Vertex layout per hex (flat-top):
-  ///      v0
-  ///   v5    v1
-  ///   v4    v2
-  ///      v3
-  ///
-  /// Global vertex indexing: row r has 2 vertex rows.
-  /// Top vertices of hex row r: vRow = 2*r
-  /// Bottom vertices of hex row r: vRow = 2*r + 1
-  /// Each vertex row has (cols + 1) vertices, but offset rows shift by 0.5
-  ///
-  /// Simpler approach: assign each hex 2 unique vertices (top and bottom),
-  /// share the 4 side vertices with neighbors.
+  /// Vertex order (same as before): v0=top, v1=upper-right, v2=lower-right,
+  /// v3=bottom, v4=lower-left, v5=upper-left.
   static List<int> hexVertices(int r, int c, int cols) {
-    // Use a vertex grid where each hex contributes its top and bottom vertex.
-    // Side vertices are shared between horizontal neighbors.
-    //
-    // Vertex scheme:
-    // For hex (r, c), in even-row offset coordinates:
-    // - Top vertex: unique to this hex
-    // - Bottom vertex: unique to this hex
-    // - TopLeft, TopRight: shared with hex above
-    // - BottomLeft, BottomRight: shared with hex below
-    //
-    // Global index: Each hex row has 2 vertex sub-rows.
-    // Sub-row 0 (side vertices): has (cols+1) vertices
-    // Sub-row 1 (peak vertices): has cols vertices
-    //
-    // For hex row r:
-    //   side row top: vertexRow = 2*r, indices 0..cols
-    //   peak row: vertexRow = 2*r+1, indices 0..cols-1
-    //   side row bottom: vertexRow = 2*(r+1), indices 0..cols
+    int off = r & 1; // odd rows shifted right by one half-step
+    int ck = 2 * c + off;
+    int cm = 3 * r + 2; // center in lattice units
 
-    int sideWidth = cols + 1;
-    int peakWidth = cols;
-    int rowStride = sideWidth + peakWidth; // vertices per hex row
+    int stride = 2 * cols + 4;
+    int enc(int k, int m) => m * stride + (k + 1);
 
-    bool evenRow = r % 2 == 0;
-
-    // Side vertices (top of this hex row)
-    int sideBase = r * rowStride;
-    // Peak vertices (top and bottom peaks)
-    int peakBase = r * rowStride + sideWidth;
-    // Side vertices (bottom of this hex row)
-    int sideBaseBottom = (r + 1) * rowStride;
-
-    int v0, v1, v2, v3, v4, v5;
-
-    if (evenRow) {
-      // Even row: no offset
-      v0 = peakBase + c;                    // top peak
-      v1 = sideBase + c + 1;               // top-right side
-      v2 = sideBaseBottom + c + 1;          // bottom-right side
-      v3 = peakBase + peakWidth + sideWidth + c; // bottom peak (next row's peak)
-      v4 = sideBaseBottom + c;              // bottom-left side
-      v5 = sideBase + c;                    // top-left side
-    } else {
-      // Odd row: offset by +0.5, so vertex sharing shifts
-      v0 = peakBase + c;
-      v1 = sideBase + c + 1;
-      v2 = sideBaseBottom + c + 1;
-      v3 = peakBase + peakWidth + sideWidth + c;
-      v4 = sideBaseBottom + c;
-      v5 = sideBase + c;
-    }
-
-    return [v0, v1, v2, v3, v4, v5];
+    return [
+      enc(ck,     cm - 2), // v0 top
+      enc(ck + 1, cm - 1), // v1 upper-right
+      enc(ck + 1, cm + 1), // v2 lower-right
+      enc(ck,     cm + 2), // v3 bottom
+      enc(ck - 1, cm + 1), // v4 lower-left
+      enc(ck - 1, cm - 1), // v5 upper-left
+    ];
   }
 
   /// Get the 6 edges of hex at (r, c)
