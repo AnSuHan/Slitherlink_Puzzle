@@ -3,7 +3,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import '../MakePuzzle/HexagonGenerator.dart';
 import '../Platform/ExtractData.dart'
   if (dart.library.html) '../Platform/ExtractDataWeb.dart';
 import '../ThemeColor.dart';
@@ -56,6 +55,7 @@ class HexagonProvider with ChangeNotifier {
 
   Future<void> init() async {
     _buildPuzzle();
+    _applyConstraints();
     notifyListeners();
   }
 
@@ -184,10 +184,54 @@ class HexagonProvider with ChangeNotifier {
     if (nb != null) {
       puzzle[nb[0]][nb[1]].edges[nb[2]] = value;
     }
+    _applyConstraints();
     submit = _readSubmit();
     notifyListeners();
 
     _checkComplete();
+  }
+
+  /// Cell rule: when a clue cell has `num` selected edges (value ≥ 1), any
+  /// remaining undecided edges (value == 0) are auto-disabled (-1). Shared
+  /// edges are synchronised to the neighbour cell. Prior auto-disables are
+  /// wiped at the start so the state tracks current tap values — user marks
+  /// (-4 X, -2 wrong) are preserved throughout. Clues with num < 0 are skipped.
+  void _applyConstraints() {
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        for (int e = 0; e < 6; e++) {
+          if (puzzle[r][c].edges[e] == -1) {
+            puzzle[r][c].edges[e] = 0;
+          }
+        }
+      }
+    }
+
+    for (int iter = 0; iter < 20; iter++) {
+      bool changed = false;
+      for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+          final int num = puzzle[r][c].num;
+          if (num < 0) continue;
+          int active = 0;
+          for (int e = 0; e < 6; e++) {
+            if (puzzle[r][c].edges[e] >= 1) active++;
+          }
+          if (active < num) continue;
+          for (int e = 0; e < 6; e++) {
+            if (puzzle[r][c].edges[e] == 0) {
+              puzzle[r][c].edges[e] = -1;
+              final nb = _neighborEdge(r, c, e);
+              if (nb != null) {
+                puzzle[nb[0]][nb[1]].edges[nb[2]] = -1;
+              }
+              changed = true;
+            }
+          }
+        }
+      }
+      if (!changed) break;
+    }
   }
 
   void _checkComplete() {
@@ -238,6 +282,8 @@ class HexagonProvider with ChangeNotifier {
     _redoStack.add(submit.map((r) => List<int>.from(r)).toList());
     submit = _undoStack.removeLast();
     _applySubmit();
+    _applyConstraints();
+    submit = _readSubmit();
     notifyListeners();
   }
 
@@ -246,6 +292,8 @@ class HexagonProvider with ChangeNotifier {
     _undoStack.add(submit.map((r) => List<int>.from(r)).toList());
     submit = _redoStack.removeLast();
     _applySubmit();
+    _applyConstraints();
+    submit = _readSubmit();
     notifyListeners();
   }
 
@@ -258,6 +306,8 @@ class HexagonProvider with ChangeNotifier {
       }
     }
     _applySubmit();
+    _applyConstraints();
+    submit = _readSubmit();
     notifyListeners();
   }
 
@@ -312,6 +362,7 @@ class HexagonProvider with ChangeNotifier {
     _redoStack.clear();
     submit = newSubmit.map((r) => List<int>.from(r)).toList();
     _applySubmit();
+    _applyConstraints();
     submit = _readSubmit();
     notifyListeners();
   }
