@@ -179,16 +179,109 @@ class HexagonProvider with ChangeNotifier {
     _undoStack.add(submit.map((r) => List<int>.from(r)).toList());
     _redoStack.clear();
 
-    puzzle[row][col].edges[edgeIdx] = value;
+    // Color merging: if the user drew a positive edge, prefer an adjacent
+    // chain's color over the random one passed in. If multiple chains meet
+    // at this edge, recolor the others into the chosen color so the whole
+    // connected component shares one colour. Matches SquareProvider.
+    int finalValue = value;
+    if (value >= 1) {
+      final List<List<int>> adj = _adjacentEdges(row, col, edgeIdx);
+      final Set<int> nearColors = {};
+      for (final a in adj) {
+        final v = puzzle[a[0]][a[1]].edges[a[2]];
+        if (v >= 1) nearColors.add(v);
+      }
+      if (nearColors.isNotEmpty) {
+        finalValue = nearColors.first;
+        for (final a in adj) {
+          final v = puzzle[a[0]][a[1]].edges[a[2]];
+          if (v >= 1 && v != finalValue) {
+            _recolorChain(a[0], a[1], a[2], finalValue);
+          }
+        }
+      }
+    }
+
+    puzzle[row][col].edges[edgeIdx] = finalValue;
     final nb = _neighborEdge(row, col, edgeIdx);
     if (nb != null) {
-      puzzle[nb[0]][nb[1]].edges[nb[2]] = value;
+      puzzle[nb[0]][nb[1]].edges[nb[2]] = finalValue;
     }
     _applyConstraints();
     submit = _readSubmit();
     notifyListeners();
 
     _checkComplete();
+  }
+
+  /// Canonical integer ID for a (potentially shared) edge — lex-min of self
+  /// and its neighbour's mirror, so both sides resolve to the same ID.
+  int _canonicalEdgeId(int r, int c, int e) {
+    final selfId = (r * 1000 + c) * 10 + e;
+    final nb = _neighborEdge(r, c, e);
+    if (nb == null) return selfId;
+    final otherId = (nb[0] * 1000 + nb[1]) * 10 + nb[2];
+    return selfId <= otherId ? selfId : otherId;
+  }
+
+  /// In-grid edges incident to vertex (vx, vy), as [r, c, e] tuples (one
+  /// per unique edge — shared edges are deduplicated by canonical ID).
+  List<List<int>> _edgesAtVertex(int vx, int vy) {
+    final List<List<int>> out = [];
+    final Set<int> seen = {};
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        for (int vi = 0; vi < 6; vi++) {
+          final coord = _vertexCoord(r, c, vi);
+          if (coord[0] != vx || coord[1] != vy) continue;
+          for (final e in [vi, (vi + 5) % 6]) {
+            final id = _canonicalEdgeId(r, c, e);
+            if (seen.add(id)) out.add([r, c, e]);
+          }
+        }
+      }
+    }
+    return out;
+  }
+
+  /// All edges sharing a vertex with edge (r, c, e), excluding the edge itself.
+  List<List<int>> _adjacentEdges(int r, int c, int e) {
+    final v0 = _vertexCoord(r, c, e);
+    final v1 = _vertexCoord(r, c, (e + 1) % 6);
+    final selfId = _canonicalEdgeId(r, c, e);
+    final List<List<int>> out = [];
+    final Set<int> seen = {selfId};
+    for (final v in [v0, v1]) {
+      for (final adj in _edgesAtVertex(v[0], v[1])) {
+        final id = _canonicalEdgeId(adj[0], adj[1], adj[2]);
+        if (seen.add(id)) out.add(adj);
+      }
+    }
+    return out;
+  }
+
+  /// BFS from (r, c, e), recoloring every drawn edge reachable through the
+  /// current colour into [newValue]. Walks adjacency at vertices.
+  void _recolorChain(int r, int c, int e, int newValue) {
+    final int oldValue = puzzle[r][c].edges[e];
+    if (oldValue == newValue || oldValue < 1) return;
+    final List<List<int>> queue = [[r, c, e]];
+    final Set<int> visited = {_canonicalEdgeId(r, c, e)};
+    int idx = 0;
+    while (idx < queue.length) {
+      final cur = queue[idx++];
+      final cr = cur[0], cc = cur[1], ce = cur[2];
+      if (puzzle[cr][cc].edges[ce] != oldValue) continue;
+      puzzle[cr][cc].edges[ce] = newValue;
+      final nbe = _neighborEdge(cr, cc, ce);
+      if (nbe != null) puzzle[nbe[0]][nbe[1]].edges[nbe[2]] = newValue;
+      for (final adj in _adjacentEdges(cr, cc, ce)) {
+        if (puzzle[adj[0]][adj[1]].edges[adj[2]] == oldValue) {
+          final id = _canonicalEdgeId(adj[0], adj[1], adj[2]);
+          if (visited.add(id)) queue.add(adj);
+        }
+      }
+    }
   }
 
   /// Constraint propagation entry point. Wipes prior auto-disables (-1) and
