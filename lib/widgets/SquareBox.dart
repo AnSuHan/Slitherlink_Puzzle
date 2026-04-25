@@ -284,7 +284,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                     height: 50,
                     width: 50,
                     color: boxColor == 0 ? settingColor["box"] : settingColor["boxHighLight"],
-                    child: Center(
+                    child: num < 0 ? null : Center(
                       child: Text(num.toString(), style: TextStyle(color: textColor)),
                     ),
                   );

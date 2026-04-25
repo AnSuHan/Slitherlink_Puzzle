@@ -233,6 +233,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
 
     _provider.setAnswer(answer);
     _provider.setSubmit(submit);
+    _provider.setDifficulty(tokens.length >= 4 ? tokens[3] : "normal");
     _provider.init();
     _provider.setGameField(this);
 
@@ -249,24 +250,12 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     });
   }
 
-  /// Top-level function for compute() isolate
+  /// Top-level function for compute() isolate. Difficulty isn't needed here:
+  /// the generator returns full edge data, and SquareProvider does the
+  /// difficulty-based clue masking on the same answer.
   static List<List<int>> _generatePuzzleIsolate(Map<String, dynamic> params) {
     int rows = params['rows'];
     int cols = params['cols'];
-    String diffStr = params['difficulty'];
-
-    Difficulty difficulty;
-    switch (diffStr) {
-      case "easy":
-        difficulty = Difficulty.easy;
-        break;
-      case "hard":
-        difficulty = Difficulty.hard;
-        break;
-      default:
-        difficulty = Difficulty.normal;
-    }
-
     final generator = SlitherlinkGenerator(rows, cols);
     final puzzle = generator.generateSolution();
     return puzzle.toEdgeFormat();

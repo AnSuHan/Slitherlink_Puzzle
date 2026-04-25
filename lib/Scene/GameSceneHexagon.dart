@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:slitherlink_project/l10n/app_localizations.dart';
 
-import '../MakePuzzle/SlitherlinkGenerator.dart' show Difficulty;
 import '../MakePuzzle/HexagonGenerator.dart';
 import '../Platform/ExtractData.dart'
   if (dart.library.html) '../Platform/ExtractDataWeb.dart';
@@ -158,8 +157,10 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
     int activeEdges = answer.expand((r) => r).where((v) => v == 1).length;
     _debugPuzzleInfo = 'Hash: $puzzleHash | Edges: $activeEdges';
 
+    final List<String> diffTokens = widget.loadKey.split("_");
     _provider.setAnswer(answer);
     _provider.setSubmit(submit);
+    _provider.setDifficulty(diffTokens.length >= 4 ? diffTokens[3] : "normal");
     _provider.init();
 
     if (mounted) setState(() {
@@ -180,18 +181,11 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
     return [];
   }
 
+  /// Difficulty isn't needed here — generator returns full edge data and
+  /// HexagonProvider does the difficulty-based clue masking on the same answer.
   static List<List<int>> _generateIsolate(Map<String, dynamic> params) {
     int rows = params['rows'];
     int cols = params['cols'];
-    String diffStr = params['difficulty'];
-
-    Difficulty difficulty;
-    switch (diffStr) {
-      case "easy": difficulty = Difficulty.easy; break;
-      case "hard": difficulty = Difficulty.hard; break;
-      default: difficulty = Difficulty.normal;
-    }
-
     final generator = HexagonGenerator(rows, cols);
     final puzzle = generator.generateSolution();
     return puzzle.toEdgeFormat();

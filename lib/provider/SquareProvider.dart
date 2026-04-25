@@ -524,6 +524,46 @@ class SquareProvider with ChangeNotifier {
     this.submit = submit;
   }
 
+  /// Difficulty for hint masking ("easy" 0.80, "normal" 0.55, "hard" 0.35).
+  String difficulty = "normal";
+
+  void setDifficulty(String d) {
+    difficulty = d;
+  }
+
+  /// Hide a deterministic subset of clue cells so the same puzzle + difficulty
+  /// always reveals the same set on each load. Seeded by the answer hash so
+  /// Continue mode reproduces the original mask without persisting it.
+  void _maskByDifficulty() {
+    double ratio;
+    switch (difficulty) {
+      case "easy": ratio = 0.80; break;
+      case "hard": ratio = 0.35; break;
+      default: ratio = 0.55;
+    }
+    if (ratio >= 1.0) return;
+
+    int seed = 0;
+    for (final row in answer) {
+      for (final v in row) {
+        seed = (seed * 31 + v) & 0x7FFFFFFF;
+      }
+    }
+    final int rows = puzzle.length;
+    final int cols = puzzle.isEmpty ? 0 : puzzle[0].length;
+    final List<List<int>> cells = [];
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        cells.add([r, c]);
+      }
+    }
+    cells.shuffle(Random(seed));
+    final int keep = (cells.length * ratio).round();
+    for (int i = keep; i < cells.length; i++) {
+      puzzle[cells[i][0]][cells[i][1]].num = -1;
+    }
+  }
+
   List<List<SquareBox>> getPuzzle() {
     return puzzle;
   }
@@ -1221,6 +1261,7 @@ class SquareProvider with ChangeNotifier {
     }
     //marking number with answer
     setNumWithAnswer(puzzle);
+    _maskByDifficulty();
     //setDefaultLineStep1(puzzle);
     await clearLineForStart();
 
