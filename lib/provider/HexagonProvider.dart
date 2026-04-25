@@ -191,11 +191,9 @@ class HexagonProvider with ChangeNotifier {
     _checkComplete();
   }
 
-  /// Cell rule: when a clue cell has `num` selected edges (value ≥ 1), any
-  /// remaining undecided edges (value == 0) are auto-disabled (-1). Shared
-  /// edges are synchronised to the neighbour cell. Prior auto-disables are
-  /// wiped at the start so the state tracks current tap values — user marks
-  /// (-4 X, -2 wrong) are preserved throughout. Clues with num < 0 are skipped.
+  /// Constraint propagation entry point. Wipes prior auto-disables (-1) and
+  /// then iterates the cell rule and vertex-degree rule until a fixed point.
+  /// User annotations (-2 wrong, -4 X) are preserved throughout.
   void _applyConstraints() {
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
@@ -207,31 +205,120 @@ class HexagonProvider with ChangeNotifier {
       }
     }
 
-    for (int iter = 0; iter < 20; iter++) {
+    for (int iter = 0; iter < 30; iter++) {
       bool changed = false;
-      for (int r = 0; r < rows; r++) {
-        for (int c = 0; c < cols; c++) {
-          final int num = puzzle[r][c].num;
-          if (num < 0) continue;
-          int active = 0;
-          for (int e = 0; e < 6; e++) {
-            if (puzzle[r][c].edges[e] >= 1) active++;
-          }
-          if (active < num) continue;
-          for (int e = 0; e < 6; e++) {
-            if (puzzle[r][c].edges[e] == 0) {
-              puzzle[r][c].edges[e] = -1;
-              final nb = _neighborEdge(r, c, e);
-              if (nb != null) {
-                puzzle[nb[0]][nb[1]].edges[nb[2]] = -1;
-              }
-              changed = true;
+      if (_runCellRule()) changed = true;
+      if (_runVertexRule()) changed = true;
+      if (!changed) break;
+    }
+  }
+
+  /// Cell rule: when a clue cell has `num` selected edges (value ≥ 1), any
+  /// remaining undecided edges (value == 0) are auto-disabled (-1). Shared
+  /// edges are synchronised to the neighbour cell. Clues with num < 0 are
+  /// skipped (hidden hint).
+  bool _runCellRule() {
+    bool anyChange = false;
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final int num = puzzle[r][c].num;
+        if (num < 0) continue;
+        int active = 0;
+        for (int e = 0; e < 6; e++) {
+          if (puzzle[r][c].edges[e] >= 1) active++;
+        }
+        if (active < num) continue;
+        for (int e = 0; e < 6; e++) {
+          if (puzzle[r][c].edges[e] == 0) {
+            puzzle[r][c].edges[e] = -1;
+            final nb = _neighborEdge(r, c, e);
+            if (nb != null) {
+              puzzle[nb[0]][nb[1]].edges[nb[2]] = -1;
             }
+            anyChange = true;
           }
         }
       }
-      if (!changed) break;
     }
+    return anyChange;
+  }
+
+  /// Vertex-degree rule: a Slitherlink vertex must end at degree 0 or 2.
+  /// If two edges at a vertex are already drawn, remaining undecided edges
+  /// become -1. If active + undecided < 2, the loop can't reach degree 2 here,
+  /// so any remaining undecided edges also become -1.
+  ///
+  /// Vertex coords use integer (vx, vy) with unit = (W/2, R/2), letting the
+  /// six vertices of every hex resolve to small integer pairs without any
+  /// floating-point keying.
+  bool _runVertexRule() {
+    final Map<int, List<List<int>>> incident = {};
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        for (int vi = 0; vi < 6; vi++) {
+          final coord = _vertexCoord(r, c, vi);
+          final key = coord[0] * 100000 + coord[1];
+          // The two edges of hex (r,c) incident to v[vi] are edge vi and edge (vi+5)%6.
+          for (final e in [vi, (vi + 5) % 6]) {
+            final list = incident.putIfAbsent(key, () => []);
+            // Dedup shared edges by canonical (lex-min of self and neighbour).
+            final nb = _neighborEdge(r, c, e);
+            int selfId = (r * 1000 + c) * 10 + e;
+            int otherId = nb == null ? -1 : (nb[0] * 1000 + nb[1]) * 10 + nb[2];
+            int canonical = (otherId == -1 || selfId <= otherId) ? selfId : otherId;
+            bool dup = false;
+            for (final existing in list) {
+              if (existing[3] == canonical) { dup = true; break; }
+            }
+            if (!dup) list.add([r, c, e, canonical]);
+          }
+        }
+      }
+    }
+
+    bool anyChange = false;
+    for (final edges in incident.values) {
+      int active = 0, undecided = 0;
+      for (final e in edges) {
+        final v = puzzle[e[0]][e[1]].edges[e[2]];
+        if (v >= 1) {
+          active++;
+        } else if (v == 0) {
+          undecided++;
+        }
+      }
+      final bool satisfied = active >= 2;
+      final bool starved = active + undecided < 2;
+      if (!satisfied && !starved) continue;
+
+      for (final e in edges) {
+        if (puzzle[e[0]][e[1]].edges[e[2]] == 0) {
+          puzzle[e[0]][e[1]].edges[e[2]] = -1;
+          final nb = _neighborEdge(e[0], e[1], e[2]);
+          if (nb != null) {
+            puzzle[nb[0]][nb[1]].edges[nb[2]] = -1;
+          }
+          anyChange = true;
+        }
+      }
+    }
+    return anyChange;
+  }
+
+  /// Integer vertex coordinate in (W/2, R/2) units. v[0]=top, v[1]=top-right,
+  /// v[2]=bottom-right, v[3]=bottom, v[4]=bottom-left, v[5]=top-left.
+  List<int> _vertexCoord(int r, int c, int vi) {
+    final int cx = 2 * c + (r & 1);
+    final int cy = 3 * r;
+    switch (vi) {
+      case 0: return [cx, cy - 2];
+      case 1: return [cx + 1, cy - 1];
+      case 2: return [cx + 1, cy + 1];
+      case 3: return [cx, cy + 2];
+      case 4: return [cx - 1, cy + 1];
+      case 5: return [cx - 1, cy - 1];
+    }
+    return [cx, cy];
   }
 
   void _checkComplete() {

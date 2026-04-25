@@ -233,9 +233,17 @@ class _HexagonPainter extends CustomPainter {
 
     // Draw number
     if (num >= 0) {
+      int active = 0;
+      for (int e = 0; e < 6; e++) {
+        if (edges[e] >= 1) active++;
+      }
+      // Cell rule is satisfied → remaining edges are auto-disabled. Dim the
+      // number so the player can see this cell is done.
+      final Color textColor =
+          active == num ? numColor.withOpacity(0.35) : numColor;
       final textSpan = TextSpan(
         text: num.toString(),
-        style: TextStyle(color: numColor, fontSize: 14, fontWeight: FontWeight.w500),
+        style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w500),
       );
       final textPainter = TextPainter(
         text: textSpan,
