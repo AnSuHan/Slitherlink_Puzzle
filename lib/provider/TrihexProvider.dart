@@ -12,9 +12,21 @@ import '../User/UserInfo.dart';
 import '../l10n/app_localizations.dart';
 import '../widgets/MainUI.dart';
 
-/// Provider for the 3.6.3.6 trihexagonal puzzle. Step 2 keeps the API
-/// minimal — rendering and tap propagation only. Cell rules, vertex
-/// rules, chain colouring and undo/redo arrive in step 3.
+/// Provider for the 3.6.3.6 trihexagonal puzzle.
+///
+/// Single source of truth is `edgeState : Map<edgeId, int>`. Sentinel values
+/// match Square/Hexagon:
+///   0   blank
+///   1+  drawn (chain colour)
+///   -1  auto-disabled by constraint propagation
+///   -2  user-marked wrong
+///   -3  hint highlight
+///   -4  user-placed X
+///   -5  wrong-hint flash
+///
+/// Topology uses encoded edge / vertex IDs from `TrihexGenerator`. Each
+/// trihex edge is decoded back into its two vertex IDs on demand via
+/// `1e9 % / ÷` (matches the encoder in `TrihexPuzzle.encodeEdge`).
 class TrihexProvider with ChangeNotifier {
   late BuildContext context;
   final String loadKey;
@@ -38,13 +50,6 @@ class TrihexProvider with ChangeNotifier {
   late TrihexGenerator gen;
 
   /// User edge state, keyed by trihex edge ID.
-  ///   0  = blank
-  ///   1+ = drawn (colour token, matches Square/Hexagon line palette)
-  ///   -1 = auto-disabled
-  ///   -2 = manually marked wrong
-  ///   -3 = hint highlight
-  ///   -4 = X
-  ///   -5 = wrong-hint flash
   final Map<int, int> edgeState = {};
 
   int rows = 0;
@@ -53,18 +58,63 @@ class TrihexProvider with ChangeNotifier {
   /// Difficulty for hint masking.
   String difficulty = "normal";
 
+  // --- Cached topology -----------------------------------------------------
+
+  /// vertexId → list of incident edge IDs.
+  final Map<int, List<int>> _edgesByVertex = {};
+
+  /// hex cell index (r * cols + c) → 6 perimeter edge IDs.
+  final List<List<int>> _hexEdgeIdsByCell = [];
+
+  /// triangle id → 3 perimeter edge IDs.
+  final Map<int, List<int>> _triEdgeIdsByCell = {};
+
+  // --- Undo/redo -----------------------------------------------------------
+
+  final List<Map<int, int>> _undoStack = [];
+  final List<Map<int, int>> _redoStack = [];
+
   void setAnswer(List<List<int>> answer) {
     puzzle = TrihexPuzzle.fromAnswerFormat(answer);
     rows = puzzle.rows;
     cols = puzzle.cols;
     gen = TrihexGenerator(rows, cols);
+    _buildTopology();
+  }
+
+  /// Cache cell→edges and vertex→edges adjacency. Called once after
+  /// `setAnswer` so the rule passes don't recompute trihex geometry.
+  void _buildTopology() {
+    _edgesByVertex.clear();
+    _hexEdgeIdsByCell.clear();
+    _triEdgeIdsByCell.clear();
+
+    final Set<int> allEdges = {};
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final edges = gen.hexCellEdgesOf(r, c);
+        _hexEdgeIdsByCell.add(edges);
+        allEdges.addAll(edges);
+      }
+    }
+    final tri = gen.enumerateTriangles();
+    for (final id in puzzle.triangleIds) {
+      final rep = tri.rep[id]!;
+      final edges = gen.triangleEdgesOf(rep[0], rep[1], rep[2]);
+      _triEdgeIdsByCell[id] = edges;
+      allEdges.addAll(edges);
+    }
+    for (final e in allEdges) {
+      final int hi = e % 1000000000;
+      final int lo = e ~/ 1000000000;
+      _edgesByVertex.putIfAbsent(lo, () => []).add(e);
+      _edgesByVertex.putIfAbsent(hi, () => []).add(e);
+    }
   }
 
   void setSubmit(List<List<int>> submit) {
     edgeState.clear();
     if (submit.isEmpty) return;
-    // submit format: row 0 hex edges flat, row 1 tri edges flat.
-    // Each int is the edge state for the matching perimeter slot.
     if (submit.length < 2) return;
     final List<int> hexFlat = submit[0];
     final List<int> triFlat = submit[1];
@@ -98,6 +148,7 @@ class TrihexProvider with ChangeNotifier {
 
   Future<void> init() async {
     _maskByDifficulty();
+    _applyConstraints();
     notifyListeners();
   }
 
@@ -124,7 +175,6 @@ class TrihexProvider with ChangeNotifier {
       hash(puzzle.triClue[id] ?? -1);
     }
 
-    // Assemble cell descriptors: 0 = hex (r, c), 1 = tri (id).
     final List<List<int>> cells = [];
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
@@ -150,15 +200,40 @@ class TrihexProvider with ChangeNotifier {
   /// Read user state for the given edge ID (0 if unset).
   int edgeValue(int edgeId) => edgeState[edgeId] ?? 0;
 
-  /// Step 2: plain edge update — no constraint propagation, no chain
-  /// colouring. Step 3 will replace this with the full version.
+  /// Apply a tap. Handles chain colour merging, then runs the constraint
+  /// fixed-point and the completion check.
   Future<void> updateEdge(int edgeId, int value) async {
-    if (value == 0) {
+    _undoStack.add(_snapshot());
+    _redoStack.clear();
+
+    int finalValue = value;
+    if (value >= 1) {
+      final adj = _adjacentEdges(edgeId);
+      final Set<int> nearColors = {};
+      for (final a in adj) {
+        final v = edgeValue(a);
+        if (v >= 1) nearColors.add(v);
+      }
+      if (nearColors.isNotEmpty) {
+        finalValue = nearColors.first;
+        for (final a in adj) {
+          final v = edgeValue(a);
+          if (v >= 1 && v != finalValue) {
+            _recolorChain(a, finalValue);
+          }
+        }
+      }
+    }
+
+    if (finalValue == 0) {
       edgeState.remove(edgeId);
     } else {
-      edgeState[edgeId] = value;
+      edgeState[edgeId] = finalValue;
     }
+    _applyConstraints();
     notifyListeners();
+
+    _checkComplete();
   }
 
   /// Cycle behaviour mirrors HexagonBox/SquareBox so the tap loop feels
@@ -170,6 +245,147 @@ class TrihexProvider with ChangeNotifier {
     if (current == -2) return -1;
     if (current == -4) return 0;
     return 0;
+  }
+
+  // --- Adjacency / chain colouring ----------------------------------------
+
+  /// All edges sharing a vertex with `edgeId`, excluding the edge itself.
+  List<int> _adjacentEdges(int edgeId) {
+    final int hi = edgeId % 1000000000;
+    final int lo = edgeId ~/ 1000000000;
+    final Set<int> out = {};
+    for (final v in [lo, hi]) {
+      for (final e in (_edgesByVertex[v] ?? const [])) {
+        if (e != edgeId) out.add(e);
+      }
+    }
+    return out.toList();
+  }
+
+  /// BFS from `seed` recolouring every drawn edge reachable through the
+  /// current colour into `newColor`.
+  void _recolorChain(int seed, int newColor) {
+    final int oldColor = edgeValue(seed);
+    if (oldColor == newColor || oldColor < 1) return;
+    final List<int> queue = [seed];
+    final Set<int> visited = {seed};
+    int idx = 0;
+    while (idx < queue.length) {
+      final e = queue[idx++];
+      if (edgeValue(e) != oldColor) continue;
+      edgeState[e] = newColor;
+      for (final adj in _adjacentEdges(e)) {
+        if (edgeValue(adj) == oldColor && visited.add(adj)) {
+          queue.add(adj);
+        }
+      }
+    }
+  }
+
+  // --- Constraint propagation ---------------------------------------------
+
+  /// Wipe prior auto-disables (-1) and iterate cell + vertex rules until
+  /// a fixed point. User annotations (-2 wrong, -4 X, -3/-5 hint) survive.
+  void _applyConstraints() {
+    edgeState.removeWhere((_, v) => v == -1);
+    for (int iter = 0; iter < 30; iter++) {
+      bool changed = false;
+      if (_runCellRule()) changed = true;
+      if (_runVertexRule()) changed = true;
+      if (!changed) break;
+    }
+  }
+
+  /// Cell rule: when a clue cell has `clue` selected edges (value ≥ 1),
+  /// any remaining undecided edges (value == 0) are auto-disabled (-1).
+  /// Hidden clues (clue < 0) are skipped.
+  bool _runCellRule() {
+    bool any = false;
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final clue = puzzle.hexClue[r][c];
+        if (clue < 0) continue;
+        final edges = _hexEdgeIdsByCell[r * cols + c];
+        int active = 0;
+        for (final e in edges) {
+          if (edgeValue(e) >= 1) active++;
+        }
+        if (active < clue) continue;
+        for (final e in edges) {
+          if (edgeValue(e) == 0) {
+            edgeState[e] = -1;
+            any = true;
+          }
+        }
+      }
+    }
+    for (final id in puzzle.triangleIds) {
+      final clue = puzzle.triClue[id] ?? -1;
+      if (clue < 0) continue;
+      final edges = _triEdgeIdsByCell[id]!;
+      int active = 0;
+      for (final e in edges) {
+        if (edgeValue(e) >= 1) active++;
+      }
+      if (active < clue) continue;
+      for (final e in edges) {
+        if (edgeValue(e) == 0) {
+          edgeState[e] = -1;
+          any = true;
+        }
+      }
+    }
+    return any;
+  }
+
+  /// Vertex-degree rule: every Slitherlink vertex must end at degree 0 or 2.
+  /// If two edges at a vertex are already drawn, remaining undecideds become
+  /// -1. If active + undecided < 2, the vertex is starved — undecideds are
+  /// also disabled.
+  bool _runVertexRule() {
+    bool any = false;
+    for (final edges in _edgesByVertex.values) {
+      int active = 0, undecided = 0;
+      for (final e in edges) {
+        final v = edgeValue(e);
+        if (v >= 1) {
+          active++;
+        } else if (v == 0) {
+          undecided++;
+        }
+      }
+      final satisfied = active >= 2;
+      final starved = active + undecided < 2;
+      if (!satisfied && !starved) continue;
+      for (final e in edges) {
+        if (edgeValue(e) == 0) {
+          edgeState[e] = -1;
+          any = true;
+        }
+      }
+    }
+    return any;
+  }
+
+  // --- Completion ---------------------------------------------------------
+
+  void _checkComplete() {
+    for (final e in puzzle.activeEdges) {
+      if (edgeValue(e) < 1) return;
+    }
+    for (final entry in edgeState.entries) {
+      if (entry.value >= 1 && !puzzle.activeEdges.contains(entry.key)) return;
+    }
+    showComplete(context);
+  }
+
+  // --- Snapshot / I/O -----------------------------------------------------
+
+  Map<int, int> _snapshot() => Map<int, int>.from(edgeState);
+
+  void _restore(Map<int, int> snap) {
+    edgeState.clear();
+    edgeState.addAll(snap);
   }
 
   /// Snapshot user edge state into the same flat layout `setSubmit` reads.
@@ -201,15 +417,33 @@ class TrihexProvider with ChangeNotifier {
     );
   }
 
-  // --- Stubs for step 3 ----------------------------------------------------
+  // --- User-triggered actions --------------------------------------------
 
-  Future<void> undo() async {}
-  Future<void> redo() async {}
-  Future<void> restart() async {
-    edgeState.clear();
+  Future<void> undo() async {
+    if (_undoStack.isEmpty) return;
+    _redoStack.add(_snapshot());
+    _restore(_undoStack.removeLast());
+    _applyConstraints();
     notifyListeners();
   }
 
+  Future<void> redo() async {
+    if (_redoStack.isEmpty) return;
+    _undoStack.add(_snapshot());
+    _restore(_redoStack.removeLast());
+    _applyConstraints();
+    notifyListeners();
+  }
+
+  Future<void> restart() async {
+    _undoStack.clear();
+    _redoStack.clear();
+    edgeState.clear();
+    _applyConstraints();
+    notifyListeners();
+  }
+
+  /// Highlight one missing answer edge with -3 so the painter can flash it.
   Future<void> showHint(BuildContext context) async {
     for (final e in puzzle.activeEdges) {
       final v = edgeValue(e);
@@ -223,19 +457,20 @@ class TrihexProvider with ChangeNotifier {
 
   Future<void> removeHintLine() async {
     edgeState.removeWhere((_, v) => v == -3 || v == -5);
-    notifyListeners();
   }
 
   List<List<int>> snapshotSubmit() => readSubmit();
 
   Future<void> applyBookmarkSubmit(List<List<int>> newSubmit) async {
     await removeHintLine();
+    _undoStack.clear();
+    _redoStack.clear();
     setSubmit(newSubmit);
+    _applyConstraints();
     notifyListeners();
   }
 
-  /// Currently unused — placeholder so the scene can call it once the
-  /// completion check arrives in step 3.
+  /// Fired by `_checkComplete` once user submission matches `puzzle.activeEdges`.
   Future<void> showComplete(BuildContext context) async {
     shutdown = true;
     UserInfo.incrementCompleted(loadKey);
