@@ -490,6 +490,7 @@ class _MainScreenContent extends StatelessWidget {
       {"key": "square", "icon": Icons.grid_4x4_rounded, "color": const Color(0xFF42A5F5)},
       {"key": "triangle", "icon": Icons.change_history_rounded, "color": const Color(0xFF66BB6A)},
       {"key": "hexagon", "icon": Icons.hexagon_outlined, "color": const Color(0xFFAB47BC)},
+      {"key": "trihex", "icon": Icons.auto_awesome_mosaic_outlined, "color": const Color(0xFFFFA726)},
     ];
     return Row(
       children: items.map((item) {
@@ -505,7 +506,7 @@ class _MainScreenContent extends StatelessWidget {
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: EdgeInsets.only(right: key != "hexagon" ? 8 : 0),
+              margin: EdgeInsets.only(right: key != "trihex" ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: isSelected ? color.withOpacity(0.15) : (isDark ? const Color(0xFF2A2A4A) : const Color(0xFFF0F0F5)),

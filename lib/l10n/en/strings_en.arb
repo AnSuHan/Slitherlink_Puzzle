@@ -3,6 +3,7 @@
   "MainUI_puzzleShape_square": "square",
   "MainUI_puzzleShape_triangle": "triangle",
   "MainUI_puzzleShape_hexagon": "hexagon",
+  "MainUI_puzzleShape_trihex": "trihex",
   "MainUI_puzzleShape_square_inst": "square2",
   "MainUI_puzzleSize_small": "small",
   "MainUI_puzzleSize_generate": "generate",

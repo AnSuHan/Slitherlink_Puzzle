@@ -9,6 +9,7 @@ import '../Front/HowToPlay.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../Scene/GameSceneTriangle.dart';
 import '../Scene/GameSceneHexagon.dart';
+import '../Scene/GameSceneTrihex.dart';
 import '../ThemeColor.dart';
 import '../User/Authentication.dart';
 import '../User/UserInfo.dart';
@@ -23,8 +24,8 @@ class MainUI {
   List<String> puzzleMode = ["debug", "release"];
   String selectedMode= "release";
 
-  List<String> puzzleType = ["square", "triangle", "hexagon"];
-  static List<String> _puzzleType = ["square", "triangle", "hexagon"];
+  List<String> puzzleType = ["square", "triangle", "hexagon", "trihex"];
+  static List<String> _puzzleType = ["square", "triangle", "hexagon", "trihex"];
   List<String> puzzleSize = ["small", "generate"];
   static List<String> _puzzleSize = ["small", "generate"];
   ///shape, size
@@ -816,6 +817,7 @@ class MainUI {
       appLocalizations.translate('MainUI_puzzleShape_square'),
       appLocalizations.translate('MainUI_puzzleShape_triangle'),
       appLocalizations.translate('MainUI_puzzleShape_hexagon'),
+      appLocalizations.translate('MainUI_puzzleShape_trihex'),
     ];
     switch(_selectedType[0]) {
       case "square":
@@ -832,6 +834,11 @@ class MainUI {
       case "육각형":
         _selectedType[0] = appLocalizations.translate('MainUI_puzzleShape_hexagon');
         selectedType[0] = "hexagon";
+        break;
+      case "trihex":
+      case "트리헥스":
+        _selectedType[0] = appLocalizations.translate('MainUI_puzzleShape_trihex');
+        selectedType[0] = "trihex";
         break;
     }
     _puzzleSize = [
@@ -1090,6 +1097,11 @@ class MainUI {
       case "육각형":
         selectedType[0] = "hexagon";
         break;
+
+      case "trihex":
+      case "트리헥스":
+        selectedType[0] = "trihex";
+        break;
     }
     onUpdate();
   }
@@ -1244,6 +1256,14 @@ class MainUI {
             )
         );
         break;
+      case "trihex":
+        Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => GameSceneTrihex(isContinue: isContinue, loadKey: key),
+            )
+        );
+        break;
     }
   }
 
@@ -1270,13 +1290,19 @@ class MainUI {
   Widget getPuzzleTypeChips(BuildContext context, VoidCallback onUpdate, Map<String, Color> palette) {
     applyLanguageCode();
 
-    List<String> shapes = ["square", "triangle", "hexagon"];
+    List<String> shapes = ["square", "triangle", "hexagon", "trihex"];
     List<String> shapeLabels = [
       appLocalizations.translate('MainUI_puzzleShape_square'),
       appLocalizations.translate('MainUI_puzzleShape_triangle'),
       appLocalizations.translate('MainUI_puzzleShape_hexagon'),
+      appLocalizations.translate('MainUI_puzzleShape_trihex'),
     ];
-    List<IconData> shapeIcons = [Icons.grid_4x4_rounded, Icons.change_history_rounded, Icons.hexagon_outlined];
+    List<IconData> shapeIcons = [
+      Icons.grid_4x4_rounded,
+      Icons.change_history_rounded,
+      Icons.hexagon_outlined,
+      Icons.auto_awesome_mosaic_outlined,
+    ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
