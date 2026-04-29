@@ -76,6 +76,103 @@ class TrihexPuzzle {
     final int hi = tva < tvb ? tvb : tva;
     return lo * 1000000000 + hi;
   }
+
+  /// Serialise to a `List<List<int>>` that can JSON-roundtrip.
+  ///
+  /// Layout (one row per section, fixed order):
+  ///   [0] header  : [rows, cols, triCount]
+  ///   [1] hexClue : rows*cols ints, row-major (hex (r, c) → index r*cols + c)
+  ///   [2] triIds  : triCount ints, sorted ascending
+  ///   [3] triClue : triCount ints, in `triIds` order
+  ///   [4] hexEdge : rows*cols*6 ints, 0/1 — answer edge state for hex perimeter
+  ///   [5] triEdge : triCount*3 ints, 0/1 — answer edge state for triangle perimeter
+  ///
+  /// Hex perimeter edges follow `_hexCellEdges` order; triangle perimeter
+  /// edges follow `_triangleEdges` (computed from a representative `(r, c, vi)`).
+  /// Callers that need the active-edge ID set can rebuild it from these by
+  /// re-running `TrihexGenerator(rows, cols)._hexCellEdges` /
+  /// `_triangleEdges` against the same row-major iteration.
+  List<List<int>> toAnswerFormat(TrihexGenerator gen) {
+    final List<int> hexClueFlat = [];
+    final List<int> hexEdgeFlat = [];
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        hexClueFlat.add(hexClue[r][c]);
+        for (final e in gen.hexCellEdgesOf(r, c)) {
+          hexEdgeFlat.add(activeEdges.contains(e) ? 1 : 0);
+        }
+      }
+    }
+    final List<int> triClueFlat = [];
+    final List<int> triEdgeFlat = [];
+    final tri = gen.enumerateTriangles();
+    for (final id in triangleIds) {
+      triClueFlat.add(triClue[id] ?? -1);
+      final rep = tri.rep[id]!;
+      for (final e in gen.triangleEdgesOf(rep[0], rep[1], rep[2])) {
+        triEdgeFlat.add(activeEdges.contains(e) ? 1 : 0);
+      }
+    }
+    return [
+      [rows, cols, triangleIds.length],
+      hexClueFlat,
+      List<int>.from(triangleIds),
+      triClueFlat,
+      hexEdgeFlat,
+      triEdgeFlat,
+    ];
+  }
+
+  /// Inverse of `toAnswerFormat`. Reconstructs hex/tri clue grids,
+  /// `triangleIds`, and `activeEdges`.
+  static TrihexPuzzle fromAnswerFormat(List<List<int>> data) {
+    if (data.isEmpty || data[0].length < 3) {
+      throw ArgumentError('TrihexPuzzle: malformed answer format');
+    }
+    final int rows = data[0][0];
+    final int cols = data[0][1];
+    final int triCount = data[0][2];
+    final List<int> hexClueFlat = data[1];
+    final List<int> triIds = data[2];
+    final List<int> triClueFlat = data[3];
+    final List<int> hexEdgeFlat = data[4];
+    final List<int> triEdgeFlat = data[5];
+
+    final puzzle = TrihexPuzzle(rows, cols);
+    puzzle.triangleIds = List<int>.from(triIds);
+
+    final gen = TrihexGenerator(rows, cols);
+    int idx = 0;
+    int eIdx = 0;
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        puzzle.hexClue[r][c] = hexClueFlat[idx];
+        // hexSolution is filled in by caller via _computeSolution if needed.
+        puzzle.hexSolution[r][c] = hexClueFlat[idx] >= 0 ? hexClueFlat[idx] : 0;
+        final perim = gen.hexCellEdgesOf(r, c);
+        for (int k = 0; k < 6; k++) {
+          if (hexEdgeFlat[eIdx] == 1) puzzle.activeEdges.add(perim[k]);
+          eIdx++;
+        }
+        idx++;
+      }
+    }
+
+    final tri = gen.enumerateTriangles();
+    int teIdx = 0;
+    for (int t = 0; t < triCount; t++) {
+      final id = triIds[t];
+      puzzle.triClue[id] = triClueFlat[t];
+      puzzle.triSolution[id] = triClueFlat[t] >= 0 ? triClueFlat[t] : 0;
+      final rep = tri.rep[id]!;
+      final perim = gen.triangleEdgesOf(rep[0], rep[1], rep[2]);
+      for (int k = 0; k < 3; k++) {
+        if (triEdgeFlat[teIdx] == 1) puzzle.activeEdges.add(perim[k]);
+        teIdx++;
+      }
+    }
+    return puzzle;
+  }
 }
 
 /// Generates Slitherlink puzzles on the trihex tiling.
@@ -250,6 +347,57 @@ class TrihexGenerator {
       TrihexPuzzle.encodeEdge(mPrev, mFar),
       TrihexPuzzle.encodeEdge(mNext, mFar),
     ];
+  }
+
+  // --- Public accessors used by TrihexPuzzle (de)serialisation --------------
+
+  /// Public alias for `_hexCellEdges`, exposed for serialisation/painter
+  /// code that needs the perimeter edge IDs of a hex cell in canonical
+  /// (cyclic, 0..5) order.
+  List<int> hexCellEdgesOf(int r, int c) => _hexCellEdges(r, c);
+
+  /// Public alias for `_triangleEdges`. The provided `(r, c, vi)` must be
+  /// a representative tuple for the triangle (use `enumerateTriangles()`
+  /// to obtain one per triangle).
+  List<int> triangleEdgesOf(int r, int c, int vi) => _triangleEdges(r, c, vi);
+
+  /// Public alias for `_enumerateTriangles`.
+  ({List<int> ids, Map<int, List<int>> rep}) enumerateTriangles() =>
+      _enumerateTriangles();
+
+  /// 6 trihex-vertex IDs of the hex cell at (r, c), cyclic order. Public
+  /// for painter code.
+  List<int> hexCellVerticesOf(int r, int c) => _hexMidpoints(r, c);
+
+  /// 3 trihex-vertex IDs of the triangle at vertex `triId`, given a
+  /// representative `(r, c, vi)`. Order matches `triangleEdgesOf`:
+  ///   [mPrev, mNext, mFar] — where [0]-[1] is the edge inside hex (r,c).
+  List<int> triangleVerticesOf(int r, int c, int vi) {
+    // Re-derive the 3 midpoints. Mirrors `_triangleEdges` body.
+    final List<int> m = _hexMidpoints(r, c);
+    final int mPrev = m[(vi + 5) % 6];
+    final int mNext = m[vi];
+    final List<List<int>> sibs = _vertexSiblings(r, c, vi);
+    int? mFar;
+    final int targetV = _hexVertices(r, c)[vi];
+    for (final s in sibs) {
+      final int sr = s[0], sc = s[1];
+      final List<int> sv = _hexVertices(sr, sc);
+      int sVi = -1;
+      for (int k = 0; k < 6; k++) {
+        if (sv[k] == targetV) { sVi = k; break; }
+      }
+      if (sVi == -1) continue;
+      final List<int> sm = _hexMidpoints(sr, sc);
+      for (final cand in [sm[(sVi + 5) % 6], sm[sVi]]) {
+        if (cand != mPrev && cand != mNext) { mFar = cand; break; }
+      }
+      if (mFar != null) break;
+    }
+    if (mFar == null) {
+      throw StateError('Triangle at ($r,$c,$vi) missing third midpoint');
+    }
+    return [mPrev, mNext, mFar];
   }
 
   // --- Cell adjacency (bipartite hex ↔ triangle) ----------------------------

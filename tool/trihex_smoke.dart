@@ -54,10 +54,35 @@ void runSize(int rows, int cols) {
       'hex clues shown: $hexClueShown, tri clues shown: $triClueShown');
 }
 
+void roundTrip(int rows, int cols) {
+  final gen = TrihexGenerator(rows, cols, seed: rows * 31 + cols);
+  final p = gen.generate(difficulty: Difficulty.normal);
+  final List<List<int>> answer = p.toAnswerFormat(gen);
+  final p2 = TrihexPuzzle.fromAnswerFormat(answer);
+  if (p2.activeEdges.length != p.activeEdges.length) {
+    throw StateError('round-trip lost edges ($rows×$cols)');
+  }
+  if (p2.triangleIds.length != p.triangleIds.length) {
+    throw StateError('round-trip lost triangles ($rows×$cols)');
+  }
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+      if (p2.hexClue[r][c] != p.hexClue[r][c]) {
+        throw StateError('round-trip hex clue mismatch at ($r,$c)');
+      }
+    }
+  }
+  print('  ${rows}x$cols round-trip OK');
+}
+
 void main() {
   print('TrihexGenerator smoke test');
   for (final size in [[4, 4], [5, 5], [6, 6], [7, 7], [8, 8], [10, 10]]) {
     runSize(size[0], size[1]);
+  }
+  print('Round-trip:');
+  for (final size in [[4, 4], [6, 6], [8, 8]]) {
+    roundTrip(size[0], size[1]);
   }
   print('OK');
 }
