@@ -432,7 +432,7 @@ class TrihexGenerator {
   /// Generate a complete puzzle.
   TrihexPuzzle generate({Difficulty difficulty = Difficulty.normal}) {
     final tri = _enumerateTriangles();
-    for (int attempt = 0; attempt < 1000; attempt++) {
+    for (int attempt = 0; attempt < 2000; attempt++) {
       final TrihexPuzzle puzzle = TrihexPuzzle(rows, cols);
       puzzle.triangleIds = List.of(tri.ids);
 
@@ -442,18 +442,18 @@ class TrihexGenerator {
       puzzle.activeEdges = edges;
       _computeSolution(puzzle, tri);
 
-      if (_cellCoverage(puzzle, tri) < 0.50) continue;
+      if (_cellCoverage(puzzle, tri) < 0.90) continue;
 
       _buildClue(puzzle, tri, difficulty);
       return puzzle;
     }
-    throw Exception('Failed to generate trihex puzzle after 1000 attempts');
+    throw Exception('Failed to generate trihex puzzle after 2000 attempts');
   }
 
   /// Generate with all clues revealed (for solver / debug).
   TrihexPuzzle generateSolution() {
     final tri = _enumerateTriangles();
-    for (int attempt = 0; attempt < 1000; attempt++) {
+    for (int attempt = 0; attempt < 2000; attempt++) {
       final TrihexPuzzle puzzle = TrihexPuzzle(rows, cols);
       puzzle.triangleIds = List.of(tri.ids);
 
@@ -463,7 +463,7 @@ class TrihexGenerator {
       puzzle.activeEdges = edges;
       _computeSolution(puzzle, tri);
 
-      if (_cellCoverage(puzzle, tri) < 0.50) continue;
+      if (_cellCoverage(puzzle, tri) < 0.90) continue;
 
       for (int r = 0; r < rows; r++) {
         for (int c = 0; c < cols; c++) {
@@ -475,7 +475,7 @@ class TrihexGenerator {
       }
       return puzzle;
     }
-    throw Exception('Failed to generate trihex puzzle after 1000 attempts');
+    throw Exception('Failed to generate trihex puzzle after 2000 attempts');
   }
 
   /// Fraction of cells (hex + triangle) touched by the loop.
@@ -523,8 +523,11 @@ class TrihexGenerator {
     final int seed = hexKey(sr, sc);
     inside[seed] = true;
 
+    // Higher target → larger inside region → loop boundary reaches more
+    // outside cells → higher cell coverage. 60–80% inside reliably yields
+    // ≥ 90% coverage on the trihex tiling.
     final int targetSize =
-        max(2, (total * (0.30 + _random.nextDouble() * 0.20)).round());
+        max(2, (total * (0.60 + _random.nextDouble() * 0.20)).round());
     int size = 1;
     int curKey = seed;
 

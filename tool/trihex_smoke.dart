@@ -48,9 +48,25 @@ void runSize(int rows, int cols) {
     print('  WARN ${rows}x$cols: $badVertices vertices with bad degree');
   }
 
+  // Cell coverage: fraction of cells touched by the loop (≥1 active edge).
+  int touched = 0;
+  int total = 0;
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < cols; c++) {
+      total++;
+      if (p.hexSolution[r][c] > 0) touched++;
+    }
+  }
+  for (final id in p.triangleIds) {
+    total++;
+    if ((p.triSolution[id] ?? 0) > 0) touched++;
+  }
+  final double coverage = total == 0 ? 0 : touched / total;
+
   print('  ${rows}x$cols hex: ${rows * cols} cells, '
       'tri: ${p.triangleIds.length} cells, '
       'active edges: ${p.activeEdges.length}, '
+      'coverage: ${(coverage * 100).toStringAsFixed(1)}%, '
       'hex clues shown: $hexClueShown, tri clues shown: $triClueShown');
 }
 
