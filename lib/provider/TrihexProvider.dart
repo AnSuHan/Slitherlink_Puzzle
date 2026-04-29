@@ -410,6 +410,9 @@ class TrihexProvider with ChangeNotifier {
   }
 
   Future<void> saveProgress() async {
+    // Hint (-3) and wrong-flash (-5) markers are ephemeral — drop them
+    // before persisting so Continue doesn't resurrect a stale flash.
+    await removeHintLine();
     final prefs = ExtractData();
     await prefs.saveDataToLocal(
       "${MainUI.getProgressKey()}_continue",

@@ -496,9 +496,17 @@ class _TrihexPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _TrihexPainter old) =>
-      old.edgeState.length != edgeState.length ||
-      !_mapsEqual(old.edgeState, edgeState);
+  bool shouldRepaint(covariant _TrihexPainter old) {
+    // Hint (-3) and wrong-flash (-5) colours come from a closure that closes
+    // over the AnimationController's value. The map itself doesn't change
+    // between ticks, so without this check `shouldRepaint` would freeze the
+    // gradient on whatever frame the painter was last rebuilt on.
+    for (final v in edgeState.values) {
+      if (v == -3 || v == -5) return true;
+    }
+    return old.edgeState.length != edgeState.length ||
+        !_mapsEqual(old.edgeState, edgeState);
+  }
 
   static bool _mapsEqual(Map<int, int> a, Map<int, int> b) {
     if (a.length != b.length) return false;

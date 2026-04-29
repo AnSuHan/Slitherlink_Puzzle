@@ -256,6 +256,13 @@ class _HexagonPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _HexagonPainter old) {
+    // Hint (-3) and wrong-flash (-5) colours come from a closure that closes
+    // over the AnimationController's value. The edges array doesn't change
+    // between ticks, so without this check `shouldRepaint` would freeze the
+    // gradient on whatever frame the painter was last rebuilt on.
+    for (int i = 0; i < 6; i++) {
+      if (edges[i] == -3 || edges[i] == -5) return true;
+    }
     for (int i = 0; i < 6; i++) {
       if (old.edges[i] != edges[i]) return true;
     }

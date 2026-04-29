@@ -350,6 +350,14 @@ class _TrianglePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TrianglePainter old) {
+    // Hint (-3) and wrong-flash (-5) colours come from a closure that closes
+    // over the AnimationController's value. None of the edge integers
+    // themselves change between ticks, so without this check `shouldRepaint`
+    // would freeze the gradient on whatever frame the painter was last
+    // rebuilt on.
+    if (edge0 == -3 || edge0 == -5 ||
+        edge1 == -3 || edge1 == -5 ||
+        edge2 == -3 || edge2 == -5) return true;
     return old.edge0 != edge0 ||
         old.edge1 != edge1 ||
         old.edge2 != edge2 ||
