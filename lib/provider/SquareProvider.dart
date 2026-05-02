@@ -1947,6 +1947,11 @@ class SquareProvider with ChangeNotifier {
       for (int j = 0; j < puzzle[i].length; j++) {
         count = 0;
 
+        // Skip hidden clues (num < 0 from difficulty masking) — otherwise
+        // `count >= -1` is always true and the rule disables every undecided
+        // edge around the cell, killing the whole board after one tap.
+        if (puzzle[i][j].num < 0) continue;
+
         if(i > 0 && j > 0) {
           count = [puzzle[i - 1][j].down, puzzle[i][j].down, puzzle[i][j - 1].right, puzzle[i][j].right]
               .where((value) => value >= 1)
@@ -2012,6 +2017,12 @@ class SquareProvider with ChangeNotifier {
     int count = 0;
 
     int i = row, j = col;
+    // Skip hidden clues (num < 0 from difficulty masking) — see checkMaxLine.
+    if (puzzle[i][j].num < 0) {
+      notifyListeners();
+      submit = await readSquare.readSubmit(puzzle);
+      return;
+    }
     if(i > 0 && j > 0) {
       count = [puzzle[i - 1][j].down, puzzle[i][j].down, puzzle[i][j - 1].right, puzzle[i][j].right]
           .where((value) => value >= 1)
