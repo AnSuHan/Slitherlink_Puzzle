@@ -86,7 +86,10 @@ class SplashState extends State<Splash> {
       key == "setting" ||
       key == "progress" ||
       key.startsWith("square_generate_") ||
-      key.startsWith("square_small_")
+      key.startsWith("square_small_") ||
+      key.startsWith("triangle_generate_") ||
+      key.startsWith("hexagon_generate_") ||
+      key.startsWith("trihex_generate_")
     );
   }
 }

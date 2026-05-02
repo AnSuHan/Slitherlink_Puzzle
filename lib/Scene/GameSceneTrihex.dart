@@ -145,6 +145,14 @@ class GameStateTrihex extends State<GameSceneTrihex>
 
     if (widget.isContinue) {
       answer = await _loadSavedPuzzle(widget.loadKey);
+      // Stale Continue entry: the answer key was wiped (e.g. by a previous
+      // build whose Splash.clearKeys allowlist didn't preserve this puzzle
+      // type). Drop the entry and pop so the user isn't stuck on a blank screen.
+      if (answer.isEmpty) {
+        UserInfo.clearPuzzle(widget.loadKey);
+        if (mounted && Navigator.canPop(context)) Navigator.of(context).pop();
+        return;
+      }
       submit = await _loadSavedPuzzle("${widget.loadKey}_continue");
     } else {
       if (mounted) setState(() {
