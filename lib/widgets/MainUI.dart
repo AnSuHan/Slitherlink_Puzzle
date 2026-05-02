@@ -229,7 +229,8 @@ class MainUI {
                                         ],
                                       ),
                                       const SizedBox(height: 24),
-                                      Column(
+                                      AutofillGroup(
+                                        child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.stretch,
                                         children: [
                                           SizedBox(
@@ -251,6 +252,12 @@ class MainUI {
                                             padding: const EdgeInsets.only(top: 8),
                                             child: TextField(
                                               controller: emailInput,
+                                              autofillHints: const [
+                                                AutofillHints.username,
+                                                AutofillHints.email,
+                                              ],
+                                              keyboardType: TextInputType.emailAddress,
+                                              textInputAction: TextInputAction.next,
                                               onTap: () => SystemChannels.textInput.invokeMethod('TextInput.show'),
                                               style: TextStyle(color: palette['onSurface']),
                                               decoration: InputDecoration(
@@ -297,6 +304,13 @@ class MainUI {
                                             padding: const EdgeInsets.only(top: 8.0),
                                             child: TextField(
                                               controller: passwordInput,
+                                              autofillHints: [
+                                                isSignUpMode
+                                                    ? AutofillHints.newPassword
+                                                    : AutofillHints.password,
+                                              ],
+                                              keyboardType: TextInputType.visiblePassword,
+                                              textInputAction: TextInputAction.done,
                                               onTap: () => SystemChannels.textInput.invokeMethod('TextInput.show'),
                                               obscureText: obscurePassword,
                                               style: TextStyle(color: palette['onSurface']),
@@ -363,6 +377,7 @@ class MainUI {
                                                   setState(() {});
                                                   onUpdate();
                                                   if (errType == 0) {
+                                                    TextInput.finishAutofillContext();
                                                     popupMsg = appLocalizations.translate('complete_sign_up');
                                                     // ignore: use_build_context_synchronously
                                                     Navigator.of(context).pop();
@@ -372,6 +387,7 @@ class MainUI {
                                                   setState(() {});
                                                   onUpdate();
                                                   if (errType == 0) {
+                                                    TextInput.finishAutofillContext();
                                                     popupMsg = appLocalizations.translate('complete_sign_in');
                                                     // ignore: use_build_context_synchronously
                                                     Navigator.of(context).pop();
@@ -542,6 +558,7 @@ class MainUI {
                                               ],
                                             ),
                                         ],
+                                      ),
                                       ),
                                     ]
                                 )
