@@ -128,13 +128,18 @@ class HexagonProvider with ChangeNotifier {
 
     // Build widget tree with pointy-top hex grid layout.
     // Widget box: W = R·√3, H = 2R. Same-row hexagons abut (no gap).
-    // Odd rows shifted right by W/2 via Transform (not SizedBox — keeping
-    // both rows the same layout width so Column centring puts them on the
-    // same baseline, then Transform nudges odd rows horizontally). Vertical
-    // centre spacing = 3R/2, so rows overlap by R/2 upward per row.
+    // Odd rows shifted right by W/2; vertical centre spacing = 3R/2 so
+    // rows overlap by R/2 upward per row (handled with Transform.translate).
+    //
+    // Each row is wrapped in a SizedBox of width (cols + 0.5)·W so the
+    // Column's bounding rect covers the full extent of *odd* rows too —
+    // otherwise the rightmost odd-row hexagons are painted via Transform
+    // but lie outside the Column's hit-test bounds, making their right
+    // edges untappable.
     final double hexR = HexagonBoxState.cellSize;
     final double hexW = hexR * 1.732; // R·√3
     final double rowOverlapY = hexR / 2;
+    final double rowLayoutWidth = (cols + 0.5) * hexW;
 
     for (int r = 0; r < rows; r++) {
       bool isOddRow = r % 2 == 1;
@@ -145,11 +150,17 @@ class HexagonProvider with ChangeNotifier {
       }
 
       hexagonField.add(Transform.translate(
-        offset: Offset(isOddRow ? hexW / 2 : 0, -r * rowOverlapY),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: rowChildren,
+        offset: Offset(0, -r * rowOverlapY),
+        child: SizedBox(
+          width: rowLayoutWidth,
+          child: Padding(
+            padding: EdgeInsets.only(left: isOddRow ? hexW / 2 : 0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: rowChildren,
+            ),
+          ),
         ),
       ));
     }
