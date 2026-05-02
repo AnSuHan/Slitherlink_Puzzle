@@ -403,7 +403,7 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
                           ),
                         ),
                   ),
-                  if (_debugPuzzleInfo.isNotEmpty)
+                  if (kDebugMode && _debugPuzzleInfo.isNotEmpty)
                     Positioned(
                       top: 10, left: 10, right: 10,
                       child: Container(

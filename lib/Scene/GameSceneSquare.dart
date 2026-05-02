@@ -248,8 +248,10 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
       }
     }
     _debugPuzzleInfo = 'Hash: $puzzleHash | Edges: $activeEdges | Force: ${widget.forceNewPuzzle}';
-    // ignore: avoid_print
-    print('PUZZLE DEBUG: $_debugPuzzleInfo | Key: ${widget.loadKey}');
+    if (kDebugMode) {
+      // ignore: avoid_print
+      print('PUZZLE DEBUG: $_debugPuzzleInfo | Key: ${widget.loadKey}');
+    }
 
     _provider.setAnswer(answer);
     _provider.setSubmit(submit);
@@ -467,7 +469,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
                           ),
                         ),
                         // Debug: puzzle hash overlay
-                        if (_debugPuzzleInfo.isNotEmpty)
+                        if (kDebugMode && _debugPuzzleInfo.isNotEmpty)
                           Positioned(
                             top: 10,
                             left: 10,

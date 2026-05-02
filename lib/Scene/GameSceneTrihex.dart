@@ -423,7 +423,7 @@ class GameStateTrihex extends State<GameSceneTrihex>
                             ),
                           ),
                   ),
-                  if (_debugPuzzleInfo.isNotEmpty)
+                  if (kDebugMode && _debugPuzzleInfo.isNotEmpty)
                     Positioned(
                       top: 10,
                       left: 10,
