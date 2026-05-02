@@ -39,8 +39,10 @@ class TrihexBoxState extends State<TrihexBox>
   late Animation<Color?> _wrongAnimation;
 
   /// Tap tolerance from edge midpoint (in canvas pixels). Anything
-  /// outside this radius is ignored.
-  static const double _hitRadius = 18.0;
+  /// outside this radius is ignored. Bumped from 18 to 28 so finger taps
+  /// that don't land directly on a thin edge still register on the
+  /// nearest one.
+  static const double _hitRadius = 28.0;
 
   _TrihexLayout? _layout;
 

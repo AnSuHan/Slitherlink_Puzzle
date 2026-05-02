@@ -106,6 +106,59 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
     super.dispose();
   }
 
+  /// Mirrors the per-direction onTap cycle (0 → coloured → -4 → 0; -1 ↔ -2;
+  /// -3/-5 → coloured). Used by both the line GestureDetectors and the
+  /// transparent box-overlay tap zones that widen each line's hit area.
+  int _cycleEdgeValue(int v) {
+    if (v == 0 || v == -3) return ThemeColor().getNormalRandom();
+    if (v >= 1 || v == -5) return -4;
+    if (v == -1) return -2;
+    if (v == -2) return -1;
+    if (v == -4) return 0;
+    return v;
+  }
+
+  /// Cycle the edge in [dir] and dispatch to the provider. Used by the
+  /// transparent box-edge overlays that widen each line's tap range — the
+  /// existing line GestureDetectors still handle direct taps on the line.
+  Future<void> _tapEdgeFromOverlay(String dir) async {
+    setState(() {
+      lastClick = dir;
+      switch (dir) {
+        case "up":
+          widget.up = _cycleEdgeValue(widget.up);
+          break;
+        case "down":
+          widget.down = _cycleEdgeValue(widget.down);
+          break;
+        case "left":
+          widget.left = _cycleEdgeValue(widget.left);
+          break;
+        case "right":
+          widget.right = _cycleEdgeValue(widget.right);
+          break;
+      }
+    });
+    final provider = Provider.of<SquareProvider>(context, listen: false);
+    final cb = widget.isHowToPlay
+        ? (int r, int c, String p) async {
+            final howToPlayState =
+                context.findAncestorStateOfType<HowToPlayState>();
+            if (howToPlayState != null) {
+              howToPlayState.checkStep(r, c, p);
+            }
+          }
+        : null;
+    await provider.updateSquareBox(
+      widget.row, widget.column,
+      up: dir == "up" ? widget.up : null,
+      down: dir == "down" ? widget.down : null,
+      left: dir == "left" ? widget.left : null,
+      right: dir == "right" ? widget.right : null,
+      callback: cb,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isFirstRow = widget.isFirstRow;
@@ -280,12 +333,51 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                   final Color baseNumColor = settingColor["number"] ?? Colors.black;
                   final Color textColor =
                       active == num ? baseNumColor.withOpacity(0.35) : baseNumColor;
-                  return Container(
+                  // 14 px wide transparent strips along each edge widen the
+                  // line tap zone into the box face — corners go to up/down
+                  // because they're stacked last (top of stack wins hits).
+                  return SizedBox(
                     height: 50,
                     width: 50,
-                    color: boxColor == 0 ? settingColor["box"] : settingColor["boxHighLight"],
-                    child: num < 0 ? null : Center(
-                      child: Text(num.toString(), style: TextStyle(color: textColor)),
+                    child: Stack(
+                      children: [
+                        Container(
+                          height: 50,
+                          width: 50,
+                          color: boxColor == 0 ? settingColor["box"] : settingColor["boxHighLight"],
+                          child: num < 0 ? null : Center(
+                            child: Text(num.toString(), style: TextStyle(color: textColor)),
+                          ),
+                        ),
+                        Positioned(
+                          left: 0, top: 0, bottom: 0, width: 14,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: () => _tapEdgeFromOverlay("left"),
+                          ),
+                        ),
+                        Positioned(
+                          right: 0, top: 0, bottom: 0, width: 14,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: () => _tapEdgeFromOverlay("right"),
+                          ),
+                        ),
+                        Positioned(
+                          left: 0, right: 0, top: 0, height: 14,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: () => _tapEdgeFromOverlay("up"),
+                          ),
+                        ),
+                        Positioned(
+                          left: 0, right: 0, bottom: 0, height: 14,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTap: () => _tapEdgeFromOverlay("down"),
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }),
