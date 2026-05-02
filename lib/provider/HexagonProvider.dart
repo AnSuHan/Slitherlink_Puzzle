@@ -47,6 +47,44 @@ class HexagonProvider with ChangeNotifier {
   /// Difficulty for hint masking ("easy" 0.80, "normal" 0.55, "hard" 0.35).
   String difficulty = "normal";
 
+  /// Canvas position (inside InteractiveViewer's child, including the
+  /// scene's outer Padding(20)) of the most recently placed hint, or null
+  /// if no hint is currently active. Used by the scene to pan the
+  /// InteractiveViewer to the freshly-flashed edge.
+  Offset? _hintCanvasPos;
+  Offset? getHintCanvasPos() => _hintCanvasPos;
+
+  /// Canvas centre of hex (r, c). Mirrors the layout in `_buildPuzzle`:
+  /// each `HexagonBox` is W=R·√3 wide, 2R tall; rows overlap by R/2; odd
+  /// rows are shifted right by W/2; the scene wraps the Column in
+  /// Padding(20).
+  Offset _hexCenter(int r, int c) {
+    const double R = HexagonBoxState.cellSize;
+    final double w = R * 1.7320508;
+    const double scenePadding = 20.0;
+    final double offsetX = (r & 1) == 1 ? w / 2 : 0;
+    return Offset(
+      scenePadding + offsetX + c * w + w / 2,
+      scenePadding + R + r * 1.5 * R,
+    );
+  }
+
+  /// Edge `e` midpoint relative to a pointy-top hex centre. e=0 top-right
+  /// slanted, then clockwise.
+  Offset _hexEdgeOffset(int e) {
+    const double R = HexagonBoxState.cellSize;
+    final double w = R * 1.7320508;
+    switch (e) {
+      case 0: return Offset(w / 4, -3 * R / 4);
+      case 1: return Offset(w / 2, 0);
+      case 2: return Offset(w / 4, 3 * R / 4);
+      case 3: return Offset(-w / 4, 3 * R / 4);
+      case 4: return Offset(-w / 2, 0);
+      case 5: return Offset(-w / 4, -3 * R / 4);
+    }
+    return Offset.zero;
+  }
+
   void setAnswer(List<List<int>> answer) {
     this.answer = answer;
     rows = answer.length;
@@ -551,6 +589,7 @@ class HexagonProvider with ChangeNotifier {
             if (nb != null) {
               puzzle[nb[0]][nb[1]].edges[nb[2]] = -3;
             }
+            _hintCanvasPos = _hexCenter(r, c) + _hexEdgeOffset(e);
             notifyListeners();
             return;
           }
@@ -569,6 +608,7 @@ class HexagonProvider with ChangeNotifier {
         }
       }
     }
+    _hintCanvasPos = null;
   }
 
   /// Deep copy of the current submit grid for bookmark save.

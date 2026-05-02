@@ -86,16 +86,47 @@ class SquareProvider with ChangeNotifier {
       else {
         item = items.first;
       }
-      //print("hint item : $item");
-      //gameStateSquare.moveTo(gameStateSquare.getHintPos(item), 1.6);
+      final int hintRow = int.parse(item[0].toString());
+      final int hintCol = int.parse(item[1].toString());
+      final String hintDir = item[2].toString();
 
       setLineColorBox(
-          int.parse(item[0].toString()),
-          int.parse(item[1].toString()),
-          item[2].toString(),
+          hintRow,
+          hintCol,
+          hintDir,
           (item[3] as bool) ? -5 : -3   //item[3] is `isWrongSubmit`
       );
+      _hintCanvasPos = _squareLineMidpoint(hintRow, hintCol, hintDir);
     }
+  }
+
+  /// Canvas position (inside InteractiveViewer's child, including the
+  /// scene's outer Padding(20) and first-row/col line offsets) of the most
+  /// recently placed hint, or null if no hint is currently active.
+  Offset? _hintCanvasPos;
+  Offset? getHintCanvasPos() => _hintCanvasPos;
+
+  /// Approximate canvas-space midpoint of the line on side `dir` of cell
+  /// (row, col). Mirrors the dimensions used by `_fitPuzzleToScreen` in
+  /// GameSceneSquare: cells are 67.5×65 with a 30 px left margin and
+  /// 37.5 px top margin from the InteractiveViewer-child origin.
+  Offset _squareLineMidpoint(int row, int col, String dir) {
+    const double cellW = 67.5;
+    const double cellH = 65.0;
+    const double scenePadding = 20.0;
+    const double firstColExtra = 10.0;
+    const double firstRowExtra = 17.5;
+    final double bx = scenePadding + firstColExtra + col * cellW;
+    final double by = scenePadding + firstRowExtra + row * cellH;
+    final double cx = bx + 25; // box centre (box is 50×50)
+    final double cy = by + 25;
+    switch (dir) {
+      case "up":    return Offset(cx, cy - 30);
+      case "down":  return Offset(cx, cy + 30);
+      case "left":  return Offset(cx - 30, cy);
+      case "right": return Offset(cx + 30, cy);
+    }
+    return Offset(cx, cy);
   }
 
   Future<void> removeHintLine() async {
@@ -103,6 +134,7 @@ class SquareProvider with ChangeNotifier {
       // ignore: avoid_print
       print("call removeHintLine : $_isUpdating");
     }
+    _hintCanvasPos = null;
     //howToPlay에서는 힌트 라인을 지우지 않음
     if(gameStateSquare == null) {
       return;

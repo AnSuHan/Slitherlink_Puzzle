@@ -80,8 +80,13 @@ class GameUI {
         Provider.of<SquareProvider>(context, listen: false).restart();
       },
       onNewGame: _startNewGame,
-      onHint: () {
-        Provider.of<SquareProvider>(context, listen: false).showHint(context);
+      onHint: () async {
+        final provider = Provider.of<SquareProvider>(context, listen: false);
+        await provider.showHint(context);
+        final p = provider.getHintCanvasPos();
+        if (p != null) {
+          squareProvider.gameStateSquare?.panToCanvasPoint(p);
+        }
       },
       onSaveBookmark: (int idx) async {
         await saveData(PuzzleAppBar.colorNames[idx]);

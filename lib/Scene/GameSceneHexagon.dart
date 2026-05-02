@@ -96,6 +96,25 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
     setState(() => _zoomSlider = newScale);
   }
 
+  /// Pan (without zoom) so that [p] — given in InteractiveViewer-child
+  /// coordinates — sits at the centre of the available body area.
+  void _panToCanvasPoint(Offset p) {
+    if (!mounted) return;
+    final size = MediaQuery.of(context).size;
+    final ah = size.height - kToolbarHeight - 56;
+    final old = _transformationController.value.clone();
+    final s = old.getMaxScaleOnAxis();
+    if (s == 0) return;
+    final tx = size.width / 2 - s * p.dx;
+    final ty = ah / 2 - s * p.dy;
+    final m = Matrix4.identity()
+      ..translate(tx, ty)
+      ..scale(s);
+    _suppressZoomSync = true;
+    _transformationController.value = m;
+    _suppressZoomSync = false;
+  }
+
   @override
   void dispose() {
     _shutdownTimer?.cancel();
@@ -321,7 +340,11 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
                 onNewGame: () async {
                   await _onNewGame();
                 },
-                onHint: () => provider.showHint(context),
+                onHint: () async {
+                  await provider.showHint(context);
+                  final p = provider.getHintCanvasPos();
+                  if (p != null) _panToCanvasPoint(p);
+                },
                 onSaveBookmark: _saveBookmark,
                 onLoadBookmark: _loadBookmark,
                 onClearBookmark: _clearBookmark,

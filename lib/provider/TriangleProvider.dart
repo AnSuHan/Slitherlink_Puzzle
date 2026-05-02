@@ -59,6 +59,41 @@ class TriangleProvider with ChangeNotifier {
   final List<List<List<int>>> _undoStack = [];
   final List<List<List<int>>> _redoStack = [];
 
+  /// Canvas position (inside InteractiveViewer's child, including the
+  /// scene's outer Padding(20)) of the most recently placed hint, or null
+  /// if no hint is currently active.
+  Offset? _hintCanvasPos;
+  Offset? getHintCanvasPos() => _hintCanvasPos;
+
+  /// Canvas-space midpoint of edge `e` of triangle (r, i). Mirrors
+  /// `_buildPuzzle`: each triangle's box top-left is at
+  /// (i·w/2, r·h) inside a Stack wrapped in Padding(20).
+  Offset _triEdgeMidpoint(int r, int i, int e) {
+    const double w = TriangleBoxState.cellSize;
+    const double h = TriangleBoxState.cellSize * TriangleBoxState.heightRatio;
+    const double scenePadding = 20.0;
+    final double bx = scenePadding + i * w / 2;
+    final double by = scenePadding + r * h;
+    final bool up = isUp(r, i);
+    // See painter `vertices`/edge layout:
+    //   Up:   e0 base (p1-p2), e1 left (p0-p1), e2 right (p0-p2)
+    //   Down: e0 top (p0-p1),  e1 left (p0-p2), e2 right (p1-p2)
+    if (up) {
+      switch (e) {
+        case 0: return Offset(bx + w / 2, by + h);     // base
+        case 1: return Offset(bx + w / 4, by + h / 2); // left
+        case 2: return Offset(bx + 3 * w / 4, by + h / 2);
+      }
+    } else {
+      switch (e) {
+        case 0: return Offset(bx + w / 2, by);
+        case 1: return Offset(bx + w / 4, by + h / 2);
+        case 2: return Offset(bx + 3 * w / 4, by + h / 2);
+      }
+    }
+    return Offset(bx + w / 2, by + h / 2);
+  }
+
   void setAnswer(List<List<int>> answer) {
     this.answer = answer;
     rows = answer.length;
@@ -489,6 +524,7 @@ class TriangleProvider with ChangeNotifier {
             if (mirror != null) {
               _setEdgeValue(mirror[0], mirror[1], mirror[2], -3);
             }
+            _hintCanvasPos = _triEdgeMidpoint(r, i, e);
             notifyListeners();
             return;
           }
@@ -505,6 +541,7 @@ class TriangleProvider with ChangeNotifier {
         if (puzzle[r][i].edge2 == -3 || puzzle[r][i].edge2 == -5) puzzle[r][i].edge2 = 0;
       }
     }
+    _hintCanvasPos = null;
   }
 
   /// Deep copy of the current submit grid for bookmark save.

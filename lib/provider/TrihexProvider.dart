@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/TrihexGenerator.dart';
+import '../widgets/TrihexBox.dart';
 import '../Platform/ExtractData.dart'
   if (dart.library.html) '../Platform/ExtractDataWeb.dart';
 import '../ThemeColor.dart';
@@ -69,6 +70,17 @@ class TrihexProvider with ChangeNotifier {
   /// triangle id → 3 perimeter edge IDs.
   final Map<int, List<int>> _triEdgeIdsByCell = {};
 
+  /// Trihex vertex ID → canvas position (inside InteractiveViewer's child,
+  /// i.e. includes the scene's outer EdgeInsets.all(20) padding). Populated
+  /// once at `setAnswer`. Used by `getHintCanvasPos` so the scene can pan
+  /// the InteractiveViewer to the freshly-placed hint edge.
+  final Map<int, Offset> _vertexCanvasPos = {};
+
+  /// Canvas position (same coordinate space as `_vertexCanvasPos`) of the
+  /// most recently placed hint, or null if no hint is currently active.
+  Offset? _hintCanvasPos;
+  Offset? getHintCanvasPos() => _hintCanvasPos;
+
   // --- Undo/redo -----------------------------------------------------------
 
   final List<Map<int, int>> _undoStack = [];
@@ -80,6 +92,59 @@ class TrihexProvider with ChangeNotifier {
     cols = puzzle.cols;
     gen = TrihexGenerator(rows, cols);
     _buildTopology();
+    _buildVertexCanvasPositions();
+  }
+
+  /// Mirrors `_TrihexLayout.build` in TrihexBox so we can resolve any trihex
+  /// vertex ID to a canvas Offset (for the pan-to-hint feature). Includes
+  /// the scene's outer Padding(20) so the offset matches the InteractiveViewer
+  /// child coordinate system.
+  void _buildVertexCanvasPositions() {
+    _vertexCanvasPos.clear();
+    const double R = TrihexBox.cellSize;
+    final double w = R * sqrt(3);
+    const double padding = R;
+    const double scenePadding = 20.0;
+
+    Offset hexCenter(int r, int c) {
+      final double x = padding + w * c + (r & 1) * (w / 2) + w / 2;
+      final double y = padding + R * 1.5 * r + R;
+      return Offset(scenePadding + x, scenePadding + y);
+    }
+
+    Offset hexVertex(int r, int c, int vi) {
+      final ctr = hexCenter(r, c);
+      switch (vi) {
+        case 0: return Offset(ctr.dx, ctr.dy - R);
+        case 1: return Offset(ctr.dx + w / 2, ctr.dy - R / 2);
+        case 2: return Offset(ctr.dx + w / 2, ctr.dy + R / 2);
+        case 3: return Offset(ctr.dx, ctr.dy + R);
+        case 4: return Offset(ctr.dx - w / 2, ctr.dy + R / 2);
+        case 5: return Offset(ctr.dx - w / 2, ctr.dy - R / 2);
+      }
+      return ctr;
+    }
+
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final mids = gen.hexCellVerticesOf(r, c);
+        for (int i = 0; i < 6; i++) {
+          final a = hexVertex(r, c, i);
+          final b = hexVertex(r, c, (i + 1) % 6);
+          _vertexCanvasPos[mids[i]] =
+              Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+        }
+      }
+    }
+  }
+
+  Offset? _edgeMidpoint(int edgeId) {
+    final int hi = edgeId % 1000000000;
+    final int lo = edgeId ~/ 1000000000;
+    final a = _vertexCanvasPos[lo];
+    final b = _vertexCanvasPos[hi];
+    if (a == null || b == null) return null;
+    return Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
   }
 
   /// Cache cell→edges and vertex→edges adjacency. Called once after
@@ -446,12 +511,14 @@ class TrihexProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  /// Highlight one missing answer edge with -3 so the painter can flash it.
+  /// Highlight one missing answer edge with -3 so the painter can flash it,
+  /// and stash its canvas position for the scene to pan to.
   Future<void> showHint(BuildContext context) async {
     for (final e in puzzle.activeEdges) {
       final v = edgeValue(e);
       if (v <= 0) {
         edgeState[e] = -3;
+        _hintCanvasPos = _edgeMidpoint(e);
         notifyListeners();
         return;
       }
@@ -460,6 +527,7 @@ class TrihexProvider with ChangeNotifier {
 
   Future<void> removeHintLine() async {
     edgeState.removeWhere((_, v) => v == -3 || v == -5);
+    _hintCanvasPos = null;
   }
 
   List<List<int>> snapshotSubmit() => readSubmit();
