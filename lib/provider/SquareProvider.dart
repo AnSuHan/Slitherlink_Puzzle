@@ -878,6 +878,28 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Apply a previously-saved bookmark submit grid. Treated as a single
+  /// edit step appended to the existing doSubmit history (dropping any
+  /// redo branch first), so undo brings the user back to their pre-load
+  /// state instead of replacing the whole edit history with the bookmark's.
+  Future<void> applyBookmarkSubmit(List<List<int>> bookmark) async {
+    await removeHintLine();
+
+    final List<List<int>> bookmarkCopy =
+        bookmark.map((row) => List<int>.from(row)).toList();
+
+    if (doPointer >= 0 && doPointer < doIndex) {
+      doSubmit = doSubmit.sublist(0, doPointer + 1);
+    }
+    doSubmit.add(bookmarkCopy.map((row) => List<int>.from(row)).toList());
+    doIndex = doSubmit.length - 1;
+    doPointer = doIndex;
+
+    submit = bookmarkCopy;
+    applyUIWithAnswer(puzzle, submit);
+    notifyListeners();
+  }
+
   ///TODO : 계산량이 너무 많아 정상적으로 사용하는 것이 불가하다
   ///**********************************************************************************
   ///**********************************************************************************

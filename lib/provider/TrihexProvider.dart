@@ -532,9 +532,13 @@ class TrihexProvider with ChangeNotifier {
 
   List<List<int>> snapshotSubmit() => readSubmit();
 
+  /// Apply a previously-saved submit grid (from a bookmark load).
+  /// Treated as a single edit step: the pre-load state is pushed onto the
+  /// undo stack so the user can undo back, and the redo stack is dropped
+  /// because we're branching forward from the user's current position.
   Future<void> applyBookmarkSubmit(List<List<int>> newSubmit) async {
     await removeHintLine();
-    _undoStack.clear();
+    _undoStack.add(_snapshot());
     _redoStack.clear();
     setSubmit(newSubmit);
     _applyConstraints();

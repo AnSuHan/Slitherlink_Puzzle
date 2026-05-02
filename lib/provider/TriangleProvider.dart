@@ -551,10 +551,13 @@ class TriangleProvider with ChangeNotifier {
   }
 
   /// Apply a previously-saved submit grid (from a bookmark load).
-  /// Resets undo/redo stacks so history doesn't straddle two states.
+  /// Treated as a single edit step: the pre-load state is pushed onto the
+  /// undo stack so the user can undo back, and the redo stack is dropped
+  /// because we're branching forward from the user's current position.
   Future<void> applyBookmarkSubmit(List<List<int>> newSubmit) async {
     await removeHintLine();
-    _undoStack.clear();
+    submit = _readSubmit();
+    _undoStack.add(submit.map((r) => List<int>.from(r)).toList());
     _redoStack.clear();
     submit = newSubmit.map((r) => List<int>.from(r)).toList();
     _applySubmit();

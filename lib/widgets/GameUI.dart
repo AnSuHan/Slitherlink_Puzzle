@@ -120,10 +120,12 @@ class GameUI {
     }
   }
   Future<void> loadData(String label) async {
-    await squareProvider.removeHintLine();
     List<List<int>> value = await readSquare.loadPuzzle("${MainUI.getProgressKey()}_$label");
-    squareProvider.loadLabel(value);
-    await squareProvider.controlDo(load: true, key: "${MainUI.getProgressKey()}_${label}_do");
+    // The bookmark's saved doPointer/doSubmit files are intentionally not
+    // read back: a bookmark load is now a single new edit step on top of
+    // the user's current undo history, so they can undo back to the moment
+    // before they tapped Load.
+    await squareProvider.applyBookmarkSubmit(value);
   }
   void clearData(String label) async {
     clearLabel(label);
