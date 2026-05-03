@@ -106,15 +106,17 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
     super.dispose();
   }
 
-  /// Mirrors the per-direction onTap cycle (0 → coloured → -4 → 0; -1 ↔ -2;
-  /// -3/-5 → coloured). Used by both the line GestureDetectors and the
-  /// transparent box-overlay tap zones that widen each line's hit area.
+  /// Per-direction onTap cycle. Used by the line GestureDetectors and the
+  /// transparent box-overlay tap zones (which widen each line's hit area).
+  ///   0/-3   → fresh chain colour
+  ///   color/-5 → -4 (X)
+  ///   -1     → fresh chain colour (auto-disable is overridable by drawing)
+  ///   -2     → 0 (clear stale wrong mark from older saves)
+  ///   -4     → 0
   int _cycleEdgeValue(int v) {
-    if (v == 0 || v == -3) return ThemeColor().getNormalRandom();
+    if (v == 0 || v == -1 || v == -3) return ThemeColor().getNormalRandom();
     if (v >= 1 || v == -5) return -4;
-    if (v == -1) return -2;
-    if (v == -2) return -1;
-    if (v == -4) return 0;
+    if (v == -2 || v == -4) return 0;
     return v;
   }
 
@@ -204,17 +206,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       lastClick = "up";
 
                       setState(() {
-                        if(up == 0 || up == -3) {
-                          up = ThemeColor().getNormalRandom();
-                        } else if(up >= 1 || up == -5) {
-                          up = -4;
-                        } else if(up == -1) {
-                          up = -2;
-                        } else if(up == -2) {
-                          up = -1;
-                        } else if(up == -4) {
-                          up = 0;
-                        }
+                        up = _cycleEdgeValue(up);
                         widget.up = up;
                       });
 
@@ -274,17 +266,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       lastClick = "left";
 
                       setState(() {
-                        if(left == 0 || left == -3) {
-                          left = ThemeColor().getNormalRandom();
-                        } else if(left >= 1 || left == -5) {
-                          left = -4;
-                        } else if(left == -1) {
-                          left = -2;
-                        } else if(left == -2) {
-                          left = -1;
-                        } else if(left == -4) {
-                          left = 0;
-                        }
+                        left = _cycleEdgeValue(left);
                         widget.left = left;
                       });
 
@@ -389,17 +371,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       lastClick = "right";
 
                       setState(() {
-                        if(right == 0 || right == -3) {
-                          right = ThemeColor().getNormalRandom();
-                        } else if(right >= 1 || right == -5) {
-                          right = -4;
-                        } else if(right == -1) {
-                          right = -2;
-                        } else if(right == -2) {
-                          right = -1;
-                        } else if(right == -4) {
-                          right = 0;
-                        }
+                        right = _cycleEdgeValue(right);
                         widget.right = right;
                       });
 
@@ -463,17 +435,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       lastClick = "down";
 
                       setState(() {
-                        if(down == 0 || down == -3) {
-                          down = ThemeColor().getNormalRandom();
-                        } else if(down >= 1 || down == -5) {
-                          down = -4;
-                        } else if(down == -1) {
-                          down = -2;
-                        } else if(down == -2) {
-                          down = -1;
-                        } else if(down == -4) {
-                          down = 0;
-                        }
+                        down = _cycleEdgeValue(down);
                         widget.down = down;
                       });
 

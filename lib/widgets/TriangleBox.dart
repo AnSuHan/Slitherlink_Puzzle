@@ -70,12 +70,14 @@ class TriangleBoxState extends State<TriangleBox> with SingleTickerProviderState
   static const double cellSize = 50.0;
   static const double heightRatio = 0.866;
 
+  // 0/-1/-3 → fresh chain colour (auto-disable is overridable by drawing)
+  // colour/-5 → -4 (X)
+  // -2 → 0 (clear stale wrong mark from older saves)
+  // -4 → 0
   int _cycleEdge(int current) {
-    if (current == 0 || current == -3) return ThemeColor().getNormalRandom();
+    if (current == 0 || current == -1 || current == -3) return ThemeColor().getNormalRandom();
     if (current >= 1 || current == -5) return -4;
-    if (current == -1) return -2;
-    if (current == -2) return -1;
-    if (current == -4) return 0;
+    if (current == -2 || current == -4) return 0;
     return 0;
   }
 
