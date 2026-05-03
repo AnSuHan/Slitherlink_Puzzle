@@ -166,19 +166,17 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
     final bool isFirstRow = widget.isFirstRow;
     final bool isFirstColumn = widget.isFirstColumn;
 
-    var up = widget.up;
-    var down = widget.down;
-    var left = widget.left;
-    var right = widget.right;
-    var num = widget.num;
-    var boxColor = widget.boxColor;
+    final int row = widget.row;
+    final int column = widget.column;
 
-    int row = widget.row;
-    int column = widget.column;
-
+    // Read all per-edge state via widget.X directly inside the Consumer
+    // builder below — provider.notifyListeners triggers Consumer rebuild but
+    // does NOT re-run State.build, so any var captured here at State.build
+    // time goes stale as soon as another widget mutates puzzle[r][c] (chain
+    // merge in updateSquareBox, or auto-disable in the propagators).
     return Consumer<SquareProvider>(
       builder: (context, squareProvider, child) {
-        boxColor = squareProvider.getBoxColor(row, column);
+        final int boxColor = squareProvider.getBoxColor(row, column);
 
         return Column(
           children: [
@@ -206,12 +204,11 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       lastClick = "up";
 
                       setState(() {
-                        up = _cycleEdgeValue(up);
-                        widget.up = up;
+                        widget.up = _cycleEdgeValue(widget.up);
                       });
 
                       await Provider.of<SquareProvider>(context, listen: false)
-                        .updateSquareBox(row, column, up: up,
+                        .updateSquareBox(row, column, up: widget.up,
                         callback: widget.isHowToPlay ? (int row, int col, String pos) async {
                           final howToPlayState = context.findAncestorStateOfType<HowToPlayState>();
                           if (howToPlayState != null) {
@@ -266,12 +263,11 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       lastClick = "left";
 
                       setState(() {
-                        left = _cycleEdgeValue(left);
-                        widget.left = left;
+                        widget.left = _cycleEdgeValue(widget.left);
                       });
 
                       await Provider.of<SquareProvider>(context, listen: false)
-                        .updateSquareBox(row, column, left: left,
+                        .updateSquareBox(row, column, left: widget.left,
                         callback: widget.isHowToPlay ? (int row, int col, String pos) async {
                           final howToPlayState = context.findAncestorStateOfType<HowToPlayState>();
                           if (howToPlayState != null) {
@@ -305,16 +301,22 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                   ),
                 ),
                 Builder(builder: (_) {
+                  final int num = widget.num;
+                  // Read edge state via widget.X so re-runs triggered by
+                  // provider.notifyListeners (without a State.build) see the
+                  // latest values written by chain merge / propagation.
                   final int active =
-                      (up >= 1 ? 1 : 0) +
-                      (down >= 1 ? 1 : 0) +
-                      (left >= 1 ? 1 : 0) +
-                      (right >= 1 ? 1 : 0);
-                  // Cell rule is satisfied → remaining edges are auto-disabled.
-                  // Dim the number so the player can see this cell is done.
+                      (widget.up    >= 1 ? 1 : 0) +
+                      (widget.down  >= 1 ? 1 : 0) +
+                      (widget.left  >= 1 ? 1 : 0) +
+                      (widget.right >= 1 ? 1 : 0);
+                  // Dim only when this cell has a visible clue and exactly
+                  // `num` lines are drawn. Hidden clues (num<0) skip dimming
+                  // entirely (text isn't rendered for them either).
                   final Color baseNumColor = settingColor["number"] ?? Colors.black;
-                  final Color textColor =
-                      active == num ? baseNumColor.withOpacity(0.35) : baseNumColor;
+                  final Color textColor = (num >= 0 && active == num)
+                      ? baseNumColor.withOpacity(0.35)
+                      : baseNumColor;
                   // 14 px wide transparent strips along each edge widen the
                   // line tap zone into the box face — corners go to up/down
                   // because they're stacked last (top of stack wins hits).
@@ -371,12 +373,11 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       lastClick = "right";
 
                       setState(() {
-                        right = _cycleEdgeValue(right);
-                        widget.right = right;
+                        widget.right = _cycleEdgeValue(widget.right);
                       });
 
                       await Provider.of<SquareProvider>(context, listen: false)
-                        .updateSquareBox(row, column, right: right,
+                        .updateSquareBox(row, column, right: widget.right,
                         callback: widget.isHowToPlay ? (int row, int col, String pos) async {
                           final howToPlayState = context.findAncestorStateOfType<HowToPlayState>();
                           if (howToPlayState != null) {
@@ -435,12 +436,11 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                       lastClick = "down";
 
                       setState(() {
-                        down = _cycleEdgeValue(down);
-                        widget.down = down;
+                        widget.down = _cycleEdgeValue(widget.down);
                       });
 
                       await Provider.of<SquareProvider>(context, listen: false)
-                        .updateSquareBox(row, column, down: down,
+                        .updateSquareBox(row, column, down: widget.down,
                         callback: widget.isHowToPlay ? (int row, int col, String pos) async {
                           final howToPlayState = context.findAncestorStateOfType<HowToPlayState>();
                           if (howToPlayState != null) {
