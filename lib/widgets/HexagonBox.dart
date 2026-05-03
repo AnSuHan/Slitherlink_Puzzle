@@ -59,14 +59,17 @@ class HexagonBoxState extends State<HexagonBox> with SingleTickerProviderStateMi
 
   static const double cellSize = 40.0; // radius
 
-  // 0/-1/-3 → fresh chain colour (auto-disable is overridable by drawing)
+  // 0/-3 → fresh chain colour
   // colour/-5 → -4 (X)
-  // -2 → 0 (clear stale wrong mark from older saves)
+  // -1 → -2 (mark "I disagree with the auto-disable")
+  // -2 → -1 (revert to auto-disabled)
   // -4 → 0
   int _cycleEdge(int current) {
-    if (current == 0 || current == -1 || current == -3) return ThemeColor().getNormalRandom();
+    if (current == 0 || current == -3) return ThemeColor().getNormalRandom();
     if (current >= 1 || current == -5) return -4;
-    if (current == -2 || current == -4) return 0;
+    if (current == -1) return -2;
+    if (current == -2) return -1;
+    if (current == -4) return 0;
     return 0;
   }
 

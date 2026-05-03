@@ -110,13 +110,15 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
   /// transparent box-overlay tap zones (which widen each line's hit area).
   ///   0/-3   → fresh chain colour
   ///   color/-5 → -4 (X)
-  ///   -1     → fresh chain colour (auto-disable is overridable by drawing)
-  ///   -2     → 0 (clear stale wrong mark from older saves)
+  ///   -1     → -2 (mark "I disagree with the auto-disable")
+  ///   -2     → -1 (revert to auto-disabled)
   ///   -4     → 0
   int _cycleEdgeValue(int v) {
-    if (v == 0 || v == -1 || v == -3) return ThemeColor().getNormalRandom();
+    if (v == 0 || v == -3) return ThemeColor().getNormalRandom();
     if (v >= 1 || v == -5) return -4;
-    if (v == -2 || v == -4) return 0;
+    if (v == -1) return -2;
+    if (v == -2) return -1;
+    if (v == -4) return 0;
     return v;
   }
 
