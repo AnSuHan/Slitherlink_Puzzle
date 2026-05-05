@@ -374,19 +374,46 @@ class HexagonProvider with ChangeNotifier {
   }
 
   /// Constraint propagation entry point. Wipes prior auto-disables (-1) and
-  /// then iterates the cell rule and vertex-degree rule until a fixed point.
-  /// User annotations (-2 wrong, -4 X) are preserved throughout.
+  /// also user "disagreement" reds (-2) so that look-ahead doesn't lock -2
+  /// as a hard premise (which would create spurious cascade -1's on edges
+  /// that a freshly-derived state wouldn't disable). After propagation,
+  /// -2 is restored at positions whose new value is -1 — the user's red
+  /// marking refers to "this -1", so it only stays where -1 still holds.
+  /// User X marks (-4) are hard locks and are not touched.
   void _applyConstraints() {
+    final List<List<int>> redSnapshot = [];
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
         for (int e = 0; e < 6; e++) {
-          if (puzzle[r][c].edges[e] == -1) {
+          final v = puzzle[r][c].edges[e];
+          if (v == -1) {
+            puzzle[r][c].edges[e] = 0;
+          } else if (v == -2) {
+            redSnapshot.add([r, c, e]);
             puzzle[r][c].edges[e] = 0;
           }
         }
       }
     }
 
+    _propagateDirect();
+    for (int laIter = 0; laIter < 5; laIter++) {
+      if (!_runLookAhead()) break;
+      _propagateDirect();
+    }
+
+    for (final pos in redSnapshot) {
+      if (puzzle[pos[0]][pos[1]].edges[pos[2]] == -1) {
+        puzzle[pos[0]][pos[1]].edges[pos[2]] = -2;
+        final nb = _neighborEdge(pos[0], pos[1], pos[2]);
+        if (nb != null && puzzle[nb[0]][nb[1]].edges[nb[2]] == -1) {
+          puzzle[nb[0]][nb[1]].edges[nb[2]] = -2;
+        }
+      }
+    }
+  }
+
+  void _propagateDirect() {
     for (int iter = 0; iter < 30; iter++) {
       bool changed = false;
       if (_runCellRule()) changed = true;
@@ -425,15 +452,10 @@ class HexagonProvider with ChangeNotifier {
     return anyChange;
   }
 
-  /// Vertex-degree rule: a Slitherlink vertex must end at degree 0 or 2.
-  /// If two edges at a vertex are already drawn, remaining undecided edges
-  /// become -1. If active + undecided < 2, the loop can't reach degree 2 here,
-  /// so any remaining undecided edges also become -1.
-  ///
-  /// Vertex coords use integer (vx, vy) with unit = (W/2, R/2), letting the
-  /// six vertices of every hex resolve to small integer pairs without any
-  /// floating-point keying.
-  bool _runVertexRule() {
+  /// Builds the vertex-incidence map: for every grid vertex, the list of
+  /// unique [r, c, e, canonicalId] tuples for edges meeting at it. Shared
+  /// edges are deduplicated by canonical lex-min ID.
+  Map<int, List<List<int>>> _buildVertexIncidence() {
     final Map<int, List<List<int>>> incident = {};
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
@@ -443,7 +465,6 @@ class HexagonProvider with ChangeNotifier {
           // The two edges of hex (r,c) incident to v[vi] are edge vi and edge (vi+5)%6.
           for (final e in [vi, (vi + 5) % 6]) {
             final list = incident.putIfAbsent(key, () => []);
-            // Dedup shared edges by canonical (lex-min of self and neighbour).
             final nb = _neighborEdge(r, c, e);
             int selfId = (r * 1000 + c) * 10 + e;
             int otherId = nb == null ? -1 : (nb[0] * 1000 + nb[1]) * 10 + nb[2];
@@ -457,6 +478,19 @@ class HexagonProvider with ChangeNotifier {
         }
       }
     }
+    return incident;
+  }
+
+  /// Vertex-degree rule: a Slitherlink vertex must end at degree 0 or 2.
+  /// If two edges at a vertex are already drawn, remaining undecided edges
+  /// become -1. If active + undecided < 2, the loop can't reach degree 2 here,
+  /// so any remaining undecided edges also become -1.
+  ///
+  /// Vertex coords use integer (vx, vy) with unit = (W/2, R/2), letting the
+  /// six vertices of every hex resolve to small integer pairs without any
+  /// floating-point keying.
+  bool _runVertexRule() {
+    final incident = _buildVertexIncidence();
 
     bool anyChange = false;
     for (final edges in incident.values) {
@@ -485,6 +519,193 @@ class HexagonProvider with ChangeNotifier {
       }
     }
     return anyChange;
+  }
+
+  /// Returns true iff the live puzzle state already violates a hard
+  /// constraint (clue over-fill, clue under-fill with no remaining slack,
+  /// vertex over-degree, or vertex stuck at degree 1). Look-ahead would
+  /// otherwise treat every hypothesis as contradicting and disable every
+  /// undecided edge, so we bail in that case.
+  bool _isStateConsistent() {
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final num = puzzle[r][c].num;
+        if (num < 0) continue;
+        int active = 0, undecided = 0;
+        for (int e = 0; e < 6; e++) {
+          final v = puzzle[r][c].edges[e];
+          if (v >= 1) {
+            active++;
+          } else if (v == 0) {
+            undecided++;
+          }
+        }
+        if (active > num) return false;
+        if (active + undecided < num) return false;
+      }
+    }
+    final incident = _buildVertexIncidence();
+    for (final edges in incident.values) {
+      int active = 0, undecided = 0;
+      for (final e in edges) {
+        final v = puzzle[e[0]][e[1]].edges[e[2]];
+        if (v >= 1) {
+          active++;
+        } else if (v == 0) {
+          undecided++;
+        }
+      }
+      if (active > 2) return false;
+      if (active == 1 && undecided == 0) return false;
+    }
+    return true;
+  }
+
+  /// Look-ahead pass. For each undecided edge: snapshot the grid, hypothesise
+  /// the edge as drawn (=1), run a hypothetical propagator that includes
+  /// force-draw rules and contradiction detection, then restore. If the
+  /// hypothesis broke a clue or vertex, the actual edge is flagged -1.
+  ///
+  /// Hypothetical propagation is internal — it never persists to the live
+  /// puzzle. Only the final -1 assignment on a contradicted edge is permanent.
+  bool _runLookAhead() {
+    if (!_isStateConsistent()) return false;
+    bool anyChange = false;
+    final Set<int> tested = {};
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        for (int e = 0; e < 6; e++) {
+          if (puzzle[r][c].edges[e] != 0) continue;
+          final canonical = _canonicalEdgeId(r, c, e);
+          if (!tested.add(canonical)) continue;
+
+          final snap = List.generate(rows, (rr) =>
+              List.generate(cols, (cc) => List<int>.from(puzzle[rr][cc].edges)));
+
+          puzzle[r][c].edges[e] = 1;
+          final nb = _neighborEdge(r, c, e);
+          if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = 1;
+
+          final contradiction = _propagateHypothesis();
+
+          for (int rr = 0; rr < rows; rr++) {
+            for (int cc = 0; cc < cols; cc++) {
+              for (int ee = 0; ee < 6; ee++) {
+                puzzle[rr][cc].edges[ee] = snap[rr][cc][ee];
+              }
+            }
+          }
+
+          if (contradiction) {
+            puzzle[r][c].edges[e] = -1;
+            if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = -1;
+            anyChange = true;
+          }
+        }
+      }
+    }
+    return anyChange;
+  }
+
+  /// Hypothetical propagator used inside _runLookAhead. Mutates puzzle.edges
+  /// freely — caller must snapshot+restore. Returns true on contradiction.
+  ///
+  /// Adds to the live rules (cell-disable / vertex-disable):
+  ///   • Cell force-draw: if active + undecided == num, the undecided edges
+  ///     must be drawn.
+  ///   • Vertex force-draw: if active == 1 and exactly one edge is undecided,
+  ///     it must be drawn (degree must reach 2).
+  ///   • Contradictions: cell active > num, cell active + undecided < num,
+  ///     vertex active > 2, vertex active == 1 with no undecided.
+  bool _propagateHypothesis() {
+    final incident = _buildVertexIncidence();
+
+    for (int iter = 0; iter < 30; iter++) {
+      bool changed = false;
+
+      for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+          final num = puzzle[r][c].num;
+          if (num < 0) continue;
+          int active = 0, undecided = 0;
+          for (int e = 0; e < 6; e++) {
+            final v = puzzle[r][c].edges[e];
+            if (v >= 1) {
+              active++;
+            } else if (v == 0) {
+              undecided++;
+            }
+          }
+          if (active > num) return true;
+          if (active + undecided < num) return true;
+          if (active == num && undecided > 0) {
+            for (int e = 0; e < 6; e++) {
+              if (puzzle[r][c].edges[e] == 0) {
+                puzzle[r][c].edges[e] = -1;
+                final nb = _neighborEdge(r, c, e);
+                if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = -1;
+                changed = true;
+              }
+            }
+          } else if (active + undecided == num && undecided > 0) {
+            for (int e = 0; e < 6; e++) {
+              if (puzzle[r][c].edges[e] == 0) {
+                puzzle[r][c].edges[e] = 1;
+                final nb = _neighborEdge(r, c, e);
+                if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = 1;
+                changed = true;
+              }
+            }
+          }
+        }
+      }
+
+      for (final edges in incident.values) {
+        int active = 0, undecided = 0;
+        for (final e in edges) {
+          final v = puzzle[e[0]][e[1]].edges[e[2]];
+          if (v >= 1) {
+            active++;
+          } else if (v == 0) {
+            undecided++;
+          }
+        }
+        if (active > 2) return true;
+        if (active == 1 && undecided == 0) return true;
+
+        if (active >= 2 && undecided > 0) {
+          for (final e in edges) {
+            if (puzzle[e[0]][e[1]].edges[e[2]] == 0) {
+              puzzle[e[0]][e[1]].edges[e[2]] = -1;
+              final nb = _neighborEdge(e[0], e[1], e[2]);
+              if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = -1;
+              changed = true;
+            }
+          }
+        } else if (active == 0 && undecided > 0 && undecided < 2) {
+          for (final e in edges) {
+            if (puzzle[e[0]][e[1]].edges[e[2]] == 0) {
+              puzzle[e[0]][e[1]].edges[e[2]] = -1;
+              final nb = _neighborEdge(e[0], e[1], e[2]);
+              if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = -1;
+              changed = true;
+            }
+          }
+        } else if (active == 1 && undecided == 1) {
+          for (final e in edges) {
+            if (puzzle[e[0]][e[1]].edges[e[2]] == 0) {
+              puzzle[e[0]][e[1]].edges[e[2]] = 1;
+              final nb = _neighborEdge(e[0], e[1], e[2]);
+              if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = 1;
+              changed = true;
+            }
+          }
+        }
+      }
+
+      if (!changed) break;
+    }
+    return false;
   }
 
   /// Integer vertex coordinate in (W/2, R/2) units. v[0]=top, v[1]=top-right,

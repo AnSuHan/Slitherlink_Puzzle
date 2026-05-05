@@ -1833,10 +1833,19 @@ class SquareProvider with ChangeNotifier {
     await propagateLookAhead();
   }
 
-  ///셀(num) 규칙과 꼭짓점(차수=2) 규칙을 fixed-point 까지 시뮬레이션해서
-  ///사용자가 그린 라인은 건드리지 않고, 비활성(-1) 표시만 더 적극적으로 반영한다.
+  ///셀(num) 규칙과 꼭짓점(차수=2) 규칙을 fixed-point 까지 시뮬레이션한 뒤,
+  ///각 미정 변에 대해 "그어졌다고 가정"하고 추가 propagation을 돌려 모순이
+  ///발생하면 그 변을 -1로 확정하는 1-step look-ahead까지 적용한다.
   ///
-  ///가상 강제선(2)은 시뮬레이션 내부 추론용으로만 사용되며 실제 puzzle 에는 기록하지 않는다.
+  ///사용자가 그린 라인은 건드리지 않고 비활성(-1) 표시만 더 적극적으로
+  ///반영한다. 가상 강제선(2)은 시뮬레이션 내부 추론용으로만 사용되며 실제
+  ///puzzle 에는 기록하지 않는다.
+  ///
+  ///사용자 빨강 마킹(-2) 처리: 작업 그리드에서 -2 를 0(미정)으로 매핑하여
+  ///look-ahead 가 -2 를 hard premise 로 잡고 1시 방향 등 무관한 변까지
+  ///cascade 비활성화하는 사고를 방지한다. propagation 종료 후, 원래 -2 이던
+  ///자리에 새로 -1 이 derive 됐으면 -2 로 복원 — "이 -1 에 동의 안 함"
+  ///마킹의 의미가 살아 있음. 자세한 내용은 docs/constraint_lookahead.md §4.
   Future<void> propagateLookAhead() async {
     int rows = puzzle.length;
     int cols = puzzle[0].length;
@@ -1845,21 +1854,87 @@ class SquareProvider with ChangeNotifier {
     List<List<int>> edge = await readSquare.readSubmit(puzzle);
     List<List<int>> orig = edge.map((r) => List<int>.from(r)).toList();
 
-    // 작업용 그리드: 1 = 그어짐, 0 = 미정, -1 = 비활성
-    // 가상 강제선(2)을 제거하여 연쇄 추론으로 정답이 노출되는 문제 방지
+    // 작업용 그리드:
+    //   1  = 그어짐 (사용자가 그린 라인)
+    //   0  = 미정 (이전 -1 / -2 도 여기로 흡수해서 propagation 이 다시 도출)
+    //   -1 = 비활성 (사용자 X 마킹 -4, 그 외 hard 잠금)
+    // 이전 자동 -1 과 사용자 빨강 -2 를 다시 0 으로 보내는 이유는
+    // (a) 이전 propagation 결과에 의존한 stale cascade 를 fresh state 에서
+    // 재평가하기 위함, (b) 빨강 -2 가 hard premise 가 되어 무관한 변까지
+    // cascade 비활성화되는 사고 방지.
     List<List<int>> w = edge.map((row) => row.map((v) {
       if (v >= 1) return 1;
-      if (v == 0) return 0;
-      return -1;
+      if (v == 0 || v == -1 || v == -2) return 0;
+      return -1; // -4 (user X) 등은 그대로 disabled
     }).toList()).toList();
 
+    _propagateDirectSquare(w, rows, cols);
+
+    // 라이브 상태가 이미 모순이면 look-ahead 스킵 (모든 가설이 모순으로
+    // 잘못 판정되어 모든 미정 변을 -1 처리하는 사고 방지).
+    if (_isWorkingStateConsistent(w, rows, cols)) {
+      for (int laIter = 0; laIter < 5; laIter++) {
+        bool laChanged = false;
+        for (int er = 0; er < w.length; er++) {
+          for (int ec = 0; ec < w[er].length; ec++) {
+            if (w[er][ec] != 0) continue;
+            // 가설용 스냅샷
+            List<List<int>> snap = w.map((r) => List<int>.from(r)).toList();
+            w[er][ec] = 1;
+            bool contradiction = _propagateHypothesisSquare(w, rows, cols);
+            // 복원
+            for (int rr = 0; rr < w.length; rr++) {
+              for (int cc = 0; cc < w[rr].length; cc++) {
+                w[rr][cc] = snap[rr][cc];
+              }
+            }
+            if (contradiction) {
+              w[er][ec] = -1;
+              laChanged = true;
+            }
+          }
+        }
+        if (!laChanged) break;
+        _propagateDirectSquare(w, rows, cols);
+      }
+    }
+
+    // puzzle 에 반영:
+    //   - 사용자가 그린 라인 (≥1), 사용자 X (-4), hint (-3 정답 / -5 오답) 은 건드리지 않음.
+    //   - 그 외 자리는 propagation 결과(w)에 따라 -1 또는 0 으로 갱신.
+    //   - 원래 -2 이던 자리에 새로 -1 이 도출됐으면 -2 로 복원 (빨강 마킹 보존).
+    bool anyChanged = false;
+    for (int i = 0; i < edge.length; i++) {
+      for (int j = 0; j < edge[i].length; j++) {
+        int origValue = orig[i][j];
+        if (origValue >= 1 || origValue == -4 || origValue == -3 || origValue == -5) {
+          continue;
+        }
+        int derived = w[i][j] == -1 ? -1 : 0;
+        int finalValue = (origValue == -2 && derived == -1) ? -2 : derived;
+        if (edge[i][j] != finalValue) {
+          edge[i][j] = finalValue;
+          anyChanged = true;
+        }
+      }
+    }
+
+    if (anyChanged) {
+      await readSquare.writeSubmit(puzzle, edge);
+      submit = await readSquare.readSubmit(puzzle);
+      notifyListeners();
+    }
+  }
+
+  /// 직접 propagation: 셀-disable 규칙과 꼭짓점-disable 규칙을 fixed-point
+  /// 까지 반복. 작업용 그리드 [w]만 변경.
+  void _propagateDirectSquare(List<List<int>> w, int rows, int cols) {
     bool changed = true;
     int iter = 0;
     while (changed && iter < 30) {
       changed = false;
       iter++;
 
-      // 셀 규칙: 이미 그어진 라인 수가 셀 숫자와 같으면 나머지 비활성
       for (int i = 0; i < rows; i++) {
         for (int j = 0; j < cols; j++) {
           int num = puzzle[i][j].num;
@@ -1885,8 +1960,6 @@ class SquareProvider with ChangeNotifier {
         }
       }
 
-      // 꼭짓점 규칙 (차수는 0 또는 2)
-      // 그어진 라인만 기준으로 판단 (가상 강제선 없음)
       for (int vi = 0; vi <= rows; vi++) {
         for (int vj = 0; vj <= cols; vj++) {
           List<List<int>> ve = [];
@@ -1916,23 +1989,132 @@ class SquareProvider with ChangeNotifier {
         }
       }
     }
+  }
 
-    // 새로 -1 이 된 칸만 실제 puzzle 에 반영
-    bool anyChanged = false;
-    for (int i = 0; i < edge.length; i++) {
-      for (int j = 0; j < edge[i].length; j++) {
-        if (orig[i][j] == 0 && w[i][j] == -1) {
-          edge[i][j] = -1;
-          anyChanged = true;
+  /// 작업용 그리드 [w]가 하드 제약을 이미 위반하는지 확인. 위반 시 false.
+  /// 이 경우 look-ahead는 모든 가설을 모순으로 판정해 모든 미정 변을 잘못
+  /// -1 처리하므로 호출 자체를 스킵해야 한다.
+  bool _isWorkingStateConsistent(List<List<int>> w, int rows, int cols) {
+    for (int i = 0; i < rows; i++) {
+      for (int j = 0; j < cols; j++) {
+        int num = puzzle[i][j].num;
+        if (num < 0 || num > 4) continue;
+        List<List<int>> es = [
+          [2 * i, j], [2 * i + 2, j], [2 * i + 1, j], [2 * i + 1, j + 1],
+        ];
+        int dr = 0, un = 0;
+        for (var e in es) {
+          int v = w[e[0]][e[1]];
+          if (v == 1) {
+            dr++;
+          } else if (v == 0) {
+            un++;
+          }
+        }
+        if (dr > num) return false;
+        if (dr + un < num) return false;
+      }
+    }
+    for (int vi = 0; vi <= rows; vi++) {
+      for (int vj = 0; vj <= cols; vj++) {
+        List<List<int>> ve = [];
+        if (vj > 0) ve.add([2 * vi, vj - 1]);
+        if (vj < cols) ve.add([2 * vi, vj]);
+        if (vi > 0) ve.add([2 * vi - 1, vj]);
+        if (vi < rows) ve.add([2 * vi + 1, vj]);
+        int dr = 0, un = 0;
+        for (var e in ve) {
+          int v = w[e[0]][e[1]];
+          if (v == 1) {
+            dr++;
+          } else if (v == 0) {
+            un++;
+          }
+        }
+        if (dr > 2) return false;
+        if (dr == 1 && un == 0) return false;
+      }
+    }
+    return true;
+  }
+
+  /// 가설 propagation: look-ahead가 한 변을 1로 가정한 뒤 호출. 셀/꼭짓점
+  /// disable + force-draw + 모순 검출을 fixed-point 까지 반복한다.
+  /// 모순이 발견되면 true 반환. 작업용 그리드 [w]는 마음대로 변경되므로
+  /// caller가 스냅샷/복원 책임.
+  bool _propagateHypothesisSquare(List<List<int>> w, int rows, int cols) {
+    bool changed = true;
+    int iter = 0;
+    while (changed && iter < 30) {
+      changed = false;
+      iter++;
+
+      for (int i = 0; i < rows; i++) {
+        for (int j = 0; j < cols; j++) {
+          int num = puzzle[i][j].num;
+          if (num < 0 || num > 4) continue;
+          List<List<int>> es = [
+            [2 * i, j], [2 * i + 2, j], [2 * i + 1, j], [2 * i + 1, j + 1],
+          ];
+          int dr = 0, un = 0;
+          for (var e in es) {
+            int v = w[e[0]][e[1]];
+            if (v == 1) {
+              dr++;
+            } else if (v == 0) {
+              un++;
+            }
+          }
+          if (dr > num) return true;
+          if (dr + un < num) return true;
+          if (dr == num && un > 0) {
+            for (var e in es) {
+              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
+            }
+          } else if (dr + un == num && un > 0) {
+            for (var e in es) {
+              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = 1; changed = true; }
+            }
+          }
+        }
+      }
+
+      for (int vi = 0; vi <= rows; vi++) {
+        for (int vj = 0; vj <= cols; vj++) {
+          List<List<int>> ve = [];
+          if (vj > 0) ve.add([2 * vi, vj - 1]);
+          if (vj < cols) ve.add([2 * vi, vj]);
+          if (vi > 0) ve.add([2 * vi - 1, vj]);
+          if (vi < rows) ve.add([2 * vi + 1, vj]);
+          int dr = 0, un = 0;
+          for (var e in ve) {
+            int v = w[e[0]][e[1]];
+            if (v == 1) {
+              dr++;
+            } else if (v == 0) {
+              un++;
+            }
+          }
+          if (dr > 2) return true;
+          if (dr == 1 && un == 0) return true;
+
+          if (dr >= 2 && un > 0) {
+            for (var e in ve) {
+              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
+            }
+          } else if (dr == 0 && un > 0 && dr + un < 2) {
+            for (var e in ve) {
+              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
+            }
+          } else if (dr == 1 && un == 1) {
+            for (var e in ve) {
+              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = 1; changed = true; }
+            }
+          }
         }
       }
     }
-
-    if (anyChanged) {
-      await readSquare.writeSubmit(puzzle, edge);
-      submit = await readSquare.readSubmit(puzzle);
-      notifyListeners();
-    }
+    return false;
   }
 
   ///각 박스마다 lineValue가 1이상인 값을 세고, 해당 박스의 num 이상인 경우 남은 0 라인을 -1로 변경

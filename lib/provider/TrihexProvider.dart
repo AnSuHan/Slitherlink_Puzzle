@@ -70,6 +70,11 @@ class TrihexProvider with ChangeNotifier {
   /// triangle id → 3 perimeter edge IDs.
   final Map<int, List<int>> _triEdgeIdsByCell = {};
 
+  /// Every edge id in the grid. Built once in `_buildTopology`. Look-ahead
+  /// iterates over this rather than `edgeState.keys` because untouched edges
+  /// default to value 0 (undecided) and aren't in the map.
+  final Set<int> _allEdges = {};
+
   /// Trihex vertex ID → canvas position (inside InteractiveViewer's child,
   /// i.e. includes the scene's outer EdgeInsets.all(20) padding). Populated
   /// once at `setAnswer`. Used by `getHintCanvasPos` so the scene can pan
@@ -153,13 +158,13 @@ class TrihexProvider with ChangeNotifier {
     _edgesByVertex.clear();
     _hexEdgeIdsByCell.clear();
     _triEdgeIdsByCell.clear();
+    _allEdges.clear();
 
-    final Set<int> allEdges = {};
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
         final edges = gen.hexCellEdgesOf(r, c);
         _hexEdgeIdsByCell.add(edges);
-        allEdges.addAll(edges);
+        _allEdges.addAll(edges);
       }
     }
     final tri = gen.enumerateTriangles();
@@ -167,9 +172,9 @@ class TrihexProvider with ChangeNotifier {
       final rep = tri.rep[id]!;
       final edges = gen.triangleEdgesOf(rep[0], rep[1], rep[2]);
       _triEdgeIdsByCell[id] = edges;
-      allEdges.addAll(edges);
+      _allEdges.addAll(edges);
     }
-    for (final e in allEdges) {
+    for (final e in _allEdges) {
       final int hi = e % 1000000000;
       final int lo = e ~/ 1000000000;
       _edgesByVertex.putIfAbsent(lo, () => []).add(e);
@@ -355,9 +360,37 @@ class TrihexProvider with ChangeNotifier {
   // --- Constraint propagation ---------------------------------------------
 
   /// Wipe prior auto-disables (-1) and iterate cell + vertex rules until
-  /// a fixed point. User annotations (-2 wrong, -4 X, -3/-5 hint) survive.
+  /// a fixed point, then run a 1-step look-ahead pass: each undecided edge
+  /// is hypothetically drawn and propagated; if the hypothesis triggers a
+  /// contradiction (a clue would over-fill, or a vertex would exceed degree
+  /// 2) the edge is flagged -1.
+  ///
+  /// User red marks (-2) are also cleared alongside -1 so look-ahead doesn't
+  /// lock them as hard premises (which would cascade-disable adjacent edges).
+  /// After propagation, -2 is restored at edge ids whose new value is -1.
+  /// User X marks (-4) are hard locks and not touched. See
+  /// docs/constraint_lookahead.md §4 for rationale.
   void _applyConstraints() {
-    edgeState.removeWhere((_, v) => v == -1);
+    final List<int> redSnapshot = [];
+    edgeState.forEach((id, v) {
+      if (v == -2) redSnapshot.add(id);
+    });
+    edgeState.removeWhere((_, v) => v == -1 || v == -2);
+
+    _propagateDirect();
+    for (int laIter = 0; laIter < 5; laIter++) {
+      if (!_runLookAhead()) break;
+      _propagateDirect();
+    }
+
+    for (final id in redSnapshot) {
+      if (edgeState[id] == -1) {
+        edgeState[id] = -2;
+      }
+    }
+  }
+
+  void _propagateDirect() {
     for (int iter = 0; iter < 30; iter++) {
       bool changed = false;
       if (_runCellRule()) changed = true;
@@ -435,6 +468,195 @@ class TrihexProvider with ChangeNotifier {
       }
     }
     return any;
+  }
+
+  /// Returns true iff the live puzzle state already violates a hard
+  /// constraint. See HexagonProvider._isStateConsistent for the rationale.
+  bool _isStateConsistent() {
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final clue = puzzle.hexClue[r][c];
+        if (clue < 0) continue;
+        final edges = _hexEdgeIdsByCell[r * cols + c];
+        int active = 0, undecided = 0;
+        for (final e in edges) {
+          final v = edgeValue(e);
+          if (v >= 1) {
+            active++;
+          } else if (v == 0) {
+            undecided++;
+          }
+        }
+        if (active > clue) return false;
+        if (active + undecided < clue) return false;
+      }
+    }
+    for (final id in puzzle.triangleIds) {
+      final clue = puzzle.triClue[id] ?? -1;
+      if (clue < 0) continue;
+      final edges = _triEdgeIdsByCell[id]!;
+      int active = 0, undecided = 0;
+      for (final e in edges) {
+        final v = edgeValue(e);
+        if (v >= 1) {
+          active++;
+        } else if (v == 0) {
+          undecided++;
+        }
+      }
+      if (active > clue) return false;
+      if (active + undecided < clue) return false;
+    }
+    for (final edges in _edgesByVertex.values) {
+      int active = 0, undecided = 0;
+      for (final e in edges) {
+        final v = edgeValue(e);
+        if (v >= 1) {
+          active++;
+        } else if (v == 0) {
+          undecided++;
+        }
+      }
+      if (active > 2) return false;
+      if (active == 1 && undecided == 0) return false;
+    }
+    return true;
+  }
+
+  /// Look-ahead pass. For each undecided edge: snapshot edgeState,
+  /// hypothesise the edge as drawn (=1), run a hypothetical propagator that
+  /// adds force-draw rules and contradiction detection, then restore. If the
+  /// hypothesis broke a clue or vertex constraint, the actual edge is
+  /// flagged -1.
+  bool _runLookAhead() {
+    if (!_isStateConsistent()) return false;
+    bool any = false;
+    for (final e in _allEdges) {
+      if (edgeValue(e) != 0) continue;
+      final snap = _snapshot();
+      edgeState[e] = 1;
+      final contradiction = _propagateHypothesis();
+      _restore(snap);
+      if (contradiction) {
+        edgeState[e] = -1;
+        any = true;
+      }
+    }
+    return any;
+  }
+
+  /// Hypothetical propagator used inside _runLookAhead. Mutates edgeState
+  /// freely — caller must snapshot+restore. Returns true on contradiction.
+  bool _propagateHypothesis() {
+    for (int iter = 0; iter < 30; iter++) {
+      bool changed = false;
+
+      for (int r = 0; r < rows; r++) {
+        for (int c = 0; c < cols; c++) {
+          final clue = puzzle.hexClue[r][c];
+          if (clue < 0) continue;
+          final edges = _hexEdgeIdsByCell[r * cols + c];
+          int active = 0, undecided = 0;
+          for (final e in edges) {
+            final v = edgeValue(e);
+            if (v >= 1) {
+              active++;
+            } else if (v == 0) {
+              undecided++;
+            }
+          }
+          if (active > clue) return true;
+          if (active + undecided < clue) return true;
+          if (active == clue && undecided > 0) {
+            for (final e in edges) {
+              if (edgeValue(e) == 0) {
+                edgeState[e] = -1;
+                changed = true;
+              }
+            }
+          } else if (active + undecided == clue && undecided > 0) {
+            for (final e in edges) {
+              if (edgeValue(e) == 0) {
+                edgeState[e] = 1;
+                changed = true;
+              }
+            }
+          }
+        }
+      }
+
+      for (final id in puzzle.triangleIds) {
+        final clue = puzzle.triClue[id] ?? -1;
+        if (clue < 0) continue;
+        final edges = _triEdgeIdsByCell[id]!;
+        int active = 0, undecided = 0;
+        for (final e in edges) {
+          final v = edgeValue(e);
+          if (v >= 1) {
+            active++;
+          } else if (v == 0) {
+            undecided++;
+          }
+        }
+        if (active > clue) return true;
+        if (active + undecided < clue) return true;
+        if (active == clue && undecided > 0) {
+          for (final e in edges) {
+            if (edgeValue(e) == 0) {
+              edgeState[e] = -1;
+              changed = true;
+            }
+          }
+        } else if (active + undecided == clue && undecided > 0) {
+          for (final e in edges) {
+            if (edgeValue(e) == 0) {
+              edgeState[e] = 1;
+              changed = true;
+            }
+          }
+        }
+      }
+
+      for (final edges in _edgesByVertex.values) {
+        int active = 0, undecided = 0;
+        for (final e in edges) {
+          final v = edgeValue(e);
+          if (v >= 1) {
+            active++;
+          } else if (v == 0) {
+            undecided++;
+          }
+        }
+        if (active > 2) return true;
+        if (active == 1 && undecided == 0) return true;
+
+        if (active >= 2 && undecided > 0) {
+          for (final e in edges) {
+            if (edgeValue(e) == 0) {
+              edgeState[e] = -1;
+              changed = true;
+            }
+          }
+        } else if (active == 0 && undecided > 0 && undecided < 2) {
+          for (final e in edges) {
+            if (edgeValue(e) == 0) {
+              edgeState[e] = -1;
+              changed = true;
+            }
+          }
+        } else if (active == 1 && undecided == 1) {
+          for (final e in edges) {
+            if (edgeValue(e) == 0) {
+              edgeState[e] = 1;
+              changed = true;
+            }
+          }
+        }
+      }
+
+      if (!changed) break;
+    }
+    return false;
   }
 
   // --- Completion ---------------------------------------------------------

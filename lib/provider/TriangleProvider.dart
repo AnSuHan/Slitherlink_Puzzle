@@ -227,17 +227,51 @@ class TriangleProvider with ChangeNotifier {
   }
 
   /// Constraint propagation entry point. Wipes prior auto-disables (-1) and
-  /// then iterates the cell rule and vertex-degree rule until a fixed point.
-  /// User annotations (-2, -4) are preserved throughout.
+  /// then iterates the cell rule and vertex-degree rule until a fixed point,
+  /// followed by a 1-step look-ahead pass: each undecided edge is hypothetically
+  /// drawn and propagated; if the hypothesis triggers a contradiction (a clue
+  /// would over-fill, or a vertex would exceed degree 2) the edge is flagged
+  /// -1.
+  ///
+  /// User red marks (-2) are also cleared to 0 alongside -1 so look-ahead
+  /// doesn't lock them as hard premises (which would cascade-disable
+  /// adjacent edges). After propagation, -2 is restored at positions whose
+  /// new value is -1. User X marks (-4) are hard locks and not touched.
+  /// See docs/constraint_lookahead.md §4 for rationale.
   void _applyConstraints() {
+    final List<List<int>> redSnapshot = [];
     for (int r = 0; r < rows; r++) {
       for (int i = 0; i < triPerRow; i++) {
         for (int e = 0; e < 3; e++) {
-          if (_getEdge(r, i, e) == -1) _setEdgeValue(r, i, e, 0);
+          final v = _getEdge(r, i, e);
+          if (v == -1) {
+            _setEdgeValue(r, i, e, 0);
+          } else if (v == -2) {
+            redSnapshot.add([r, i, e]);
+            _setEdgeValue(r, i, e, 0);
+          }
         }
       }
     }
 
+    _propagateDirect();
+    for (int laIter = 0; laIter < 5; laIter++) {
+      if (!_runLookAhead()) break;
+      _propagateDirect();
+    }
+
+    for (final pos in redSnapshot) {
+      if (_getEdge(pos[0], pos[1], pos[2]) == -1) {
+        _setEdgeValue(pos[0], pos[1], pos[2], -2);
+        final m = _sharedEdge(pos[0], pos[1], pos[2]);
+        if (m != null && _getEdge(m[0], m[1], m[2]) == -1) {
+          _setEdgeValue(m[0], m[1], m[2], -2);
+        }
+      }
+    }
+  }
+
+  void _propagateDirect() {
     for (int iter = 0; iter < 30; iter++) {
       bool changed = false;
       if (_runCellRule()) changed = true;
@@ -310,6 +344,201 @@ class TriangleProvider with ChangeNotifier {
       }
     }
     return anyChange;
+  }
+
+  /// Returns canonical id for an edge so shared edges resolve to a single
+  /// representative (used by look-ahead to avoid double-testing).
+  int _canonicalEdgeId(int r, int i, int e) {
+    final selfId = (r * 1000 + i) * 10 + e;
+    final m = _sharedEdge(r, i, e);
+    if (m == null) return selfId;
+    final otherId = (m[0] * 1000 + m[1]) * 10 + m[2];
+    return selfId <= otherId ? selfId : otherId;
+  }
+
+  /// Returns true iff the live puzzle state already violates a hard
+  /// constraint. See HexagonProvider._isStateConsistent for the rationale.
+  bool _isStateConsistent() {
+    for (int r = 0; r < rows; r++) {
+      for (int i = 0; i < triPerRow; i++) {
+        final num = puzzle[r][i].num;
+        if (num < 0) continue;
+        int active = 0, undecided = 0;
+        for (int e = 0; e < 3; e++) {
+          final v = _getEdge(r, i, e);
+          if (v >= 1) {
+            active++;
+          } else if (v == 0) {
+            undecided++;
+          }
+        }
+        if (active > num) return false;
+        if (active + undecided < num) return false;
+      }
+    }
+    for (int vr = 0; vr <= rows; vr++) {
+      for (int vi = 0; vi <= triPerRow + 1; vi++) {
+        if ((vr + vi).isEven) continue;
+        final edges = _incidentEdges(vr, vi);
+        if (edges.isEmpty) continue;
+        int active = 0, undecided = 0;
+        for (final e in edges) {
+          final v = _getEdge(e[0], e[1], e[2]);
+          if (v >= 1) {
+            active++;
+          } else if (v == 0) {
+            undecided++;
+          }
+        }
+        if (active > 2) return false;
+        if (active == 1 && undecided == 0) return false;
+      }
+    }
+    return true;
+  }
+
+  /// Look-ahead pass. For each undecided edge: snapshot the grid, hypothesise
+  /// the edge as drawn (=1), run a hypothetical propagator that adds force-draw
+  /// rules and contradiction detection, then restore. If the hypothesis broke
+  /// a clue or vertex constraint, the actual edge is flagged -1.
+  bool _runLookAhead() {
+    if (!_isStateConsistent()) return false;
+    bool anyChange = false;
+    final Set<int> tested = {};
+    for (int r = 0; r < rows; r++) {
+      for (int i = 0; i < triPerRow; i++) {
+        for (int e = 0; e < 3; e++) {
+          if (_getEdge(r, i, e) != 0) continue;
+          final canonical = _canonicalEdgeId(r, i, e);
+          if (!tested.add(canonical)) continue;
+
+          final snap = List.generate(rows, (rr) =>
+              List.generate(triPerRow, (ii) => [
+                puzzle[rr][ii].edge0,
+                puzzle[rr][ii].edge1,
+                puzzle[rr][ii].edge2,
+              ]));
+
+          _setEdgeValue(r, i, e, 1);
+          final m = _sharedEdge(r, i, e);
+          if (m != null) _setEdgeValue(m[0], m[1], m[2], 1);
+
+          final contradiction = _propagateHypothesis();
+
+          for (int rr = 0; rr < rows; rr++) {
+            for (int ii = 0; ii < triPerRow; ii++) {
+              _setEdgeValue(rr, ii, 0, snap[rr][ii][0]);
+              _setEdgeValue(rr, ii, 1, snap[rr][ii][1]);
+              _setEdgeValue(rr, ii, 2, snap[rr][ii][2]);
+            }
+          }
+
+          if (contradiction) {
+            _setEdgeValue(r, i, e, -1);
+            if (m != null) _setEdgeValue(m[0], m[1], m[2], -1);
+            anyChange = true;
+          }
+        }
+      }
+    }
+    return anyChange;
+  }
+
+  /// Hypothetical propagator used inside _runLookAhead. Mutates puzzle.edges
+  /// freely — caller must snapshot+restore. Returns true on contradiction.
+  bool _propagateHypothesis() {
+    for (int iter = 0; iter < 30; iter++) {
+      bool changed = false;
+
+      for (int r = 0; r < rows; r++) {
+        for (int i = 0; i < triPerRow; i++) {
+          final num = puzzle[r][i].num;
+          if (num < 0) continue;
+          int active = 0, undecided = 0;
+          for (int e = 0; e < 3; e++) {
+            final v = _getEdge(r, i, e);
+            if (v >= 1) {
+              active++;
+            } else if (v == 0) {
+              undecided++;
+            }
+          }
+          if (active > num) return true;
+          if (active + undecided < num) return true;
+          if (active == num && undecided > 0) {
+            for (int e = 0; e < 3; e++) {
+              if (_getEdge(r, i, e) == 0) {
+                _setEdgeValue(r, i, e, -1);
+                final m = _sharedEdge(r, i, e);
+                if (m != null) _setEdgeValue(m[0], m[1], m[2], -1);
+                changed = true;
+              }
+            }
+          } else if (active + undecided == num && undecided > 0) {
+            for (int e = 0; e < 3; e++) {
+              if (_getEdge(r, i, e) == 0) {
+                _setEdgeValue(r, i, e, 1);
+                final m = _sharedEdge(r, i, e);
+                if (m != null) _setEdgeValue(m[0], m[1], m[2], 1);
+                changed = true;
+              }
+            }
+          }
+        }
+      }
+
+      for (int vr = 0; vr <= rows; vr++) {
+        for (int vi = 0; vi <= triPerRow + 1; vi++) {
+          if ((vr + vi).isEven) continue;
+          final edges = _incidentEdges(vr, vi);
+          if (edges.isEmpty) continue;
+
+          int active = 0, undecided = 0;
+          for (final e in edges) {
+            final v = _getEdge(e[0], e[1], e[2]);
+            if (v >= 1) {
+              active++;
+            } else if (v == 0) {
+              undecided++;
+            }
+          }
+          if (active > 2) return true;
+          if (active == 1 && undecided == 0) return true;
+
+          if (active >= 2 && undecided > 0) {
+            for (final e in edges) {
+              if (_getEdge(e[0], e[1], e[2]) == 0) {
+                _setEdgeValue(e[0], e[1], e[2], -1);
+                final m = _sharedEdge(e[0], e[1], e[2]);
+                if (m != null) _setEdgeValue(m[0], m[1], m[2], -1);
+                changed = true;
+              }
+            }
+          } else if (active == 0 && undecided > 0 && undecided < 2) {
+            for (final e in edges) {
+              if (_getEdge(e[0], e[1], e[2]) == 0) {
+                _setEdgeValue(e[0], e[1], e[2], -1);
+                final m = _sharedEdge(e[0], e[1], e[2]);
+                if (m != null) _setEdgeValue(m[0], m[1], m[2], -1);
+                changed = true;
+              }
+            }
+          } else if (active == 1 && undecided == 1) {
+            for (final e in edges) {
+              if (_getEdge(e[0], e[1], e[2]) == 0) {
+                _setEdgeValue(e[0], e[1], e[2], 1);
+                final m = _sharedEdge(e[0], e[1], e[2]);
+                if (m != null) _setEdgeValue(m[0], m[1], m[2], 1);
+                changed = true;
+              }
+            }
+          }
+        }
+      }
+
+      if (!changed) break;
+    }
+    return false;
   }
 
   /// One (row, idx, edgeIdx) representative per unique edge incident to v(vr, vi).
