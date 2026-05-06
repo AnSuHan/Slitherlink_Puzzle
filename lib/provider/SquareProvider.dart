@@ -1707,6 +1707,15 @@ class SquareProvider with ChangeNotifier {
       print("call findBlockEnableDisable($row $column $pos $enable $disable)");
     }
 
+    // Snapshot full per-cell edge state BEFORE any propagation step (incl.
+    // setLineEnable). If propagation drives the puzzle into a globally
+    // infeasible state — e.g. user X-marks a critical line and look-ahead
+    // exhaustively eliminates all undecided edges — we revert everything
+    // (including setLineEnable's -1 → 0 conversions) to this snapshot.
+    // The user's tap is preserved (it was applied in updateSquareBox before
+    // this method was called and is therefore captured in the snapshot).
+    final guardSnap = _snapshotPuzzleEdges();
+
     // Re-enable disabled lines around the changed line, then propagate.
     // Use a queue to spread outward only to cells that actually change.
     Set<int> visited = {};
@@ -1754,8 +1763,42 @@ class SquareProvider with ChangeNotifier {
     }
 
     await checkCurrentPath();
+
+    // After all propagation: if the live state is locally inconsistent,
+    // revert everything we did in this method (setLineEnable + checkCurrentPath)
+    // to the snapshot. The user's tap remains visible.
+    if (!_isLivePuzzleConsistent(await readSquare.readSubmit(puzzle))) {
+      _restorePuzzleEdges(guardSnap);
+    }
+
     notifyListeners();
     submit = await readSquare.readSubmit(puzzle);
+  }
+
+  /// Snapshot every cell's 4-direction edge values. Stores all four sides
+  /// even though for inner cells only `down`/`right` are canonical — the
+  /// non-canonical sides (`up`/`left` of inner cells) carry user-tap state
+  /// that updateSquareBox writes there, so they must round-trip through
+  /// snapshot/restore.
+  List<List<List<int>>> _snapshotPuzzleEdges() {
+    return List.generate(puzzle.length, (i) =>
+      List.generate(puzzle[i].length, (j) => [
+        puzzle[i][j].up,
+        puzzle[i][j].down,
+        puzzle[i][j].left,
+        puzzle[i][j].right,
+      ]));
+  }
+
+  void _restorePuzzleEdges(List<List<List<int>>> snap) {
+    for (int i = 0; i < puzzle.length; i++) {
+      for (int j = 0; j < puzzle[i].length; j++) {
+        puzzle[i][j].up = snap[i][j][0];
+        puzzle[i][j].down = snap[i][j][1];
+        puzzle[i][j].left = snap[i][j][2];
+        puzzle[i][j].right = snap[i][j][3];
+      }
+    }
   }
 
   List<List<dynamic>> needCalcLine = [];
@@ -1828,25 +1871,13 @@ class SquareProvider with ChangeNotifier {
       // ignore: avoid_print
       print("call checkCurrentPath");
     }
-    // Snapshot for global-infeasibility revert. If the user X-marks a drawn
-    // line that was critical for some clue (cell can no longer reach `num`),
-    // the puzzle becomes globally infeasible and look-ahead would mark every
-    // undecided edge as -1, wiping the board. After propagation, if the
-    // resulting state is locally inconsistent, restore from snapshot — the
-    // user's tap survives (it's in the snapshot), no cascade is applied.
-    // See docs/constraint_lookahead.md §4 / §5.
-    final guardSnap = await readSquare.readSubmit(puzzle);
-
+    // Note: the global-infeasibility revert guard is in the caller
+    // (findBlockEnableDisable) so that the snapshot is taken BEFORE
+    // setLineEnable's -1 → 0 conversions; the revert restores those too.
+    // See docs/constraint_lookahead.md §4-3-1.
     await checkMaxLine();
     await checkCurrentPathSet();
     await propagateLookAhead();
-
-    final after = await readSquare.readSubmit(puzzle);
-    if (!_isLivePuzzleConsistent(after)) {
-      await readSquare.writeSubmit(puzzle, guardSnap);
-      submit = await readSquare.readSubmit(puzzle);
-      notifyListeners();
-    }
   }
 
   /// Bridge from live edge grid (which may carry user marks -2/-4 and hint
