@@ -169,6 +169,21 @@ UI 에는 사용자가 직접 만들 수 있는 음수 마킹이 두 가지 있�
 
 `-4` (사용자 X) 는 사용자가 명시적으로 잠근 변이므로 propagation 안에서 `-1` 과 동등하게 취급한다. clear 단계에서 건드리지 않는다. 이 자리에서 새 deduction 이 파생되는 건 정상이다 — 사용자가 "여긴 절대 안 그어진다" 고 확정한 자리이므로.
 
+### 그러나 정답 라인을 X 처리하면 보드 전체 비활성화 사고가 난다
+
+`-4` 자체는 의도대로 hard 잠금이지만, 사용자가 _정답 라인을_ X 처리하면 그 셀이 `num` 을 채울 방법을 잃고 **퍼즐이 globally infeasible** 해진다. 이 때:
+
+- 직접 추론은 일부 vertex/cell 을 satisfied / starved 상태로 분류해 주변 미정 변을 -1 로 줄줄이 비활성화.
+- look-ahead 는 사전 일관성 가드(Section 3) 가 잡아 패스 자체를 스킵하지만, 직접 추론 cascade 는 살아남는다.
+- 결과: 사용자 입장에서는 "X 한 번 찍었더니 보드 거의 전부 비활성화" 로 보임.
+
+해결: `applyConstraints` 진입 시 전체 edges 그리드를 스냅샷해 두고, 모든 propagation 종료 후 `isStateConsistent()` 가 여전히 false 면 그 동안의 변경을 모두 버리고 스냅샷으로 되돌린다. 사용자의 X 마킹은 진입 시점 스냅샷에 들어 있어 보존되며, cascade 만 차단된다.
+
+이 가드와 Section 3 의 사전 일관성 가드는 **둘 다 필요**하다:
+- 사전 가드: look-ahead 의 exhaustive elimination 차단.
+- 사후 가드: 직접 추론의 cascade 차단.
+한쪽만 있으면 보드 전체 비활성화 사고가 그대로 난다.
+
 ---
 
 ## 3. 사전 일관성 가드 — 이게 없으면 한 탭에 보드 전체 비활성화
@@ -208,6 +223,7 @@ look-ahead 진입 전에 라이브 상태가 일관적인지 검사:
 
 ## 5. 전체 흐름 (`applyConstraints` 한 번 호출 시)
 
+0. **전체 edges 그리드 스냅샷** (global-infeasibility revert 용).
 1. **`-2` 위치 스냅샷.**
 2. **이전 `-1`, `-2` → `0` 클리어** (`-4` 는 그대로). 추론은 항상 "현재 상태" 기준으로 다시.
 3. 직접 추론 fixed-point
@@ -216,7 +232,8 @@ look-ahead 진입 전에 라이브 상태가 일관적인지 검사:
    - look-ahead 한 바퀴 (각 미정 변에 대해 가설 시뮬)
    - 새 `-1` 없으면 break
    - 직접 추론 fixed-point
-5. **스냅샷의 각 위치를 다시 본다. 현재 값이 `-1` 이면 `-2` 로 복원.**
+5. **스냅샷(1)의 각 위치를 다시 본다. 현재 값이 `-1` 이면 `-2` 로 복원.**
+6. **`isStateConsistent()` 가 여전히 false 면 스냅샷(0)으로 전체 revert.** 사용자 탭 결과는 보존, propagation cascade 만 차단.
 
 **호출 시점:** 퍼즐 `init` / `updateEdge` / undo / redo / restart / Square 의 `checkCurrentPath` 끝.
 

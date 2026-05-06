@@ -368,9 +368,19 @@ class TrihexProvider with ChangeNotifier {
   /// User red marks (-2) are also cleared alongside -1 so look-ahead doesn't
   /// lock them as hard premises (which would cascade-disable adjacent edges).
   /// After propagation, -2 is restored at edge ids whose new value is -1.
-  /// User X marks (-4) are hard locks and not touched. See
-  /// docs/constraint_lookahead.md §4 for rationale.
+  /// User X marks (-4) are hard locks and not touched.
+  ///
+  /// Global-infeasibility guard: if the user X-marks a drawn line that was
+  /// critical to satisfying some clue (the cell now can't reach `num`), the
+  /// puzzle becomes globally infeasible. In that state look-ahead concludes
+  /// "every undecided edge contradicts" and disables the whole board. To
+  /// prevent that, we snapshot the full edgeState at entry; if propagation
+  /// ends in a locally inconsistent state (caught by _isStateConsistent),
+  /// we restore from snapshot. The user's tap is preserved (it was in the
+  /// snapshot) but no cascade -1 is applied. See docs §4 / §5 for context.
   void _applyConstraints() {
+    final guardSnap = _snapshot();
+
     final List<int> redSnapshot = [];
     edgeState.forEach((id, v) {
       if (v == -2) redSnapshot.add(id);
@@ -387,6 +397,10 @@ class TrihexProvider with ChangeNotifier {
       if (edgeState[id] == -1) {
         edgeState[id] = -2;
       }
+    }
+
+    if (!_isStateConsistent()) {
+      _restore(guardSnap);
     }
   }
 

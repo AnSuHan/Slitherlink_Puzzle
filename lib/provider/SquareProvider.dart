@@ -1828,9 +1828,40 @@ class SquareProvider with ChangeNotifier {
       // ignore: avoid_print
       print("call checkCurrentPath");
     }
+    // Snapshot for global-infeasibility revert. If the user X-marks a drawn
+    // line that was critical for some clue (cell can no longer reach `num`),
+    // the puzzle becomes globally infeasible and look-ahead would mark every
+    // undecided edge as -1, wiping the board. After propagation, if the
+    // resulting state is locally inconsistent, restore from snapshot — the
+    // user's tap survives (it's in the snapshot), no cascade is applied.
+    // See docs/constraint_lookahead.md §4 / §5.
+    final guardSnap = await readSquare.readSubmit(puzzle);
+
     await checkMaxLine();
     await checkCurrentPathSet();
     await propagateLookAhead();
+
+    final after = await readSquare.readSubmit(puzzle);
+    if (!_isLivePuzzleConsistent(after)) {
+      await readSquare.writeSubmit(puzzle, guardSnap);
+      submit = await readSquare.readSubmit(puzzle);
+      notifyListeners();
+    }
+  }
+
+  /// Bridge from live edge grid (which may carry user marks -2/-4 and hint
+  /// marks -3/-5) to the consistency check used inside propagateLookAhead.
+  /// Anything not drawn (≥1) and not undecided (0) is treated as disabled.
+  bool _isLivePuzzleConsistent(List<List<int>> edge) {
+    int rows = puzzle.length;
+    int cols = puzzle[0].length;
+    if (rows == 0 || cols == 0) return true;
+    List<List<int>> w = edge.map((row) => row.map((v) {
+      if (v >= 1) return 1;
+      if (v == 0) return 0;
+      return -1;
+    }).toList()).toList();
+    return _isWorkingStateConsistent(w, rows, cols);
   }
 
   ///셀(num) 규칙과 꼭짓점(차수=2) 규칙을 fixed-point 까지 시뮬레이션한 뒤,

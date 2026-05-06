@@ -237,8 +237,20 @@ class TriangleProvider with ChangeNotifier {
   /// doesn't lock them as hard premises (which would cascade-disable
   /// adjacent edges). After propagation, -2 is restored at positions whose
   /// new value is -1. User X marks (-4) are hard locks and not touched.
-  /// See docs/constraint_lookahead.md §4 for rationale.
+  ///
+  /// Global-infeasibility guard: if the user X-marks a critical drawn line,
+  /// the puzzle becomes globally infeasible; look-ahead would then mark
+  /// every undecided edge -1 and wipe the board. We snapshot the full
+  /// edge grid at entry and restore it if the post-propagation state is
+  /// inconsistent. See docs/constraint_lookahead.md §4 / §5.
   void _applyConstraints() {
+    final List<List<List<int>>> guardSnap = List.generate(rows, (rr) =>
+        List.generate(triPerRow, (ii) => [
+              puzzle[rr][ii].edge0,
+              puzzle[rr][ii].edge1,
+              puzzle[rr][ii].edge2,
+            ]));
+
     final List<List<int>> redSnapshot = [];
     for (int r = 0; r < rows; r++) {
       for (int i = 0; i < triPerRow; i++) {
@@ -266,6 +278,16 @@ class TriangleProvider with ChangeNotifier {
         final m = _sharedEdge(pos[0], pos[1], pos[2]);
         if (m != null && _getEdge(m[0], m[1], m[2]) == -1) {
           _setEdgeValue(m[0], m[1], m[2], -2);
+        }
+      }
+    }
+
+    if (!_isStateConsistent()) {
+      for (int rr = 0; rr < rows; rr++) {
+        for (int ii = 0; ii < triPerRow; ii++) {
+          puzzle[rr][ii].edge0 = guardSnap[rr][ii][0];
+          puzzle[rr][ii].edge1 = guardSnap[rr][ii][1];
+          puzzle[rr][ii].edge2 = guardSnap[rr][ii][2];
         }
       }
     }

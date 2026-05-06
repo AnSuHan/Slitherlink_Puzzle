@@ -380,7 +380,18 @@ class HexagonProvider with ChangeNotifier {
   /// -2 is restored at positions whose new value is -1 — the user's red
   /// marking refers to "this -1", so it only stays where -1 still holds.
   /// User X marks (-4) are hard locks and are not touched.
+  ///
+  /// Global-infeasibility guard: if the user X-marks a drawn line that was
+  /// critical for some clue, the puzzle becomes globally infeasible.
+  /// Look-ahead would then mark every undecided edge as -1 (every hypothesis
+  /// contradicts) and wipe the board. We snapshot the full edges grid at
+  /// entry; if the post-propagation state is locally inconsistent (caught
+  /// by _isStateConsistent), we restore from snapshot — the user's tap is
+  /// preserved, no cascade is applied. See docs §4 / §5.
   void _applyConstraints() {
+    final List<List<List<int>>> guardSnap = List.generate(rows, (rr) =>
+        List.generate(cols, (cc) => List<int>.from(puzzle[rr][cc].edges)));
+
     final List<List<int>> redSnapshot = [];
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
@@ -408,6 +419,16 @@ class HexagonProvider with ChangeNotifier {
         final nb = _neighborEdge(pos[0], pos[1], pos[2]);
         if (nb != null && puzzle[nb[0]][nb[1]].edges[nb[2]] == -1) {
           puzzle[nb[0]][nb[1]].edges[nb[2]] = -2;
+        }
+      }
+    }
+
+    if (!_isStateConsistent()) {
+      for (int rr = 0; rr < rows; rr++) {
+        for (int cc = 0; cc < cols; cc++) {
+          for (int ee = 0; ee < 6; ee++) {
+            puzzle[rr][cc].edges[ee] = guardSnap[rr][cc][ee];
+          }
         }
       }
     }

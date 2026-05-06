@@ -285,6 +285,25 @@ UI 에는 사용자가 직접 만들 수 있는 두 가지 음수 마킹이 있�
 
 `-4` (사용자 X) 는 사용자가 명시적으로 잠근 변이므로 propagation 안에서 `-1` 과 동등하게 취급한다. clear 단계에서 `-4` 는 건드리지 않는다. propagation 은 `-4` 를 disabled 로 보고 deduction 을 진행해도 된다 — 사용자가 잠근 자리이므로 그 위에서 새 deduction 이 생기는 건 정상.
 
+### 4-3-1. 그러나 `-4` 가 정답 라인을 잠그면 puzzle 이 globally infeasible 해진다 — global-infeasibility 가드 필요
+
+`-4` 자체는 hard 잠금이지만, 사용자가 정답 라인을 X 처리하면 그 셀이 `num` 을 채울 수 없게 되어 **퍼즐이 globally infeasible** 해진다. 이 상태에서:
+
+- 셀 A 는 `active < num` 이면서 `active + undecided < num` (정답 자리가 -4 로 잠겨서). 즉 LOCAL inconsistency.
+- look-ahead 에 진입하기 전에 Section 3-3 의 `isStateConsistent` 가 이걸 잡고 패스 자체를 스킵 — 여기까지는 의도대로.
+- 그러나 직접 추론(`_propagateDirect`)은 그보다 먼저 한 번 돌고, 일부 vertex/cell 이 satisfied / starved 상태로 분류되어 cascade 비활성화가 진행된다.
+- 다음 outer loop iteration 에서도 같은 직접 추론이 반복되며 cascade 가 더 퍼진다.
+- 결과: 보드 대부분 또는 전체가 `-1` 로 도배.
+
+**가드 절차:** `applyConstraints` 진입 시 **전체 edges 그리드의 스냅샷** 을 따로 떠 두고, 모든 propagation (직접 추론 + look-ahead + `-2` 복원) 종료 후 `isStateConsistent` 를 한 번 더 호출. **여전히 false 면** 그 동안의 변경을 모두 버리고 진입 시점 스냅샷으로 되돌린다.
+
+이 revert 의 효과:
+- 사용자의 `-4` 마킹은 진입 시점 스냅샷에 이미 들어있었으므로 그대로 살아남는다.
+- 직접 추론과 look-ahead 가 일으킨 cascade 비활성화는 모두 사라진다.
+- 사용자가 그대로 다시 탭(=`-4` → `0`) 하면 정상 상태 복귀.
+
+**중요:** 이 가드는 Section 3-3 의 사전 일관성 가드(look-ahead 진입 전 검사)와 **별개로 추가**되어야 한다. 사전 가드는 _look-ahead만_ 막고, 직접 추론의 cascade 는 못 막는다. 사후 가드는 propagation 전체의 결과를 검사한다.
+
 ### 4-4. propagation 안에서 코드의 분기 정리
 
 | 변 값 | active 카운트에 포함? | undecided 카운트에 포함? | 비활성으로 취급? |
@@ -309,6 +328,7 @@ UI 에는 사용자가 직접 만들 수 있는 두 가지 음수 마킹이 있�
 
 ```
 applyConstraints():
+    0. 전체 edges 그리드 스냅샷 (global-infeasibility revert 용; Section 4-3-1).
     1. -2 위치 스냅샷.
     2. 이전 -1, -2 → 0  (이전 추론 결과 + 사용자 빨강 마킹 클리어; -4 는 그대로)
     3. 직접 추론 fixed-point (Section 2)
@@ -317,6 +337,8 @@ applyConstraints():
        - 새 -1 있으면 직접 추론 fixed-point 재돌림
        - 변화 없을 때까지 (상한 5 회)
     5. 1 단계 스냅샷 각 위치의 현재 값이 -1 이면 -2 로 복원.
+    6. isStateConsistent() 가 false 면 0 단계 스냅샷으로 전체 revert. 사용자의
+       탭 결과(-4 등)는 보존되고 propagation 이 일으킨 cascade 만 차단.
 ```
 
 ---
@@ -370,6 +392,7 @@ force-draw 를 영구 기록하지 않는 이유: **자동으로 라인을 그�
 1. ☐ 라이브 상태 일관성 가드(Section 3-3)가 켜져 있는가? 없으면 한 번의 잘못된 입력으로 보드 전체 비활성화.
 2. ☐ Hidden clue (`num < 0`) 가드가 모든 propagator (직접 / 가설 모두) 에 있는가?
 3. ☐ `-2` clear/restore (Section 4-2) 가 `applyConstraints` 진입/종료에 들어 있는가? 빠지면 사용자가 -1 을 빨강으로 마킹할 때 1시 방향 등 무관한 변까지 cascade 비활성화.
+3-1. ☐ Global-infeasibility revert (Section 4-3-1) 가 `applyConstraints` 종료부에 들어 있는가? 빠지면 사용자가 정답 라인을 X(-4) 처리할 때 직접 추론 cascade 로 보드 전체가 비활성화.
 4. ☐ Force-draw 결과가 영구 기록되지 않는가? (가설 시뮬레이션 종료 후 restore 했는가)
 5. ☐ 셀 규칙과 꼭짓점 규칙 양쪽에 force-draw 가 누락되지 않았는가?
 6. ☐ Outer loop (look-ahead ↔ 직접 추론) 가 fixed-point 까지 도는가? Look-ahead 한 번으로 끝나면 deduction 누락 가능.
