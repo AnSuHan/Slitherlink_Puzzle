@@ -354,6 +354,9 @@ applyConstraints():
 | 인접 cell 미러링 | `writeSubmit/readSubmit` | `_neighborEdge(r,c,e)` | `_sharedEdge(r,i,e)` | edge id 가 두 cell 에서 자동 공유 |
 | 꼭짓점 incidence | `(vi, vj)` 좌표로 직접 계산 | `_buildVertexIncidence` 캐시 | `_incidentEdges(vr, vi)` | `_edgesByVertex` 맵 |
 | 셀 전수 조회 | `(rows, cols)` 이중 루프 | `(rows, cols)` 이중 루프 | `(rows, triPerRow)` 이중 루프 + `isUp` | hex 셀 + 삼각 셀 별도 |
+| Pure logic 위치 | `lib/provider/square_propagation_core.dart` (top-level 함수) | Provider 내부 (`_propagateDirect` 등) | Provider 내부 | Provider 내부 |
+| 진입점 | `_applyConstraints` ← `applyConstraints` (외부) ← `updateSquareBox` / `HowToPlay.dart` | `_applyConstraints` (내부) | `_applyConstraints` (내부) | `_applyConstraints` (내부) |
+| 회귀 테스트 | `test/square_propagation_regression_test.dart` (5 케이스) | 없음 | `test/triangle_model_test.dart` (모델만) | 없음 |
 
 ---
 

@@ -304,14 +304,14 @@ class HowToPlayState extends State<HowToPlay> {
       if(lineColor == 0) {
         lineColor = _provider.getLineColorBox(row, col, pos);
       }
-      _provider.findBlockEnableDisable(row, col, pos, enable: true, isMax: true);
+      _provider.applyConstraints();
     }
   }
 
   ///updateSquareBox()에서 콜백으로 등록하여 잘못된 라인 클릭 시 롤백
   Future<void> rollback(int row, int col, String pos, int color) async {
     _provider.setLineColorBox(row, col, pos, color);
-    _provider.findBlockEnableDisable(row, col, pos, enable: true, isMax: true);
+    _provider.applyConstraints();
   }
 
   void showStep0() {

@@ -4,6 +4,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
+import 'square_propagation_core.dart';
 import '../Platform/ExtractData.dart'
   if (dart.library.html) '../Platform/ExtractDataWeb.dart'; // 조건부 import
 import '../Scene/GameSceneSquare.dart';
@@ -1047,9 +1048,12 @@ class SquareProvider with ChangeNotifier {
 
     submit = await readSquare.readSubmit(puzzle);
     notifyListeners();
+    // UI yield — 사용자가 그린 라인이 즉시 paint 된 뒤에 무거운 propagation 진입.
+    // 이 yield 가 없으면 같은 frame 안에서 propagation 이 끝날 때까지 paint 가 미뤄져
+    // 탭이 "느리게" 보인다.
+    await Future.delayed(Duration.zero);
     await setDo();
-    await findBlockEnableDisable(
-        row, column, pos, enable: lineValue <= 0, disable: lineValue > 0);
+    await _applyConstraints();
     notifyListeners();
     while(_isUpdating != 3) {
       await Future.delayed(const        // ignore: avoid_print
@@ -1077,16 +1081,6 @@ class SquareProvider with ChangeNotifier {
       case "left":  return puzzle[row][col].left;
       case "right": return puzzle[row][col].right;
       default: return 0;
-    }
-  }
-
-  /// 라인(row, col, dir)의 값을 설정하는 헬퍼
-  void _setEdgeValue(int row, int col, String dir, int value) {
-    switch (dir) {
-      case "up":    puzzle[row][col].up = value; break;
-      case "down":  puzzle[row][col].down = value; break;
-      case "left":  puzzle[row][col].left = value; break;
-      case "right": puzzle[row][col].right = value; break;
     }
   }
 
@@ -1145,27 +1139,6 @@ class SquareProvider with ChangeNotifier {
     }
 
     return edges;
-  }
-
-  /// 라인의 각 꼭짓점별로 인접 라인을 분리하여 반환 (자기 자신 제외)
-  /// 반환: [vertex0의 인접 라인들, vertex1의 인접 라인들]
-  List<List<List<dynamic>>> getAdjacentEdgesPerVertex(int row, int col, String dir) {
-    List<List<int>> vertices = _getEdgeVertices(row, col, dir);
-    String selfKey = "$row,$col,$dir";
-    List<List<List<dynamic>>> result = [];
-
-    for (var v in vertices) {
-      List<List<dynamic>> edgesAtVertex = [];
-      for (var edge in _getEdgesAtVertex(v[0], v[1])) {
-        String key = "${edge[0]},${edge[1]},${edge[2]}";
-        if (key != selfKey) {
-          edgesAtVertex.add(edge);
-        }
-      }
-      result.add(edgesAtVertex);
-    }
-
-    return result;
   }
 
   /// 라인 (row, col, dir)에 인접한 모든 라인을 반환 (자기 자신 제외)
@@ -1690,90 +1663,149 @@ class SquareProvider with ChangeNotifier {
 
   ///**********************************************************************************
   ///**********************************************************************************
-  ///************************** change interacted line color **************************
+  ///**************** constraint propagation (single source of truth) *****************
   ///**********************************************************************************
   ///**********************************************************************************
-  ///row, column은 puzzle 기준
-  ///lineValue가 1이상 이면 disable = true, 0이하 이면 enable = true
+  /// Square 의 모든 propagation 진입점. Hexagon/Triangle/Trihex 의 _applyConstraints
+  /// 와 동일한 흐름이며, 다음 단계는 docs/constraint_lookahead.md §5 와 1:1 대응한다.
   ///
-  ///TODO : howToPlay에서는 문제 없지만, release에서는 계산량이 너무 많아 시간이 오래 걸린다 (계산은 정상적으로 진행됨)
-  ///TODO : 계산량을 줄이는 방법을 howToPlay 브랜치 merge 이후 모색할 예정
-  Future<void> findBlockEnableDisable(
-      int row, int column, String pos,
-      {bool enable = false, bool disable = false, bool isMax = false}
-    ) async {
-    if(UserInfo.debugMode["print_methodName"]!) {
+  /// 1. guardSnap = 모든 cell 의 4 방향 edge 풀스냅샷 (cascade-abort revert 용)
+  /// 2. 작업용 그리드 w 빌드 (≥1 → 1, 0/-1/-2 → 0, 그 외 → -1)
+  ///    - -2 를 0 으로 매핑해 사용자 빨강 마킹이 hard premise 가 되지 않도록 한다.
+  /// 3. propagateDirectSquare(w, nums) fixed-point   (square_propagation_core.dart)
+  /// 4. isWorkingStateConsistent(w, nums) 가 true 이면 look-ahead loop ≤ 5 회
+  /// 5. puzzle 에 반영 (사용자 그림 ≥1, 힌트 -3/-5, 사용자 X -4 는 보존)
+  /// 6. 원래 -2 이던 자리에 새로 -1 이 도출되면 -2 로 복원 (빨강 마킹 의미 보존)
+  /// 7. 최종 isWorkingStateConsistent 가 false 면 guardSnap 으로 전체 revert
+  Future<void> _applyConstraints() async {
+    if (UserInfo.debugMode["print_methodName"]!) {
       // ignore: avoid_print
-      print("call findBlockEnableDisable($row $column $pos $enable $disable)");
+      print("call _applyConstraints");
     }
 
-    // Snapshot full per-cell edge state BEFORE any propagation step (incl.
-    // setLineEnable). If propagation drives the puzzle into a globally
-    // infeasible state — e.g. user X-marks a critical line and look-ahead
-    // exhaustively eliminates all undecided edges — we revert everything
-    // (including setLineEnable's -1 → 0 conversions) to this snapshot.
-    // The user's tap is preserved (it was applied in updateSquareBox before
-    // this method was called and is therefore captured in the snapshot).
-    final guardSnap = _snapshotPuzzleEdges();
+    final int rows = puzzle.length;
+    if (rows == 0) return;
+    final int cols = puzzle[0].length;
+    if (cols == 0) return;
 
-    // Re-enable disabled lines around the changed line, then propagate.
-    // Use a queue to spread outward only to cells that actually change.
-    Set<int> visited = {};
-    List<int> queue = [];
+    // 1. 진입 시점 풀스냅샷 (redundant up/down/left/right 모두 포함 — non-canonical
+    //    자리에 사용자 tap 이 남아 있을 수 있어 canonical edge 만으로는 보존 불가).
+    final List<List<List<int>>> guardSnap = _snapshotPuzzleEdges();
 
-    // Seed: cells adjacent to the changed line
-    int rowMin = max(0, min(puzzle.length - 1, row - 1));
-    int rowMax = min(puzzle.length - 1, row + 1);
-    int colMin = max(0, min(puzzle[row].length - 1, column - 1));
-    int colMax = min(puzzle[row].length - 1, column + 1);
-    colMax = min(colMax + 1, puzzle[row].length - 1);
+    // clue 그리드를 한 번만 빌드. propagation 안에서 매번 puzzle[i][j].num 을
+    // 다시 읽지 않도록.
+    final List<List<int>> nums = List.generate(
+        rows, (i) => List.generate(cols, (j) => puzzle[i][j].num));
 
-    for (int i = rowMin; i <= rowMax; i++) {
-      for (int j = colMin; j <= colMax; j++) {
-        int key = i * 1000 + j;
-        if (!visited.contains(key)) {
-          visited.add(key);
-          queue.add(key);
-        }
-      }
-    }
+    // 2. 작업용 그리드 빌드.
+    final List<List<int>> edge = await readSquare.readSubmit(puzzle);
+    final List<List<int>> orig = edge.map((r) => List<int>.from(r)).toList();
+    final List<List<int>> w = edge.map((row) => row.map((v) {
+      if (v >= 1) return 1;
+      if (v == 0 || v == -1 || v == -2) return 0;
+      return -1; // -3 정답 hint, -4 사용자 X, -5 오답 hint 모두 hard-disabled
+    }).toList()).toList();
 
-    // Propagate: re-enable and check neighbors
-    while (queue.isNotEmpty) {
-      int key = queue.removeAt(0);
-      int i = key ~/ 1000;
-      int j = key % 1000;
+    // 3. Phase 1 — 직접 추론(셀+꼭짓점 fixed-point). 가벼움 (≤ 30ms 수준).
+    //    여기 결과만으로도 사용자 시각 -1 의 80~90% 가 잡히므로 즉시 반영해
+    //    탭 응답성을 확보한다.
+    propagateDirectSquare(w, rows, cols, nums);
+    _writeWorkingToEdge(edge, orig, w);
+    await readSquare.writeSubmit(puzzle, edge);
+    submit = edge;
+    notifyListeners();
 
-      bool changed = await setLineEnable(i, j);
-      if (changed) {
-        // If lines were re-enabled, check surrounding cells too
-        for (int di = -1; di <= 1; di++) {
-          for (int dj = -1; dj <= 1; dj++) {
-            int ni = i + di, nj = j + dj;
-            if (ni >= 0 && ni < puzzle.length && nj >= 0 && nj < puzzle[0].length) {
-              int nkey = ni * 1000 + nj;
-              if (!visited.contains(nkey)) {
-                visited.add(nkey);
-                queue.add(nkey);
+    // 4. UI yield — Phase 1 결과를 paint 한 뒤 무거운 look-ahead 진입.
+    //    Future.delayed(Duration.zero) 는 microtask 가 아니라 task 큐에 들어가
+    //    Flutter scheduleFrame 이 끼어들 수 있다.
+    await Future.delayed(Duration.zero);
+
+    // 5. Phase 2 — 1-step look-ahead. 라이브 상태가 이미 모순이면 모든 가설이
+    //    모순으로 잘못 판정되므로 스킵 (모든 미정 변 -1 처리 사고 방지).
+    bool laAnyChanged = false;
+    if (isWorkingStateConsistent(w, rows, cols, nums)) {
+      // outer iter 상한: 5 → 2. 통상 1~2 회면 수렴하며, 깊은 chain deduction 은
+      // 사용자가 다음 입력 시 다시 jelly point 로 잡힌다 (정확도 vs 응답성 균형).
+      for (int laIter = 0; laIter < 2; laIter++) {
+        bool laChanged = false;
+        int hypCount = 0;
+        for (int er = 0; er < w.length; er++) {
+          for (int ec = 0; ec < w[er].length; ec++) {
+            if (w[er][ec] != 0) continue;
+            // 가설 50 개마다 UI yield. 한 outer iter 가 수백 ms 라도 그 동안
+            // 다른 탭/스크롤에 반응할 수 있다.
+            if ((++hypCount) % 50 == 0) {
+              await Future.delayed(Duration.zero);
+            }
+            final List<List<int>> snap =
+                w.map((r) => List<int>.from(r)).toList();
+            w[er][ec] = 1;
+            final bool contradiction =
+                propagateHypothesisSquare(w, rows, cols, nums);
+            for (int rr = 0; rr < w.length; rr++) {
+              for (int cc = 0; cc < w[rr].length; cc++) {
+                w[rr][cc] = snap[rr][cc];
               }
+            }
+            if (contradiction) {
+              w[er][ec] = -1;
+              laChanged = true;
+              laAnyChanged = true;
             }
           }
         }
+        if (!laChanged) break;
+        propagateDirectSquare(w, rows, cols, nums);
       }
     }
 
-    await checkCurrentPath();
-
-    // After all propagation: if the live state is locally inconsistent,
-    // revert everything we did in this method (setLineEnable + checkCurrentPath)
-    // to the snapshot. The user's tap remains visible.
-    if (!_isLivePuzzleConsistent(await readSquare.readSubmit(puzzle))) {
-      _restorePuzzleEdges(guardSnap);
+    // 6. Phase 2 결과 반영 (변화가 있었을 때만). edge 는 Phase 1 직후 puzzle 과
+    //    동기화돼 있으므로 그 위에 추가 deduction 만 얹는다.
+    if (laAnyChanged) {
+      _writeWorkingToEdge(edge, orig, w);
+      await readSquare.writeSubmit(puzzle, edge);
     }
 
+    // 7. 사후 일관성 가드. propagation 이 보드를 globally infeasible 하게 만들었다면
+    //    (예: 사용자가 정답 라인을 -4 로 잠근 직후) 이 시점에 false. 진입 스냅샷으로
+    //    전체 복원하여 cascade 비활성화를 차단한다.
+    final List<List<int>> liveW = edge.map((row) => row.map((v) {
+      if (v >= 1) return 1;
+      if (v == 0) return 0;
+      return -1;
+    }).toList()).toList();
+    if (!isWorkingStateConsistent(liveW, rows, cols, nums)) {
+      _restorePuzzleEdges(guardSnap);
+      submit = await readSquare.readSubmit(puzzle);
+    } else {
+      submit = edge;
+    }
     notifyListeners();
-    submit = await readSquare.readSubmit(puzzle);
   }
+
+  /// w 의 -1/0 결과를 edge 에 반영. 잠금 자리(-3, -4, -5, ≥1)는 보존하고
+  /// 원래 -2 자리에 새로 -1 이 도출되면 -2 로 복원한다 (사용자 빨강 마킹 의미 보존).
+  void _writeWorkingToEdge(
+      List<List<int>> edge, List<List<int>> orig, List<List<int>> w) {
+    for (int i = 0; i < edge.length; i++) {
+      for (int j = 0; j < edge[i].length; j++) {
+        final int origValue = orig[i][j];
+        if (origValue >= 1 ||
+            origValue == -3 ||
+            origValue == -4 ||
+            origValue == -5) {
+          continue;
+        }
+        final int derived = w[i][j] == -1 ? -1 : 0;
+        edge[i][j] =
+            (origValue == -2 && derived == -1) ? -2 : derived;
+      }
+    }
+  }
+
+  /// External entry point for callers outside this class (e.g. HowToPlay).
+  /// Internal callers should use [_applyConstraints] directly.
+  Future<void> applyConstraints() => _applyConstraints();
 
   /// Snapshot every cell's 4-direction edge values. Stores all four sides
   /// even though for inner cells only `down`/`right` are canonical — the
@@ -1799,922 +1831,5 @@ class SquareProvider with ChangeNotifier {
         puzzle[i][j].right = snap[i][j][3];
       }
     }
-  }
-
-  List<List<dynamic>> needCalcLine = [];
-  List<List<int>> needCalcSet = [];
-  List<List<dynamic>> needCalcLineTemp = [];
-  int calcIndex = 0;
-
-  ///findBlockEnableDisable의 계산량을 줄인 메소드
-  Future<void> findBlockEnableDisableRefactor(
-      int row, int column, String pos,
-      {bool enable = false, bool disable = false}
-    ) async {
-
-    //[row, col, pos]에 인접한 라인을 검색
-    if(needCalcLine.isEmpty) {
-      needCalcLine = getMinusNearLine([[row, column, pos]]);
-    }
-    for(int i = 0 ; i < needCalcLine.length ; i++) {
-      if(needCalcSet.isNotEmpty) {
-        bool flag = true;
-        //같은 것을 찾으면 false로 즉시 종료
-        for(int j = 0 ; flag && j < needCalcSet.length ; j++) {
-          if(needCalcSet[j][0] == needCalcLine[i][0] && needCalcSet[j][1] == needCalcLine[i][1]) {
-            flag = false;
-            break;
-          }
-        }
-
-        if(flag) {
-          needCalcSet.add([needCalcLine[i][0], needCalcLine[i][1]]);
-        }
-      }
-      else {
-        needCalcSet.add([needCalcLine[i][0], needCalcLine[i][1]]);
-      }
-    }
-    print("needCalcSet : $needCalcSet");
-
-
-    //종료 조건 검색
-    while(calcIndex < needCalcSet.length) {
-      print("call checkMaxLineBox");
-      checkMaxLineBox(needCalcSet[calcIndex][0], needCalcSet[calcIndex][1]);
-
-      //추가 조건 만족
-      if(false) {
-        needCalcLineTemp = getMinusNearLine([[row, column, pos]]);
-        for(int i = 0 ; i < needCalcLineTemp.length ; i++) {
-          for(int j = 0 ; j < needCalcLine.length ; j++) {
-            if(needCalcLine[j][0] == needCalcLineTemp[i][0] &&
-                needCalcLine[j][1] == needCalcLineTemp[i][1] &&
-                needCalcLine[j][2].compareTo(needCalcLineTemp[i][2]) == 0) {
-
-            }
-          }
-        }
-      }
-
-      calcIndex++;
-    }
-
-    await checkCurrentPath();
-    notifyListeners();
-    submit = await readSquare.readSubmit(puzzle);
-  }
-
-  ///현재 submit 기준 사용할 수 없는 라인을 -1로 변경
-  Future<void> checkCurrentPath() async {
-    if(UserInfo.debugMode["print_methodName"]!) {
-      // ignore: avoid_print
-      print("call checkCurrentPath");
-    }
-    // Note: the global-infeasibility revert guard is in the caller
-    // (findBlockEnableDisable) so that the snapshot is taken BEFORE
-    // setLineEnable's -1 → 0 conversions; the revert restores those too.
-    // See docs/constraint_lookahead.md §4-3-1.
-    await checkMaxLine();
-    await checkCurrentPathSet();
-    await propagateLookAhead();
-  }
-
-  /// Bridge from live edge grid (which may carry user marks -2/-4 and hint
-  /// marks -3/-5) to the consistency check used inside propagateLookAhead.
-  /// Anything not drawn (≥1) and not undecided (0) is treated as disabled.
-  bool _isLivePuzzleConsistent(List<List<int>> edge) {
-    int rows = puzzle.length;
-    int cols = puzzle[0].length;
-    if (rows == 0 || cols == 0) return true;
-    List<List<int>> w = edge.map((row) => row.map((v) {
-      if (v >= 1) return 1;
-      if (v == 0) return 0;
-      return -1;
-    }).toList()).toList();
-    return _isWorkingStateConsistent(w, rows, cols);
-  }
-
-  ///셀(num) 규칙과 꼭짓점(차수=2) 규칙을 fixed-point 까지 시뮬레이션한 뒤,
-  ///각 미정 변에 대해 "그어졌다고 가정"하고 추가 propagation을 돌려 모순이
-  ///발생하면 그 변을 -1로 확정하는 1-step look-ahead까지 적용한다.
-  ///
-  ///사용자가 그린 라인은 건드리지 않고 비활성(-1) 표시만 더 적극적으로
-  ///반영한다. 가상 강제선(2)은 시뮬레이션 내부 추론용으로만 사용되며 실제
-  ///puzzle 에는 기록하지 않는다.
-  ///
-  ///사용자 빨강 마킹(-2) 처리: 작업 그리드에서 -2 를 0(미정)으로 매핑하여
-  ///look-ahead 가 -2 를 hard premise 로 잡고 1시 방향 등 무관한 변까지
-  ///cascade 비활성화하는 사고를 방지한다. propagation 종료 후, 원래 -2 이던
-  ///자리에 새로 -1 이 derive 됐으면 -2 로 복원 — "이 -1 에 동의 안 함"
-  ///마킹의 의미가 살아 있음. 자세한 내용은 docs/constraint_lookahead.md §4.
-  Future<void> propagateLookAhead() async {
-    int rows = puzzle.length;
-    int cols = puzzle[0].length;
-    if (rows == 0 || cols == 0) return;
-
-    List<List<int>> edge = await readSquare.readSubmit(puzzle);
-    List<List<int>> orig = edge.map((r) => List<int>.from(r)).toList();
-
-    // 작업용 그리드:
-    //   1  = 그어짐 (사용자가 그린 라인)
-    //   0  = 미정 (이전 -1 / -2 도 여기로 흡수해서 propagation 이 다시 도출)
-    //   -1 = 비활성 (사용자 X 마킹 -4, 그 외 hard 잠금)
-    // 이전 자동 -1 과 사용자 빨강 -2 를 다시 0 으로 보내는 이유는
-    // (a) 이전 propagation 결과에 의존한 stale cascade 를 fresh state 에서
-    // 재평가하기 위함, (b) 빨강 -2 가 hard premise 가 되어 무관한 변까지
-    // cascade 비활성화되는 사고 방지.
-    List<List<int>> w = edge.map((row) => row.map((v) {
-      if (v >= 1) return 1;
-      if (v == 0 || v == -1 || v == -2) return 0;
-      return -1; // -4 (user X) 등은 그대로 disabled
-    }).toList()).toList();
-
-    _propagateDirectSquare(w, rows, cols);
-
-    // 라이브 상태가 이미 모순이면 look-ahead 스킵 (모든 가설이 모순으로
-    // 잘못 판정되어 모든 미정 변을 -1 처리하는 사고 방지).
-    if (_isWorkingStateConsistent(w, rows, cols)) {
-      for (int laIter = 0; laIter < 5; laIter++) {
-        bool laChanged = false;
-        for (int er = 0; er < w.length; er++) {
-          for (int ec = 0; ec < w[er].length; ec++) {
-            if (w[er][ec] != 0) continue;
-            // 가설용 스냅샷
-            List<List<int>> snap = w.map((r) => List<int>.from(r)).toList();
-            w[er][ec] = 1;
-            bool contradiction = _propagateHypothesisSquare(w, rows, cols);
-            // 복원
-            for (int rr = 0; rr < w.length; rr++) {
-              for (int cc = 0; cc < w[rr].length; cc++) {
-                w[rr][cc] = snap[rr][cc];
-              }
-            }
-            if (contradiction) {
-              w[er][ec] = -1;
-              laChanged = true;
-            }
-          }
-        }
-        if (!laChanged) break;
-        _propagateDirectSquare(w, rows, cols);
-      }
-    }
-
-    // puzzle 에 반영:
-    //   - 사용자가 그린 라인 (≥1), 사용자 X (-4), hint (-3 정답 / -5 오답) 은 건드리지 않음.
-    //   - 그 외 자리는 propagation 결과(w)에 따라 -1 또는 0 으로 갱신.
-    //   - 원래 -2 이던 자리에 새로 -1 이 도출됐으면 -2 로 복원 (빨강 마킹 보존).
-    bool anyChanged = false;
-    for (int i = 0; i < edge.length; i++) {
-      for (int j = 0; j < edge[i].length; j++) {
-        int origValue = orig[i][j];
-        if (origValue >= 1 || origValue == -4 || origValue == -3 || origValue == -5) {
-          continue;
-        }
-        int derived = w[i][j] == -1 ? -1 : 0;
-        int finalValue = (origValue == -2 && derived == -1) ? -2 : derived;
-        if (edge[i][j] != finalValue) {
-          edge[i][j] = finalValue;
-          anyChanged = true;
-        }
-      }
-    }
-
-    if (anyChanged) {
-      await readSquare.writeSubmit(puzzle, edge);
-      submit = await readSquare.readSubmit(puzzle);
-      notifyListeners();
-    }
-  }
-
-  /// 직접 propagation: 셀-disable 규칙과 꼭짓점-disable 규칙을 fixed-point
-  /// 까지 반복. 작업용 그리드 [w]만 변경.
-  void _propagateDirectSquare(List<List<int>> w, int rows, int cols) {
-    bool changed = true;
-    int iter = 0;
-    while (changed && iter < 30) {
-      changed = false;
-      iter++;
-
-      for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-          int num = puzzle[i][j].num;
-          if (num < 0 || num > 4) continue;
-          List<List<int>> es = [
-            [2 * i, j], [2 * i + 2, j], [2 * i + 1, j], [2 * i + 1, j + 1],
-          ];
-          int dr = 0, un = 0;
-          for (var e in es) {
-            int v = w[e[0]][e[1]];
-            if (v == 1) {
-              dr++;
-            } else if (v == 0) {
-              un++;
-            }
-          }
-          if (un == 0) continue;
-          if (dr == num) {
-            for (var e in es) {
-              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
-            }
-          }
-        }
-      }
-
-      for (int vi = 0; vi <= rows; vi++) {
-        for (int vj = 0; vj <= cols; vj++) {
-          List<List<int>> ve = [];
-          if (vj > 0) ve.add([2 * vi, vj - 1]);
-          if (vj < cols) ve.add([2 * vi, vj]);
-          if (vi > 0) ve.add([2 * vi - 1, vj]);
-          if (vi < rows) ve.add([2 * vi + 1, vj]);
-          int dr = 0, un = 0;
-          for (var e in ve) {
-            int v = w[e[0]][e[1]];
-            if (v == 1) {
-              dr++;
-            } else if (v == 0) {
-              un++;
-            }
-          }
-          if (un == 0) continue;
-          if (dr >= 2) {
-            for (var e in ve) {
-              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
-            }
-          } else if (dr == 0 && un == 1) {
-            for (var e in ve) {
-              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
-            }
-          }
-        }
-      }
-    }
-  }
-
-  /// 작업용 그리드 [w]가 하드 제약을 이미 위반하는지 확인. 위반 시 false.
-  /// 이 경우 look-ahead는 모든 가설을 모순으로 판정해 모든 미정 변을 잘못
-  /// -1 처리하므로 호출 자체를 스킵해야 한다.
-  bool _isWorkingStateConsistent(List<List<int>> w, int rows, int cols) {
-    for (int i = 0; i < rows; i++) {
-      for (int j = 0; j < cols; j++) {
-        int num = puzzle[i][j].num;
-        if (num < 0 || num > 4) continue;
-        List<List<int>> es = [
-          [2 * i, j], [2 * i + 2, j], [2 * i + 1, j], [2 * i + 1, j + 1],
-        ];
-        int dr = 0, un = 0;
-        for (var e in es) {
-          int v = w[e[0]][e[1]];
-          if (v == 1) {
-            dr++;
-          } else if (v == 0) {
-            un++;
-          }
-        }
-        if (dr > num) return false;
-        if (dr + un < num) return false;
-      }
-    }
-    for (int vi = 0; vi <= rows; vi++) {
-      for (int vj = 0; vj <= cols; vj++) {
-        List<List<int>> ve = [];
-        if (vj > 0) ve.add([2 * vi, vj - 1]);
-        if (vj < cols) ve.add([2 * vi, vj]);
-        if (vi > 0) ve.add([2 * vi - 1, vj]);
-        if (vi < rows) ve.add([2 * vi + 1, vj]);
-        int dr = 0, un = 0;
-        for (var e in ve) {
-          int v = w[e[0]][e[1]];
-          if (v == 1) {
-            dr++;
-          } else if (v == 0) {
-            un++;
-          }
-        }
-        if (dr > 2) return false;
-        if (dr == 1 && un == 0) return false;
-      }
-    }
-    return true;
-  }
-
-  /// 가설 propagation: look-ahead가 한 변을 1로 가정한 뒤 호출. 셀/꼭짓점
-  /// disable + force-draw + 모순 검출을 fixed-point 까지 반복한다.
-  /// 모순이 발견되면 true 반환. 작업용 그리드 [w]는 마음대로 변경되므로
-  /// caller가 스냅샷/복원 책임.
-  bool _propagateHypothesisSquare(List<List<int>> w, int rows, int cols) {
-    bool changed = true;
-    int iter = 0;
-    while (changed && iter < 30) {
-      changed = false;
-      iter++;
-
-      for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < cols; j++) {
-          int num = puzzle[i][j].num;
-          if (num < 0 || num > 4) continue;
-          List<List<int>> es = [
-            [2 * i, j], [2 * i + 2, j], [2 * i + 1, j], [2 * i + 1, j + 1],
-          ];
-          int dr = 0, un = 0;
-          for (var e in es) {
-            int v = w[e[0]][e[1]];
-            if (v == 1) {
-              dr++;
-            } else if (v == 0) {
-              un++;
-            }
-          }
-          if (dr > num) return true;
-          if (dr + un < num) return true;
-          if (dr == num && un > 0) {
-            for (var e in es) {
-              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
-            }
-          } else if (dr + un == num && un > 0) {
-            for (var e in es) {
-              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = 1; changed = true; }
-            }
-          }
-        }
-      }
-
-      for (int vi = 0; vi <= rows; vi++) {
-        for (int vj = 0; vj <= cols; vj++) {
-          List<List<int>> ve = [];
-          if (vj > 0) ve.add([2 * vi, vj - 1]);
-          if (vj < cols) ve.add([2 * vi, vj]);
-          if (vi > 0) ve.add([2 * vi - 1, vj]);
-          if (vi < rows) ve.add([2 * vi + 1, vj]);
-          int dr = 0, un = 0;
-          for (var e in ve) {
-            int v = w[e[0]][e[1]];
-            if (v == 1) {
-              dr++;
-            } else if (v == 0) {
-              un++;
-            }
-          }
-          if (dr > 2) return true;
-          if (dr == 1 && un == 0) return true;
-
-          if (dr >= 2 && un > 0) {
-            for (var e in ve) {
-              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
-            }
-          } else if (dr == 0 && un > 0 && dr + un < 2) {
-            for (var e in ve) {
-              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = -1; changed = true; }
-            }
-          } else if (dr == 1 && un == 1) {
-            for (var e in ve) {
-              if (w[e[0]][e[1]] == 0) { w[e[0]][e[1]] = 1; changed = true; }
-            }
-          }
-        }
-      }
-    }
-    return false;
-  }
-
-  ///각 박스마다 lineValue가 1이상인 값을 세고, 해당 박스의 num 이상인 경우 남은 0 라인을 -1로 변경
-  Future<void> checkMaxLine() async {
-    if(UserInfo.debugMode["print_methodName"]!) {
-      // ignore: avoid_print
-      print("call checkMaxLine");
-    }
-    int count = 0;
-
-    for (int i = 0; i < puzzle.length; i++) {
-      for (int j = 0; j < puzzle[i].length; j++) {
-        count = 0;
-
-        // Skip hidden clues (num < 0 from difficulty masking) — otherwise
-        // `count >= -1` is always true and the rule disables every undecided
-        // edge around the cell, killing the whole board after one tap.
-        if (puzzle[i][j].num < 0) continue;
-
-        if(i > 0 && j > 0) {
-          count = [puzzle[i - 1][j].down, puzzle[i][j].down, puzzle[i][j - 1].right, puzzle[i][j].right]
-              .where((value) => value >= 1)
-              .length;
-
-          if(count >= puzzle[i][j].num) {
-            if(puzzle[i - 1][j].down == 0) puzzle[i - 1][j].down = -1;
-            if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
-            if(puzzle[i][j - 1].right == 0) puzzle[i][j - 1].right = -1;
-            if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
-          }
-        }
-        else if(i == 0 && j != 0) {
-          count = [puzzle[i][j].up, puzzle[i][j].down, puzzle[i][j - 1].right, puzzle[i][j].right]
-              .where((value) => value >= 1)
-              .length;
-
-          if(count >= puzzle[i][j].num) {
-            if(puzzle[i][j].up == 0) puzzle[i][j].up = -1;
-            if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
-            if(puzzle[i][j - 1].right == 0) puzzle[i][j - 1].right = -1;
-            if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
-          }
-        }
-        else if(i != 0 && j == 0) {
-          count = [puzzle[i - 1][j].down, puzzle[i][j].down, puzzle[i][j].left, puzzle[i][j].right]
-              .where((value) => value >= 1)
-              .length;
-
-          if(count >= puzzle[i][j].num) {
-            if(puzzle[i - 1][j].down == 0) puzzle[i - 1][j].down = -1;
-            if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
-            if(puzzle[i][j].left == 0) puzzle[i][j].left = -1;
-            if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
-          }
-        }
-        else {
-          //i == 0 && j == 0
-          count = [puzzle[i][j].up, puzzle[i][j].down, puzzle[i][j].left, puzzle[i][j].right]
-              .where((value) => value >= 1)
-              .length;
-
-          if(count >= puzzle[i][j].num) {
-            if(puzzle[i][j].up == 0) puzzle[i][j].up = -1;
-            if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
-            if(puzzle[i][j].left == 0) puzzle[i][j].left = -1;
-            if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
-          }
-        }
-      }
-    }
-
-    notifyListeners();
-    submit = await readSquare.readSubmit(puzzle);
-  }
-
-  ///각 박스마다 lineValue가 1이상인 값을 세고, 해당 박스의 num 이상인 경우 남은 0 라인을 -1로 변경
-  Future<void> checkMaxLineBox(int row, int col) async {
-    if(UserInfo.debugMode["print_methodName"]!) {
-      // ignore: avoid_print
-      print("call checkMaxLineBox");
-    }
-    int count = 0;
-
-    int i = row, j = col;
-    // Skip hidden clues (num < 0 from difficulty masking) — see checkMaxLine.
-    if (puzzle[i][j].num < 0) {
-      notifyListeners();
-      submit = await readSquare.readSubmit(puzzle);
-      return;
-    }
-    if(i > 0 && j > 0) {
-      count = [puzzle[i - 1][j].down, puzzle[i][j].down, puzzle[i][j - 1].right, puzzle[i][j].right]
-          .where((value) => value >= 1)
-          .length;
-
-      if(count >= puzzle[i][j].num) {
-        if(puzzle[i - 1][j].down == 0) puzzle[i - 1][j].down = -1;
-        if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
-        if(puzzle[i][j - 1].right == 0) puzzle[i][j - 1].right = -1;
-        if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
-      }
-    }
-    else if(i == 0 && j != 0) {
-      count = [puzzle[i][j].up, puzzle[i][j].down, puzzle[i][j - 1].right, puzzle[i][j].right]
-          .where((value) => value >= 1)
-          .length;
-
-      if(count >= puzzle[i][j].num) {
-        if(puzzle[i][j].up == 0) puzzle[i][j].up = -1;
-        if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
-        if(puzzle[i][j - 1].right == 0) puzzle[i][j - 1].right = -1;
-        if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
-      }
-    }
-    else if(i != 0 && j == 0) {
-      count = [puzzle[i - 1][j].down, puzzle[i][j].down, puzzle[i][j].left, puzzle[i][j].right]
-          .where((value) => value >= 1)
-          .length;
-
-      if(count >= puzzle[i][j].num) {
-        if(puzzle[i - 1][j].down == 0) puzzle[i - 1][j].down = -1;
-        if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
-        if(puzzle[i][j].left == 0) puzzle[i][j].left = -1;
-        if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
-      }
-    }
-    else {
-      //i == 0 && j == 0
-      count = [puzzle[i][j].up, puzzle[i][j].down, puzzle[i][j].left, puzzle[i][j].right]
-          .where((value) => value >= 1)
-          .length;
-
-      if(count >= puzzle[i][j].num) {
-        if(puzzle[i][j].up == 0) puzzle[i][j].up = -1;
-        if(puzzle[i][j].down == 0) puzzle[i][j].down = -1;
-        if(puzzle[i][j].left == 0) puzzle[i][j].left = -1;
-        if(puzzle[i][j].right == 0) puzzle[i][j].right = -1;
-      }
-    }
-
-    notifyListeners();
-    submit = await readSquare.readSubmit(puzzle);
-  }
-
-  ///-1로 설정된 라인들 부터 너비 우선 탐색으로 모든 연관 라인과 조건을 비교
-  ///
-  ///조건이 참이면 -1로 설정 후 set에 추가
-  Future<void> checkCurrentPathSet() async {
-    List<List<dynamic>> minusSet = findMinusOneLine();
-
-    do {
-      List<List<dynamic>> nearSet = getMinusNearLine(minusSet);
-      if (nearSet.isEmpty) break;
-
-      List<List<dynamic>> validLines = checkLineValid(nearSet);
-
-      // 새로 비활성화된 라인 = nearSet - validLines
-      Set<String> validKeys = {};
-      for (var line in validLines) {
-        validKeys.add("${line[0]},${line[1]},${line[2]}");
-      }
-
-      minusSet = [];
-      for (var line in nearSet) {
-        String key = "${line[0]},${line[1]},${line[2]}";
-        if (!validKeys.contains(key)) {
-          minusSet.add(line);
-        }
-      }
-    } while (minusSet.isNotEmpty);
-  }
-
-  ///lineValue가 -1인 모든 라인을 찾아 반환
-  ///
-  ///puzzle 변수를 직접 조작하지 않음
-  List<List<dynamic>> findMinusOneLine() {
-    List<List<dynamic>> rtValue = [];
-
-    for(int i = 0 ; i < puzzle.length ; i++) {
-      for(int j = 0 ; j < puzzle[i].length ; j++) {
-        if(i != 0 && j != 0) {
-          if(puzzle[i][j].down == -1) {
-            rtValue.add([i, j, "down"]);
-          }
-          if(puzzle[i][j].right == -1) {
-            rtValue.add([i, j, "right"]);
-          }
-        }
-        else if(i != 0 && j == 0) {
-          if(puzzle[i][j].left == -1) {
-            rtValue.add([i, j, "left"]);
-          }
-          if(puzzle[i][j].right == -1) {
-            rtValue.add([i, j, "right"]);
-          }
-          if(puzzle[i][j].down == -1) {
-            rtValue.add([i, j, "down"]);
-          }
-        }
-        else if(i == 0 && j != 0) {
-          if(puzzle[i][j].up == -1) {
-            rtValue.add([i, j, "up"]);
-          }
-          if(puzzle[i][j].down == -1) {
-            rtValue.add([i, j, "down"]);
-          }
-          if(puzzle[i][j].right == -1) {
-            rtValue.add([i, j, "right"]);
-          }
-        }
-        else {
-          if(puzzle[i][j].up == -1) {
-            rtValue.add([i, j, "up"]);
-          }
-          if(puzzle[i][j].down == -1) {
-            rtValue.add([i, j, "down"]);
-          }
-          if(puzzle[i][j].left == -1) {
-            rtValue.add([i, j, "left"]);
-          }
-          if(puzzle[i][j].right == -1) {
-            rtValue.add([i, j, "right"]);
-          }
-        }
-      }
-    }
-
-    return rtValue;
-  }
-
-  ///minusList와 인접한 모든 라인을 반환
-  ///
-  ///puzzle 변수를 직접 조작하지 않음
-  List<List<dynamic>> getMinusNearLine(List<List<dynamic>> minusList) {
-    List<int> checkValue = [0];
-
-    //isHowToPlay
-    if(gameStateSquare == null) {
-      checkValue.add(-3);
-    }
-
-    Set<String> seen = {};
-    List<List<dynamic>> result = [];
-
-    for(int i = 0 ; i < minusList.length ; i++) {
-      int row = int.parse(minusList[i][0].toString());
-      int col = int.parse(minusList[i][1].toString());
-      String dir = minusList[i][2].toString();
-
-      for (var edge in getAdjacentEdges(row, col, dir)) {
-        int value = _getEdgeValue(edge[0] as int, edge[1] as int, edge[2] as String);
-        if (checkValue.contains(value)) {
-          String key = "${edge[0]},${edge[1]},${edge[2]}";
-          if (!seen.contains(key)) {
-            seen.add(key);
-            result.add([edge[0], edge[1], edge[2]]);
-          }
-        }
-      }
-    }
-
-    return result;
-  }
-
-  ///nearList가 valid 한지 검사하고 inValid면 -1로 설정
-  ///
-  ///valid 하다면 마지막에 모아서 다시 검사하여 모든 라인의 상태가 변경되지 않을 때까지 반복
-  ///
-  ///puzzle 변수를 직접 조작함
-  ///
-  ///비활성화 조건 (꼭짓점 기준):
-  ///  negative: 한쪽 꼭짓점의 모든 인접 라인이 비활성(-1, -4)이면 dead end → 비활성화
-  ///  positive: 한쪽 꼭짓점에 활성(>0) 라인이 2개 이상이면 분기점 → 비활성화
-  List<List<dynamic>> checkLineValid(List<List<dynamic>> nearList) {
-    List<List<dynamic>> validLine = [];
-    List<int> inValid = [-1, -4];
-
-    for (int i = 0; i < nearList.length; i++) {
-      int row = int.parse(nearList[i][0].toString());
-      int col = int.parse(nearList[i][1].toString());
-      String pos = nearList[i][2].toString();
-      bool isValid = true;
-
-      List<List<List<dynamic>>> perVertex = getAdjacentEdgesPerVertex(row, col, pos);
-
-      for (var vertexEdges in perVertex) {
-        if (vertexEdges.isEmpty) continue;
-
-        // negative condition: 이 꼭짓점의 모든 인접 라인이 비활성
-        bool allDisabled = vertexEdges.every((edge) {
-          int value = _getEdgeValue(edge[0] as int, edge[1] as int, edge[2] as String);
-          return inValid.contains(value);
-        });
-
-        if (allDisabled) {
-          _setEdgeValue(row, col, pos, -1);
-          isValid = false;
-          break;
-        }
-
-        // positive condition: 이 꼭짓점에 활성 라인이 2개 이상 → 분기점
-        int positiveCount = vertexEdges.where((edge) {
-          int value = _getEdgeValue(edge[0] as int, edge[1] as int, edge[2] as String);
-          return value > 0;
-        }).length;
-
-        if (positiveCount >= 2) {
-          _setEdgeValue(row, col, pos, -1);
-          isValid = false;
-          break;
-        }
-      }
-
-      if (isValid) {
-        validLine.add(nearList[i]);
-      }
-    }
-
-    return validLine;
-  }
-
-
-  int getLineCount(int row, int col) {
-    int count = 0;
-
-    if(row != 0 && col != 0) {
-      count = [
-        puzzle[row - 1][col].down,
-        puzzle[row][col].down,
-        puzzle[row][col - 1].right,
-        puzzle[row][col].right
-      ].where((value) => value > 0).length;
-    }
-    else if(row != 0 && col == 0) {
-      count = [
-        puzzle[row - 1][col].down,
-        puzzle[row][col].down,
-        puzzle[row][col].left,
-        puzzle[row][col].right
-      ].where((value) => value > 0).length;
-    }
-    else if(row == 0 && col != 0) {
-      count = [
-        puzzle[row][col].up,
-        puzzle[row][col].down,
-        puzzle[row][col - 1].right,
-        puzzle[row][col].right
-      ].where((value) => value > 0).length;
-    }
-    else {
-      count = [
-        puzzle[row][col].up,
-        puzzle[row][col].down,
-        puzzle[row][col].left,
-        puzzle[row][col].right
-      ].where((value) => value > 0).length;
-    }
-
-    return count;
-  }
-
-  ///현재 라인이 num 이상인 경우 호출되는 함수
-  ///
-  ///0으로 남아 있는 라인을 모두 -1로 변경
-  ///
-  ///setLineDisable() 호출 직후 checkMaxLine()를 호출함
-  Future<bool> setLineDisable(int row, int col) async {
-    if(UserInfo.debugMode["print_methodName"]!) {
-      // ignore: avoid_print
-      print("call setLineDisable($row, $col)");
-    }
-    await checkMaxLine();
-    bool isChanged = false;
-
-    if(row != 0 && col != 0) {
-      if (puzzle[row - 1][col].down == 0) {
-        puzzle[row - 1][col].down = -1;
-        isChanged = true;
-      }
-      if (puzzle[row][col].down == 0) {
-        puzzle[row][col].down = -1;
-        isChanged = true;
-      }
-      if (puzzle[row][col - 1].right == 0) {
-        puzzle[row][col - 1].right = -1;
-        isChanged = true;
-      }
-      if (puzzle[row][col].right == 0) {
-        puzzle[row][col].right = -1;
-        isChanged = true;
-      }
-    }
-    else if(row != 0 && col == 0) {
-      if (puzzle[row - 1][col].down == 0) {
-        puzzle[row - 1][col].down = -1;
-        isChanged = true;
-      }
-      if (puzzle[row][col].down == 0) {
-        puzzle[row][col].down = -1;
-        isChanged = true;
-      }
-      if (puzzle[row][col].left == 0) {
-        puzzle[row][col].left = -1;
-        isChanged = true;
-      }
-      if (puzzle[row][col].right == 0) {
-        puzzle[row][col].right = -1;
-        isChanged = true;
-      }
-    }
-    else if(row == 0 && col != 0) {
-      if (puzzle[row][col].up == 0) {
-        puzzle[row][col].up = -1;
-        isChanged = true;
-      }
-      if (puzzle[row][col].down == 0) {
-        puzzle[row][col].down = -1;
-        isChanged = true;
-      }
-      if (puzzle[row][col - 1].right == 0) {
-        puzzle[row][col - 1].right = -1;
-        isChanged = true;
-      }
-      if (puzzle[row][col].right == 0) {
-        puzzle[row][col].right = -1;
-        isChanged = true;
-      }
-    }
-    else {
-      if (puzzle[row][col].up == 0) {
-        puzzle[row][col].up = -1;
-        isChanged = true;
-      }
-      if (puzzle[row][col].down == 0) {
-        puzzle[row][col].down = -1;
-        isChanged = true;
-      }
-      if (puzzle[row][col].left == 0) {
-        puzzle[row][col].left = -1;
-        isChanged = true;
-      }
-      if (puzzle[row][col].right == 0) {
-        puzzle[row][col].right = -1;
-        isChanged = true;
-      }
-    }
-
-    return isChanged;
-  }
-
-  ///enable이 true로 호출되는 경우 호출되는 함수
-  ///
-  ///셀 주변의 -1 을 0 으로 되돌리고 checkMaxLine() 을 돌려 제약을 재적용한다.
-  ///
-  ///순서가 중요: 먼저 스테일 -1 을 clear 해서 재평가를 가능하게 한 뒤, checkMaxLine 이
-  ///현재 상태 기반으로 다시 -1 을 올바르게 마킹하도록 한다. (역순이면 방금 세팅한 -1 이
-  ///즉시 지워진 채 끝나는 경우가 발생한다.)
-  Future<bool> setLineEnable(int row, int col) async {
-    if(UserInfo.debugMode["print_methodName"]!) {
-      // ignore: avoid_print
-      print("call setLineEnable($row, $col)");
-    }
-    bool isChanged = false;
-
-    if(row != 0 && col != 0) {
-      if (puzzle[row - 1][col].down == -1) {
-        puzzle[row - 1][col].down = 0;
-        isChanged = true;
-      }
-      if (puzzle[row][col].down == -1) {
-        puzzle[row][col].down = 0;
-        isChanged = true;
-      }
-      if (puzzle[row][col - 1].right == -1) {
-        puzzle[row][col - 1].right = 0;
-        isChanged = true;
-      }
-      if (puzzle[row][col].right == -1) {
-        puzzle[row][col].right = 0;
-        isChanged = true;
-      }
-    }
-    else if(row != 0 && col == 0) {
-      if (puzzle[row - 1][col].down == -1) {
-        puzzle[row - 1][col].down = 0;
-        isChanged = true;
-      }
-      if (puzzle[row][col].down == -1) {
-        puzzle[row][col].down = 0;
-        isChanged = true;
-      }
-      if (puzzle[row][col].left == -1) {
-        puzzle[row][col].left = 0;
-        isChanged = true;
-      }
-      if (puzzle[row][col].right == -1) {
-        puzzle[row][col].right = 0;
-        isChanged = true;
-      }
-    }
-    else if(row == 0 && col != 0) {
-      if (puzzle[row][col].up == -1) {
-        puzzle[row][col].up = 0;
-        isChanged = true;
-      }
-      if (puzzle[row][col].down == -1) {
-        puzzle[row][col].down = 0;
-        isChanged = true;
-      }
-      if (puzzle[row][col - 1].right == -1) {
-        puzzle[row][col - 1].right = 0;
-        isChanged = true;
-      }
-      if (puzzle[row][col].right == -1) {
-        puzzle[row][col].right = 0;
-        isChanged = true;
-      }
-    }
-    else {
-      if (puzzle[row][col].up == -1) {
-        puzzle[row][col].up = 0;
-        isChanged = true;
-      }
-      if (puzzle[row][col].down == -1) {
-        puzzle[row][col].down = 0;
-        isChanged = true;
-      }
-      if (puzzle[row][col].left == -1) {
-        puzzle[row][col].left = 0;
-        isChanged = true;
-      }
-      if (puzzle[row][col].right == -1) {
-        puzzle[row][col].right = 0;
-        isChanged = true;
-      }
-    }
-
-    await checkMaxLine();
-    return isChanged;
   }
 }
