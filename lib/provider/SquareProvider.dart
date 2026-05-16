@@ -1794,16 +1794,29 @@ class SquareProvider with ChangeNotifier {
     }
 
     // 7. 사후 일관성 가드. propagation 이 보드를 globally infeasible 하게 만들었다면
-    //    (예: 사용자가 정답 라인을 -4 로 잠근 직후) 이 시점에 false. 진입 스냅샷으로
-    //    전체 복원하여 cascade 비활성화를 차단한다.
+    //    (예: 사용자가 정답 라인을 -4 로 잠근 직후) 이 시점에 false.
+    //
+    //    사용자 1회 탭 (_silentMode == false): 진입 스냅샷으로 전체 복원해
+    //    cascade 비활성화 사고를 차단 (기존 동작 유지).
+    //
+    //    솔버 (_silentMode == true): revert 하지 않고 _solverDetectedInconsistency
+    //    플래그만 set. 이대로 두면 puzzle 에 모순 상태가 남지만, 솔버 측에서 즉시
+    //    backtrack 으로 정정한다. revert 하면 잘못 그어진 라인이 puzzle 에 남아
+    //    솔버가 wrong premise 위에서 계속 추론하는 사고가 생기기 때문 (참고:
+    //    docs/auto_solver_bug_analysis.md §2).
     final List<List<int>> liveW = edge.map((row) => row.map((v) {
       if (v >= 1) return 1;
       if (v == 0) return 0;
       return -1;
     }).toList()).toList();
     if (!isWorkingStateConsistent(liveW, rows, cols, nums)) {
-      _restorePuzzleEdges(guardSnap);
-      submit = await readSquare.readSubmit(puzzle);
+      if (_silentMode) {
+        _solverDetectedInconsistency = true;
+        submit = edge;
+      } else {
+        _restorePuzzleEdges(guardSnap);
+        submit = await readSquare.readSubmit(puzzle);
+      }
     } else {
       submit = edge;
     }
@@ -1876,6 +1889,9 @@ class SquareProvider with ChangeNotifier {
   bool _solverRunning = false;
   bool _solverShouldStop = false;
   String _solverStatus = "";
+  /// `_applyConstraints` 가 silentMode 중 사후 inconsistency 를 감지하면 set.
+  /// 솔버는 매 click 함수 반환 직후 이 값을 확인해 backtrack 여부를 결정한다.
+  bool _solverDetectedInconsistency = false;
 
   bool get isSolverRunning => _solverRunning;
   String get solverStatus => _solverStatus;
@@ -1937,8 +1953,13 @@ class SquareProvider with ChangeNotifier {
         if (draw != null) {
           _solverStatus = "solver_step";
           notifyListeners();
-          await _solverApplyDraw(draw[0], draw[1]);
+          final ok = await _solverApplyDraw(draw[0], draw[1]);
           if (_solverShouldStop) break;
+          if (!ok) {
+            // 확정 추론이 deep contradiction 을 만들었다 — 입력 상태에 wrong
+            // premise 가 깔려 있었던 셈. 가장 가까운 추측까지 backtrack.
+            if (!await _backtrackToLastGuess(guesses)) break;
+          }
           await Future.delayed(_solverStepDelay);
           continue;
         }
@@ -1953,8 +1974,11 @@ class SquareProvider with ChangeNotifier {
         if (disable != null) {
           _solverStatus = "solver_step";
           notifyListeners();
-          await _solverApplyDisable(disable[0], disable[1]);
+          final ok = await _solverApplyDisable(disable[0], disable[1]);
           if (_solverShouldStop) break;
+          if (!ok) {
+            if (!await _backtrackToLastGuess(guesses)) break;
+          }
           await Future.delayed(_solverStepDelay);
           continue;
         }
@@ -1976,8 +2000,12 @@ class SquareProvider with ChangeNotifier {
         guesses.add(_SolverGuessFrame(slot, guess[0], guess[1]));
         _solverStatus = "solver_guess";
         notifyListeners();
-        await _solverApplyDraw(guess[0], guess[1]);
+        final ok = await _solverApplyDraw(guess[0], guess[1]);
         if (_solverShouldStop) break;
+        if (!ok) {
+          // 추측이 deep contradiction 을 만들었다 — 정상 흐름. backtrack.
+          if (!await _backtrackToLastGuess(guesses)) break;
+        }
         await Future.delayed(_solverStepDelay);
       }
     } finally {
@@ -2015,6 +2043,21 @@ class SquareProvider with ChangeNotifier {
     if (await prefs.containsKey(key)) {
       await prefs.removeKey(key);
     }
+  }
+
+  /// 마지막 추측 frame 을 pop 하고 복원 + 잠금. guesses 가 비어 있으면 false 를
+  /// 반환해 호출자가 솔버를 멈추게 한다. true 면 backtrack 완료, 다음 iter 계속.
+  Future<bool> _backtrackToLastGuess(List<_SolverGuessFrame> guesses) async {
+    if (guesses.isEmpty) {
+      _solverStatus = "solver_stuck";
+      notifyListeners();
+      return false;
+    }
+    final frame = guesses.removeLast();
+    _solverStatus = "solver_backtrack";
+    notifyListeners();
+    await _solverRestoreAndDisproveGuess(frame);
+    return true;
   }
 
   /// 슬롯에 저장된 시점으로 보드를 복원하고, 실패한 추측 edge 를 사용자 X (-4)
@@ -2069,14 +2112,18 @@ class SquareProvider with ChangeNotifier {
     }
   }
 
-  Future<void> _solverApplyDraw(int canonI, int canonJ) async {
+  /// 반환값: 클릭 후 보드 상태가 일관되면 true, deep contradiction 이 검출되어
+  /// puzzle 에 모순 상태가 남았으면 false. 호출자(solveHumanLike)는 false 일 때
+  /// 즉시 backtrack 으로 정정해야 한다.
+  Future<bool> _solverApplyDraw(int canonI, int canonJ) async {
     final mapped = _canonicalToPuzzle(canonI, canonJ);
-    if (mapped == null) return;
+    if (mapped == null) return true;
     final int row = mapped[0] as int;
     final int col = mapped[1] as int;
     final String dir = mapped[2] as String;
     // 양수 1 을 보내면 nearColor 체인 색상이 자동 선택되어 사용자 클릭처럼 보인다.
     const int drawSeed = 1;
+    _solverDetectedInconsistency = false;
     // _silentMode 로 chain merge 의 setLineColorBox 와 _applyConstraints 의
     // Phase 1 paint 를 모두 억제. updateSquareBox 마지막 줄의 unconditional
     // notifyListeners 만 살아남아 한 클릭 = 한 paint 가 보장된다.
@@ -2088,14 +2135,16 @@ class SquareProvider with ChangeNotifier {
         case "right": await updateSquareBox(row, col, right: drawSeed); break;
       }
     });
+    return !_solverDetectedInconsistency;
   }
 
-  Future<void> _solverApplyDisable(int canonI, int canonJ) async {
+  Future<bool> _solverApplyDisable(int canonI, int canonJ) async {
     final mapped = _canonicalToPuzzle(canonI, canonJ);
-    if (mapped == null) return;
+    if (mapped == null) return true;
     final int row = mapped[0] as int;
     final int col = mapped[1] as int;
     final String dir = mapped[2] as String;
+    _solverDetectedInconsistency = false;
     await _runSilently(() async {
       switch (dir) {
         case "up":    await updateSquareBox(row, col, up: -4); break;
@@ -2104,6 +2153,7 @@ class SquareProvider with ChangeNotifier {
         case "right": await updateSquareBox(row, col, right: -4); break;
       }
     });
+    return !_solverDetectedInconsistency;
   }
 }
 
