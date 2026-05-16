@@ -38,6 +38,7 @@ class PuzzleAppBar {
     required Future<void> Function(int colorIdx) onSaveBookmark,
     required Future<void> Function(int colorIdx) onLoadBookmark,
     required Future<void> Function(int colorIdx) onClearBookmark,
+    VoidCallback? onAutoSolve,
   }) {
     return AppBar(
       backgroundColor: appbarColor,
@@ -109,6 +110,9 @@ class PuzzleAppBar {
                 case "hint":
                   onHint();
                   break;
+                case "auto_solve":
+                  onAutoSolve?.call();
+                  break;
               }
             },
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
@@ -124,6 +128,17 @@ class PuzzleAppBar {
                 value: 'menu hint',
                 child: Text(appLocalizations.translate('hint')),
               ),
+              if (onAutoSolve != null)
+                PopupMenuItem<String>(
+                  value: 'menu auto_solve',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.auto_fix_high, size: 18),
+                      const SizedBox(width: 8),
+                      Text(appLocalizations.translate('auto_solve')),
+                    ],
+                  ),
+                ),
             ],
             icon: const Icon(Icons.menu),
           ),

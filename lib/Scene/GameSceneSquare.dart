@@ -547,6 +547,13 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
                               child: const Icon(Icons.upload_rounded),
                             ),
                           ),
+                        if (_provider.isSolverRunning)
+                          Positioned(
+                            top: 12,
+                            left: 12,
+                            right: 12,
+                            child: _buildSolverBanner(context, _provider),
+                          ),
                       ],
                     )
                   ),
@@ -631,6 +638,52 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
 
     return [xPos, yPos];
      */
+  }
+
+  /// Auto-solver 가 동작 중일 때 상단에 표시되는 상태/중지 배너.
+  /// 사용자는 여기서만 솔버를 멈출 수 있다.
+  Widget _buildSolverBanner(BuildContext context, SquareProvider provider) {
+    final l10n = AppLocalizations.of(context);
+    final String statusKey = provider.solverStatus.isEmpty
+        ? 'solver_running'
+        : provider.solverStatus;
+    final String statusText = l10n?.translate(statusKey) ?? statusKey;
+    return Material(
+      color: Colors.black.withOpacity(0.72),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.4,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                statusText,
+                style: const TextStyle(color: Colors.white, fontSize: 13),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            TextButton(
+              onPressed: provider.cancelSolver,
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.white,
+                minimumSize: const Size(0, 32),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+              ),
+              child: Text(l10n?.translate('solver_cancel') ?? 'Stop'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   ///move to position in "InteractiveViewer"

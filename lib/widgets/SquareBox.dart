@@ -163,6 +163,45 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
     );
   }
 
+  /// Edge 의 사각형 fill 을 그린다. hint blink 값(-3, -5)일 때만
+  /// AnimatedBuilder 로 _colorAnimation 에 묶여 60Hz 로 repaint 한다.
+  /// 평시값(0/+/−1/−2/−4) 은 정적 Container 로 그려 Consumer rebuild 시에만
+  /// 다시 paint — auto-solver 가 한 클릭 안에서 puzzle 을 여러 번 mutate 하더라도
+  /// 중간 상태가 frame 단위로 새지 않는다.
+  Widget _buildEdgeFill({
+    required int value,
+    required double height,
+    required double width,
+  }) {
+    if (value == -3 || value == -5) {
+      return AnimatedBuilder(
+        animation: _colorAnimation,
+        builder: (context, child) {
+          return Container(
+            height: height,
+            width: width,
+            color: value == -3
+                ? _colorAnimation.value ?? Colors.transparent
+                : _wrongColorAnimation.value ?? Colors.transparent,
+          );
+        },
+      );
+    }
+    return Container(
+      height: height,
+      width: width,
+      color: setupColor(value),
+      child: value == -4
+          ? const Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(Icons.close, color: Colors.black, size: 10),
+              ],
+            )
+          : null,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isFirstRow = widget.isFirstRow;
@@ -219,27 +258,10 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                         } : null
                       );
                     },
-                    child: AnimatedBuilder(
-                      animation: _colorAnimation,
-                      builder: (context, child) {
-                        return Container(
-                          height: 10,
-                          width: 50,
-                          color: widget.up == -3 ? _colorAnimation.value ?? Colors.transparent
-                              : widget.up == -5 ? _wrongColorAnimation.value ?? Colors.transparent : setupColor(widget.up),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              if (widget.up == -4)
-                                const Icon(
-                                  Icons.close,
-                                  color: Colors.black,
-                                  size: 10,
-                                ),
-                            ],
-                          ),
-                        );
-                      },
+                    child: _buildEdgeFill(
+                      value: widget.up,
+                      height: 10,
+                      width: 50,
                     ),
                   ),
                 ),
@@ -278,27 +300,10 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                         } : null
                       );
                     },
-                    child: AnimatedBuilder(
-                      animation: _colorAnimation,
-                      builder: (context, child) {
-                        return Container(
-                          height: 50,
-                          width: 10,
-                          color: widget.left == -3 ? _colorAnimation.value ?? Colors.transparent
-                              : widget.left == -5 ? _wrongColorAnimation.value ?? Colors.transparent : setupColor(widget.left),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              if (widget.left == -4)
-                                const Icon(
-                                  Icons.close,
-                                  color: Colors.black,
-                                  size: 10,
-                                ),
-                            ],
-                          ),
-                        );
-                      },
+                    child: _buildEdgeFill(
+                      value: widget.left,
+                      height: 50,
+                      width: 10,
                     ),
                   ),
                 ),
@@ -388,27 +393,10 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                         } : null
                       );
                     },
-                    child: AnimatedBuilder(
-                      animation: _colorAnimation,
-                      builder: (context, child) {
-                        return Container(
-                          height: 50,
-                          width: 10,
-                          color: widget.right == -3 ? _colorAnimation.value ?? Colors.transparent
-                              : widget.right == -5 ? _wrongColorAnimation.value ?? Colors.transparent : setupColor(widget.right),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              if (widget.right == -4)
-                                const Icon(
-                                  Icons.close,
-                                  color: Colors.black,
-                                  size: 10,
-                                ),
-                            ],
-                          ),
-                        );
-                      },
+                    child: _buildEdgeFill(
+                      value: widget.right,
+                      height: 50,
+                      width: 10,
                     ),
                   ),
                 ),
@@ -451,27 +439,10 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                         } : null
                       );
                     },
-                    child: AnimatedBuilder(
-                      animation: _colorAnimation,
-                      builder: (context, child) {
-                        return Container(
-                          height: 10,
-                          width: 50,
-                          color: widget.down == -3 ? _colorAnimation.value ?? Colors.transparent
-                              : widget.down == -5 ? _wrongColorAnimation.value ?? Colors.transparent : setupColor(widget.down),
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              if (widget.down == -4)
-                                const Icon(
-                                  Icons.close,
-                                  color: Colors.black,
-                                  size: 10,
-                                ),
-                            ],
-                          ),
-                        );
-                      },
+                    child: _buildEdgeFill(
+                      value: widget.down,
+                      height: 10,
+                      width: 50,
                     ),
                   ),
                 ),

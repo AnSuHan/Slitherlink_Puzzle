@@ -88,6 +88,12 @@ class GameUI {
           squareProvider.gameStateSquare?.panToCanvasPoint(p);
         }
       },
+      onAutoSolve: () {
+        // 무거운 propagation 루프이므로 await 하지 않고 백그라운드로 시작.
+        // 사용자는 동일 메뉴/취소 버튼으로 중단 가능.
+        final provider = Provider.of<SquareProvider>(context, listen: false);
+        provider.solveHumanLike();
+      },
       onSaveBookmark: (int idx) async {
         await saveData(PuzzleAppBar.colorNames[idx]);
       },

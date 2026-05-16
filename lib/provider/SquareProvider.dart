@@ -163,6 +163,21 @@ class SquareProvider with ChangeNotifier {
     return [answer.length, answer[0].length];
   }
 
+  /// Solver / batched-update flag. When true, intermediate paint notifications
+  /// inside chain-merge / propagation are suppressed; only the final paint at
+  /// the end of [updateSquareBox] (or an explicit flush by the caller) fires.
+  /// This is what eliminates the "click → flash partial state → settle"
+  /// flicker the auto-solver introduces by chaining many sub-updates rapidly.
+  bool _silentMode = false;
+
+  /// Notify unless we're inside a batched update. Used by every intermediate
+  /// paint path; the terminal notify in [updateSquareBox] stays unconditional
+  /// so a single end-of-click paint always reaches the UI.
+  void _emitNotify() {
+    if (_silentMode) return;
+    notifyListeners();
+  }
+
   ///메소드에서 필요할 때마다 호출 (_isUpdating가 0 또는 2인 경우에만 진행 가능)
   ///
   ///(updateSquareBox에서 호출하지 않음)
@@ -173,13 +188,13 @@ class SquareProvider with ChangeNotifier {
     }
     //0이거나 2일 때만 통과
     while(_isUpdating != 0 && _isUpdating != 2) {
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 10));
     }
 
     submit = await readSquare.readSubmit(puzzle);
     // ignore: use_build_context_synchronously
     checkCompletePuzzle(context);
-    notifyListeners();
+    _emitNotify();
   }
 
   //row, column is puzzle's row, column
@@ -202,7 +217,7 @@ class SquareProvider with ChangeNotifier {
         break;
     }
     refreshSubmit();
-    notifyListeners();
+    _emitNotify();
   }
 
   int getLineColorBox(int row, int column, String dir) {
@@ -229,7 +244,7 @@ class SquareProvider with ChangeNotifier {
   void setBoxColor(int row, int column, int color) {
     puzzle[row][column].boxColor = color;
     refreshSubmit();
-    notifyListeners();
+    _emitNotify();
   }
 
   int getBoxColor(int row, int column) {
@@ -262,7 +277,7 @@ class SquareProvider with ChangeNotifier {
     }
 
     refreshSubmit();
-    notifyListeners();
+    _emitNotify();
   }
 
   void checkCompletePuzzle(BuildContext context) {
@@ -743,7 +758,7 @@ class SquareProvider with ChangeNotifier {
       print("call setDo : $_isUpdating");
     }
     while(_isUpdating != 1) {
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 10));
     }
     _isUpdating = 2;
     if(UserInfo.debugMode["print_isUpdating"]!) {
@@ -898,7 +913,7 @@ class SquareProvider with ChangeNotifier {
 
     submit = bookmarkCopy;
     applyUIWithAnswer(puzzle, submit);
-    notifyListeners();
+    _emitNotify();
   }
 
   ///TODO : 계산량이 너무 많아 정상적으로 사용하는 것이 불가하다
@@ -916,7 +931,7 @@ class SquareProvider with ChangeNotifier {
       print("call updateSquareBox : $_isUpdating");
     }
     while(_isUpdating != 0) {
-      await Future.delayed(const Duration(milliseconds: 50));
+      await Future.delayed(const Duration(milliseconds: 10));
       // ignore: avoid_print
       print("_isUpdating $_isUpdating");
     }
@@ -1047,10 +1062,11 @@ class SquareProvider with ChangeNotifier {
     }
 
     submit = await readSquare.readSubmit(puzzle);
-    notifyListeners();
+    _emitNotify();
     // UI yield — 사용자가 그린 라인이 즉시 paint 된 뒤에 무거운 propagation 진입.
     // 이 yield 가 없으면 같은 frame 안에서 propagation 이 끝날 때까지 paint 가 미뤄져
-    // 탭이 "느리게" 보인다.
+    // 탭이 "느리게" 보인다. (배치 모드에서는 _emitNotify 가 skip 되어 클릭 종료 시
+    // 단 1회 paint 만 발생 → 솔버가 빠르게 연속 호출해도 깜빡임 없음)
     await Future.delayed(Duration.zero);
     await setDo();
     await _applyConstraints();
@@ -1708,16 +1724,21 @@ class SquareProvider with ChangeNotifier {
 
     // 3. Phase 1 — 직접 추론(셀+꼭짓점 fixed-point). 가벼움 (≤ 30ms 수준).
     //    여기 결과만으로도 사용자 시각 -1 의 80~90% 가 잡히므로 즉시 반영해
-    //    탭 응답성을 확보한다.
+    //    탭 응답성을 확보한다. silentMode 라도 writeSubmit 은 그대로 수행해야
+    //    Phase 2 가 아무 변화도 추가하지 않을 때 Phase 1 결과가 puzzle 에서
+    //    누락되지 않는다. paint 는 _emitNotify 가 막아 한 클릭 = 한 paint 보장.
     propagateDirectSquare(w, rows, cols, nums);
     _writeWorkingToEdge(edge, orig, w);
     await readSquare.writeSubmit(puzzle, edge);
     submit = edge;
-    notifyListeners();
+    _emitNotify();
 
     // 4. UI yield — Phase 1 결과를 paint 한 뒤 무거운 look-ahead 진입.
     //    Future.delayed(Duration.zero) 는 microtask 가 아니라 task 큐에 들어가
-    //    Flutter scheduleFrame 이 끼어들 수 있다.
+    //    Flutter scheduleFrame 이 끼어들 수 있다. silentMode 에서는 paint 가
+    //    Consumer rebuild 없이는 진행되지 않으므로 (SquareBox 의 비-hint edge 는
+    //    plain Container 라 puzzle mutation 자체로는 다시 그려지지 않음) yield 는
+    //    무해하다.
     await Future.delayed(Duration.zero);
 
     // 5. Phase 2 — 1-step look-ahead. 라이브 상태가 이미 모순이면 모든 가설이
@@ -1725,7 +1746,13 @@ class SquareProvider with ChangeNotifier {
     bool laAnyChanged = false;
     if (isWorkingStateConsistent(w, rows, cols, nums)) {
       // outer iter 상한: 5 → 2. 통상 1~2 회면 수렴하며, 깊은 chain deduction 은
-      // 사용자가 다음 입력 시 다시 jelly point 로 잡힌다 (정확도 vs 응답성 균형).
+      // 사용자가 다음 입력 시 다시 잡힌다 (정확도 vs 응답성 균형).
+      // hypChanges 는 호출 전 clear → propagateHypothesis 가 변경한 위치를 append
+      // → 호출 후 그 위치들만 0 으로 되돌린다. 매 가설마다 grid 전체 deep copy 를
+      //  하지 않으므로 look-ahead overhead 가 ~10× 줄어든다.
+      // hypChanges: 위치를 r * 1024 + c 로 인코딩한 int 리스트 (List<int>).
+      // 매 가설마다 [r, c] 짝 list 를 새로 할당하지 않으므로 GC 부담이 추가로 감소.
+      final List<int> hypChanges = <int>[];
       for (int laIter = 0; laIter < 2; laIter++) {
         bool laChanged = false;
         int hypCount = 0;
@@ -1737,15 +1764,15 @@ class SquareProvider with ChangeNotifier {
             if ((++hypCount) % 50 == 0) {
               await Future.delayed(Duration.zero);
             }
-            final List<List<int>> snap =
-                w.map((r) => List<int>.from(r)).toList();
+            hypChanges.clear();
+            hypChanges.add(er * 1024 + ec);
             w[er][ec] = 1;
-            final bool contradiction =
-                propagateHypothesisSquare(w, rows, cols, nums);
-            for (int rr = 0; rr < w.length; rr++) {
-              for (int cc = 0; cc < w[rr].length; cc++) {
-                w[rr][cc] = snap[rr][cc];
-              }
+            final bool contradiction = propagateHypothesisSquare(
+                w, rows, cols, nums, changes: hypChanges);
+            // 가설이 만든 모든 변경(가설 자신 포함)을 0 으로 복원.
+            // propagateHypothesis 의 모든 mutation 은 0 → ±1 단방향이라 0 복원이 정답.
+            for (final pos in hypChanges) {
+              w[pos ~/ 1024][pos & 1023] = 0;
             }
             if (contradiction) {
               w[er][ec] = -1;
@@ -1780,7 +1807,7 @@ class SquareProvider with ChangeNotifier {
     } else {
       submit = edge;
     }
-    notifyListeners();
+    _emitNotify();
   }
 
   /// w 의 -1/0 결과를 edge 에 반영. 잠금 자리(-3, -4, -5, ≥1)는 보존하고
@@ -1832,4 +1859,257 @@ class SquareProvider with ChangeNotifier {
       }
     }
   }
+
+  ///**********************************************************************************
+  ///**********************************************************************************
+  ///****************** human-like auto solver ******************
+  ///**********************************************************************************
+  ///**********************************************************************************
+  /// 한 수씩 100% 확정 라인을 찾아 시각적으로 클릭한다. 확정이 없는 경우 솔버
+  /// 전용 슬롯(Red/Green/Blue 라벨과 분리된 __solver_R/G/B 키)에 현재 상태를
+  /// 저장하고, propagation 영향이 가장 큰 undecided edge 로 추측한다. 추측이
+  /// 모순으로 이어지면 슬롯을 복원하고 반대값(-4 사용자 X)으로 확정. 슬롯 3 개를
+  /// 모두 소진했거나 사용자가 [cancelSolver] 를 호출하면 종료한다.
+  static const List<String> _solverSlotKeys = ["__solver_R", "__solver_G", "__solver_B"];
+  static const Duration _solverStepDelay = Duration(milliseconds: 500);
+
+  bool _solverRunning = false;
+  bool _solverShouldStop = false;
+  String _solverStatus = "";
+
+  bool get isSolverRunning => _solverRunning;
+  String get solverStatus => _solverStatus;
+
+  void cancelSolver() {
+    _solverShouldStop = true;
+  }
+
+  Future<void> solveHumanLike() async {
+    if (_solverRunning) return;
+    _solverRunning = true;
+    _solverShouldStop = false;
+    _solverStatus = "solver_running";
+    notifyListeners();
+
+    final List<_SolverGuessFrame> guesses = [];
+
+    try {
+      while (!_solverShouldStop) {
+        // 진행 중인 propagation 잠금이 풀릴 때까지 대기.
+        while (_isUpdating != 0 && !_solverShouldStop) {
+          await Future.delayed(const Duration(milliseconds: 30));
+        }
+        if (_solverShouldStop) break;
+
+        submit = await readSquare.readSubmit(puzzle);
+        if (_isPuzzleSolvedLocal()) {
+          _solverStatus = "solver_done";
+          notifyListeners();
+          break;
+        }
+
+        final int rows = puzzle.length;
+        if (rows == 0) break;
+        final int cols = puzzle[0].length;
+        final List<List<int>> nums = List.generate(
+            rows, (i) => List.generate(cols, (j) => puzzle[i][j].num));
+        final List<List<int>> w = buildWorkingFromEdges(submit);
+        propagateDirectSquare(w, rows, cols, nums);
+
+        // 진입 시점에 이미 모순이면 마지막 추측이 잘못된 것 → 슬롯 복원.
+        if (!isWorkingStateConsistent(w, rows, cols, nums)) {
+          if (guesses.isEmpty) {
+            _solverStatus = "solver_stuck";
+            notifyListeners();
+            break;
+          }
+          final frame = guesses.removeLast();
+          _solverStatus = "solver_backtrack";
+          notifyListeners();
+          await _solverRestoreAndDisproveGuess(frame);
+          await Future.delayed(_solverStepDelay);
+          continue;
+        }
+
+        // "edge=-1 가설 → 모순 → 반드시 그어야 함" 으로 확정 +1 추출.
+        final List<int>? draw =
+            findForcedDrawByContradiction(w, rows, cols, nums);
+        if (draw != null) {
+          _solverStatus = "solver_step";
+          notifyListeners();
+          await _solverApplyDraw(draw[0], draw[1]);
+          if (_solverShouldStop) break;
+          await Future.delayed(_solverStepDelay);
+          continue;
+        }
+
+        // "edge=+1 가설 → 모순 → 반드시 비활성" 으로 확정 -1 추출.
+        // 직접규칙과 _applyConstraints 의 2-iter look-ahead 가 놓친 깊은 -1
+        // 확정을 잡아 -4 (사용자 X) 로 잠근다. 이 단계가 없으면 미처리분이
+        // pickHighestImpactGuess 로 흘러들어가 잘못된 +1 으로 그어졌다 —
+        // docs/auto_solver_bug_analysis.md §1 참조.
+        final List<int>? disable =
+            findForcedDisableByContradiction(w, rows, cols, nums);
+        if (disable != null) {
+          _solverStatus = "solver_step";
+          notifyListeners();
+          await _solverApplyDisable(disable[0], disable[1]);
+          if (_solverShouldStop) break;
+          await Future.delayed(_solverStepDelay);
+          continue;
+        }
+
+        // 확정 없음 → 라벨 슬롯에 저장 후 영향력이 가장 큰 edge 로 추측.
+        if (guesses.length >= _solverSlotKeys.length) {
+          _solverStatus = "solver_labels_full";
+          notifyListeners();
+          break;
+        }
+        final List<int>? guess = pickHighestImpactGuess(w, rows, cols, nums);
+        if (guess == null) {
+          _solverStatus = "solver_stuck";
+          notifyListeners();
+          break;
+        }
+        final int slot = guesses.length;
+        await _solverSaveSlot(slot);
+        guesses.add(_SolverGuessFrame(slot, guess[0], guess[1]));
+        _solverStatus = "solver_guess";
+        notifyListeners();
+        await _solverApplyDraw(guess[0], guess[1]);
+        if (_solverShouldStop) break;
+        await Future.delayed(_solverStepDelay);
+      }
+    } finally {
+      _solverRunning = false;
+      // 사용한 슬롯 키 정리 (사용자 Red/Green/Blue 라벨은 건드리지 않음).
+      for (int i = 0; i < _solverSlotKeys.length; i++) {
+        await _solverClearSlot(i);
+      }
+      notifyListeners();
+    }
+  }
+
+  bool _isPuzzleSolvedLocal() {
+    if (answer.isEmpty || submit.isEmpty) return false;
+    for (int i = 0; i < answer.length; i++) {
+      for (int j = 0; j < answer[i].length; j++) {
+        final bool ansSel = answer[i][j] == 1;
+        final bool subSel = submit[i][j] > 0;
+        if (ansSel != subSel) return false;
+      }
+    }
+    return true;
+  }
+
+  String _solverSlotStorageKey(int slot) =>
+      "${loadKey}_${_solverSlotKeys[slot]}";
+
+  Future<void> _solverSaveSlot(int slot) async {
+    await readSquare.savePuzzle(_solverSlotStorageKey(slot));
+  }
+
+  Future<void> _solverClearSlot(int slot) async {
+    final ExtractData prefs = ExtractData();
+    final String key = _solverSlotStorageKey(slot);
+    if (await prefs.containsKey(key)) {
+      await prefs.removeKey(key);
+    }
+  }
+
+  /// 슬롯에 저장된 시점으로 보드를 복원하고, 실패한 추측 edge 를 사용자 X (-4)
+  /// 로 잠가 같은 분기를 다시 시도하지 않게 한다. 두 단계 모두 _silentMode 로
+  /// 묶어 사이 paint 가 새지 않게 한다.
+  Future<void> _solverRestoreAndDisproveGuess(_SolverGuessFrame frame) async {
+    final List<List<int>> saved =
+        await readSquare.loadPuzzle(_solverSlotStorageKey(frame.slot));
+    await _solverClearSlot(frame.slot);
+    if (saved.isEmpty) return;
+    await _runSilently(() async {
+      await applyBookmarkSubmit(saved);
+      await _solverApplyDisable(frame.canonRow, frame.canonCol);
+    });
+    // 배경 작업이 끝났으니 한 번만 paint.
+    notifyListeners();
+  }
+
+  /// canonical edge (i, j) 를 (puzzleRow, puzzleCol, dir) 로 변환.
+  List<dynamic>? _canonicalToPuzzle(int i, int j) {
+    if (puzzle.isEmpty) return null;
+    final int pRows = puzzle.length;
+    final int pCols = puzzle[0].length;
+    if (i.isEven) {
+      if (j < 0 || j >= pCols) return null;
+      if (i == 0) return [0, j, "up"];
+      final int row = i ~/ 2 - 1;
+      if (row < 0 || row >= pRows) return null;
+      return [row, j, "down"];
+    } else {
+      final int row = (i - 1) ~/ 2;
+      if (row < 0 || row >= pRows) return null;
+      if (j == 0) return [row, 0, "left"];
+      if (j == 1) return [row, 0, "right"];
+      final int col = j - 1;
+      if (col >= pCols) return null;
+      return [row, col, "right"];
+    }
+  }
+
+  /// 호출자가 nested 로 [_silentMode] 를 켜더라도 안전하게 동작하도록
+  /// try/finally 로 이전 값을 복원한다. solveHumanLike 의 backtrack 경로처럼
+  /// `_silentMode=true` 가 이미 set 된 상태에서 _solverApplyDisable 이 다시
+  /// 호출되어도 silent mode 가 조기 해제되지 않는다.
+  Future<void> _runSilently(Future<void> Function() body) async {
+    final bool outer = _silentMode;
+    _silentMode = true;
+    try {
+      await body();
+    } finally {
+      _silentMode = outer;
+    }
+  }
+
+  Future<void> _solverApplyDraw(int canonI, int canonJ) async {
+    final mapped = _canonicalToPuzzle(canonI, canonJ);
+    if (mapped == null) return;
+    final int row = mapped[0] as int;
+    final int col = mapped[1] as int;
+    final String dir = mapped[2] as String;
+    // 양수 1 을 보내면 nearColor 체인 색상이 자동 선택되어 사용자 클릭처럼 보인다.
+    const int drawSeed = 1;
+    // _silentMode 로 chain merge 의 setLineColorBox 와 _applyConstraints 의
+    // Phase 1 paint 를 모두 억제. updateSquareBox 마지막 줄의 unconditional
+    // notifyListeners 만 살아남아 한 클릭 = 한 paint 가 보장된다.
+    await _runSilently(() async {
+      switch (dir) {
+        case "up":    await updateSquareBox(row, col, up: drawSeed); break;
+        case "down":  await updateSquareBox(row, col, down: drawSeed); break;
+        case "left":  await updateSquareBox(row, col, left: drawSeed); break;
+        case "right": await updateSquareBox(row, col, right: drawSeed); break;
+      }
+    });
+  }
+
+  Future<void> _solverApplyDisable(int canonI, int canonJ) async {
+    final mapped = _canonicalToPuzzle(canonI, canonJ);
+    if (mapped == null) return;
+    final int row = mapped[0] as int;
+    final int col = mapped[1] as int;
+    final String dir = mapped[2] as String;
+    await _runSilently(() async {
+      switch (dir) {
+        case "up":    await updateSquareBox(row, col, up: -4); break;
+        case "down":  await updateSquareBox(row, col, down: -4); break;
+        case "left":  await updateSquareBox(row, col, left: -4); break;
+        case "right": await updateSquareBox(row, col, right: -4); break;
+      }
+    });
+  }
+}
+
+class _SolverGuessFrame {
+  final int slot;
+  final int canonRow;
+  final int canonCol;
+  _SolverGuessFrame(this.slot, this.canonRow, this.canonCol);
 }

@@ -74,5 +74,14 @@
   "game_complete_ok": "확인",
   "progress_title": "진행 현황",
   "progress_completed": "완료",
-  "progress_puzzles": "퍼즐"
+  "progress_puzzles": "퍼즐",
+  "auto_solve": "자동 풀이",
+  "solver_cancel": "중지",
+  "solver_running": "솔버 실행 중...",
+  "solver_step": "확정 라인 적용 중",
+  "solver_guess": "추측 시도 중",
+  "solver_backtrack": "추측 실패, 복원 중",
+  "solver_done": "완료",
+  "solver_stuck": "더 이상 진행할 수 없음",
+  "solver_labels_full": "라벨 슬롯 모두 사용함"
 }

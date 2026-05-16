@@ -74,5 +74,14 @@
   "game_complete_ok": "OK",
   "progress_title": "Progress",
   "progress_completed": "Completed",
-  "progress_puzzles": "puzzles"
+  "progress_puzzles": "puzzles",
+  "auto_solve": "Auto Solve",
+  "solver_cancel": "Stop",
+  "solver_running": "Solver running...",
+  "solver_step": "Applying confirmed line",
+  "solver_guess": "Trying a guess",
+  "solver_backtrack": "Guess failed, restoring",
+  "solver_done": "Done",
+  "solver_stuck": "Cannot make further progress",
+  "solver_labels_full": "All label slots used"
 }
