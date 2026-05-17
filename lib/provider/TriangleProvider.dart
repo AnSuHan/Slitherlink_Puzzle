@@ -244,13 +244,6 @@ class TriangleProvider with ChangeNotifier {
   /// edge grid at entry and restore it if the post-propagation state is
   /// inconsistent. See docs/constraint_lookahead.md §4 / §5.
   void _applyConstraints() {
-    final List<List<List<int>>> guardSnap = List.generate(rows, (rr) =>
-        List.generate(triPerRow, (ii) => [
-              puzzle[rr][ii].edge0,
-              puzzle[rr][ii].edge1,
-              puzzle[rr][ii].edge2,
-            ]));
-
     final List<List<int>> redSnapshot = [];
     for (int r = 0; r < rows; r++) {
       for (int i = 0; i < triPerRow; i++) {
@@ -274,6 +267,18 @@ class TriangleProvider with ChangeNotifier {
     final bool entryConsistent = _isStateConsistent();
 
     _propagateDirect();
+
+    // Direct rule 결과는 단조적·건전한 deduction 이므로 보존한다.
+    // 이후 look-ahead 가 hidden-clue 환경에서 잘못 발화해 모순을 만들면
+    // revert 는 여기까지로만 되돌린다. entry (guardSnap) 까지 가면 0-clue
+    // 셀 자동 -1 같은 확정 표시가 init 직후 사라진다.
+    final List<List<List<int>>> afterDirect = List.generate(rows, (rr) =>
+        List.generate(triPerRow, (ii) => [
+              puzzle[rr][ii].edge0,
+              puzzle[rr][ii].edge1,
+              puzzle[rr][ii].edge2,
+            ]));
+
     for (int laIter = 0; laIter < 5; laIter++) {
       if (!_runLookAhead()) break;
       _propagateDirect();
@@ -290,11 +295,12 @@ class TriangleProvider with ChangeNotifier {
     }
 
     if (entryConsistent && !_isStateConsistent()) {
+      // Look-ahead 가 만든 모순만 되돌리고 direct 결과는 유지.
       for (int rr = 0; rr < rows; rr++) {
         for (int ii = 0; ii < triPerRow; ii++) {
-          puzzle[rr][ii].edge0 = guardSnap[rr][ii][0];
-          puzzle[rr][ii].edge1 = guardSnap[rr][ii][1];
-          puzzle[rr][ii].edge2 = guardSnap[rr][ii][2];
+          puzzle[rr][ii].edge0 = afterDirect[rr][ii][0];
+          puzzle[rr][ii].edge1 = afterDirect[rr][ii][1];
+          puzzle[rr][ii].edge2 = afterDirect[rr][ii][2];
         }
       }
     }

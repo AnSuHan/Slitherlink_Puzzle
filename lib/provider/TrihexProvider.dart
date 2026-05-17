@@ -379,8 +379,6 @@ class TrihexProvider with ChangeNotifier {
   /// we restore from snapshot. The user's tap is preserved (it was in the
   /// snapshot) but no cascade -1 is applied. See docs §4 / §5 for context.
   void _applyConstraints() {
-    final guardSnap = _snapshot();
-
     final List<int> redSnapshot = [];
     edgeState.forEach((id, v) {
       if (v == -2) redSnapshot.add(id);
@@ -397,6 +395,12 @@ class TrihexProvider with ChangeNotifier {
     final bool entryConsistent = _isStateConsistent();
 
     _propagateDirect();
+
+    // Direct rule 만으로 도출된 결과는 보존한다 — look-ahead 가 hidden-clue
+    // 환경에서 잘못 발화해 모순을 만들면 revert 는 여기까지로만 되돌린다.
+    // guardSnap (entry) 까지 가면 init 직후 0-clue 자동 -1 표시가 사라진다.
+    final Map<int, int> afterDirect = Map<int, int>.from(edgeState);
+
     for (int laIter = 0; laIter < 5; laIter++) {
       if (!_runLookAhead()) break;
       _propagateDirect();
@@ -409,7 +413,7 @@ class TrihexProvider with ChangeNotifier {
     }
 
     if (entryConsistent && !_isStateConsistent()) {
-      _restore(guardSnap);
+      _restore(afterDirect);
     }
   }
 

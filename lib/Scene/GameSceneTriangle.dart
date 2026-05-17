@@ -81,6 +81,13 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
 
   void _applyZoom(double newScale) {
     newScale = newScale.clamp(0.3, 2.0);
+    // 슬라이더 최소값 도달 시 — 사용자 요청대로 퍼즐을 화면 세로 가운데에
+    // 다시 정렬. 일반 줌은 화면 중심 기준 축척이라 사용자가 한쪽으로 panned
+    // 된 상태로 축소하면 퍼즐이 한쪽으로 치우친다. 최소 줌에서만 강제 센터.
+    if (newScale <= 0.3) {
+      _centerPuzzleAtScale(0.3);
+      return;
+    }
     final old = _transformationController.value.clone();
     final oldScale = old.getMaxScaleOnAxis();
     if (oldScale == 0) return;
@@ -97,6 +104,28 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
     _transformationController.value = updated;
     _suppressZoomSync = false;
     setState(() => _zoomSlider = newScale);
+  }
+
+  /// 주어진 축척으로 퍼즐 bounding box 를 화면 (AppBar 제외 영역) 의
+  /// 가로/세로 중앙에 배치. _fitToScreen 과 같은 puzzleWidth/Height 계산을
+  /// 사용하되 dy 음수 (퍼즐이 화면 세로보다 큰 경우) 도 그대로 허용해
+  /// "위 아래로 균등하게 overflow" 되도록 한다.
+  void _centerPuzzleAtScale(double scale) {
+    if (!mounted) return;
+    final size = MediaQuery.of(context).size;
+    final cellW = 50.0;
+    final cellH = 50.0 * 0.866;
+    final double puzzleWidth = _provider.triPerRow * cellW / 2 + 40;
+    final double puzzleHeight = _provider.rows * cellH + 40;
+    final double availH = size.height - kToolbarHeight - 56;
+    final double dx = (size.width - puzzleWidth * scale) / 2;
+    final double dy = (availH - puzzleHeight * scale) / 2;
+    _suppressZoomSync = true;
+    _transformationController.value = Matrix4.identity()
+      ..translate(dx, dy)
+      ..scale(scale);
+    _suppressZoomSync = false;
+    setState(() => _zoomSlider = scale);
   }
 
   /// Pan (without zoom) so that [p] — given in InteractiveViewer-child
@@ -319,10 +348,11 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
     double scaleY = availH / puzzleHeight;
     double fit = (scaleX < scaleY ? scaleX : scaleY).clamp(0.3, 4.0);
 
-    double dx = (size.width - puzzleWidth * fit) / 2;
-    double dy = (availH - puzzleHeight * fit) / 2;
-    if (dx < 0) dx = 0;
-    if (dy < 0) dy = 0;
+    final double dx = (size.width - puzzleWidth * fit) / 2;
+    final double dy = (availH - puzzleHeight * fit) / 2;
+    // 음수 offset 도 허용 — 퍼즐이 화면보다 클 때 (특히 fit 이 0.3 으로 clamp
+    // 된 경우) 위 아래 균등하게 overflow 되도록. 이전엔 0 으로 clamp 해
+    // 항상 top-aligned 였다.
 
     _transformationController.value = Matrix4.identity()
       ..translate(dx, dy)

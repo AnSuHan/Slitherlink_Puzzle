@@ -389,9 +389,6 @@ class HexagonProvider with ChangeNotifier {
   /// by _isStateConsistent), we restore from snapshot — the user's tap is
   /// preserved, no cascade is applied. See docs §4 / §5.
   void _applyConstraints() {
-    final List<List<List<int>>> guardSnap = List.generate(rows, (rr) =>
-        List.generate(cols, (cc) => List<int>.from(puzzle[rr][cc].edges)));
-
     final List<List<int>> redSnapshot = [];
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
@@ -415,6 +412,15 @@ class HexagonProvider with ChangeNotifier {
     final bool entryConsistent = _isStateConsistent();
 
     _propagateDirect();
+
+    // Direct rule (셀/꼭짓점 disable) 만으로 도출된 -1 은 단조적·건전한
+    // 결과이므로, 이후 look-ahead 가 잘못 발화해 모순을 만들더라도 이 단계
+    // 결과는 보존한다. revert 가 발화하면 여기까지의 스냅샷으로 되돌리고
+    // entry 스냅샷(guardSnap) 까지 가지 않는다 — 그래야 0-clue 셀 6 변
+    // 자동 -1 같은 확정적 표시가 init 직후에 사라지지 않는다.
+    final List<List<List<int>>> afterDirect = List.generate(rows, (rr) =>
+        List.generate(cols, (cc) => List<int>.from(puzzle[rr][cc].edges)));
+
     for (int laIter = 0; laIter < 5; laIter++) {
       if (!_runLookAhead()) break;
       _propagateDirect();
@@ -431,10 +437,14 @@ class HexagonProvider with ChangeNotifier {
     }
 
     if (entryConsistent && !_isStateConsistent()) {
+      // Look-ahead 결과가 모순을 만든 경우 — direct 결과까지 보존하고
+      // look-ahead 분만 되돌린다. entry 까지 되돌리면 마스킹된 hidden-clue
+      // 환경에서 직접 추론 결과 (0-clue 자동 -1 등) 가 모두 사라져 사용자
+      // 입장에서 "초기 상태에서 확정 -1 이 안 보인다" 가 된다.
       for (int rr = 0; rr < rows; rr++) {
         for (int cc = 0; cc < cols; cc++) {
           for (int ee = 0; ee < 6; ee++) {
-            puzzle[rr][cc].edges[ee] = guardSnap[rr][cc][ee];
+            puzzle[rr][cc].edges[ee] = afterDirect[rr][cc][ee];
           }
         }
       }
