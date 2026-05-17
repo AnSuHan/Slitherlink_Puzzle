@@ -839,7 +839,6 @@ class TrihexProvider with ChangeNotifier {
   /// Map<edgeId,int> 라 snapshot/restore 는 Map 복사 한 번이면 끝난다.
   /// 추측 frame 도 edgeState snapshot 만 들고 있으면 충분.
   static const int _solverMaxGuesses = 3;
-  static const Duration _solverStepDelay = Duration(milliseconds: 500);
 
   bool _solverRunning = false;
   bool _solverShouldStop = false;
@@ -852,7 +851,8 @@ class TrihexProvider with ChangeNotifier {
     _solverShouldStop = true;
   }
 
-  Future<void> solveHumanLike() async {
+  /// [stepDelay] 한 수와 다음 수 사이의 대기. 기본 0 (지연 없음).
+  Future<void> solveHumanLike({Duration stepDelay = Duration.zero}) async {
     if (_solverRunning) return;
     _solverRunning = true;
     _solverShouldStop = false;
@@ -870,8 +870,8 @@ class TrihexProvider with ChangeNotifier {
         }
 
         if (!_isStateConsistent()) {
-          if (!await _backtrackToLastGuess(guesses)) break;
-          await Future.delayed(_solverStepDelay);
+          if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
+          await Future.delayed(stepDelay);
           continue;
         }
 
@@ -883,9 +883,9 @@ class TrihexProvider with ChangeNotifier {
               await _solverApplyAndCheck(draw, themeColor.getNormalRandom());
           if (_solverShouldStop) break;
           if (!ok) {
-            if (!await _backtrackToLastGuess(guesses)) break;
+            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           }
-          await Future.delayed(_solverStepDelay);
+          await Future.delayed(stepDelay);
           continue;
         }
 
@@ -896,9 +896,9 @@ class TrihexProvider with ChangeNotifier {
           final ok = await _solverApplyAndCheck(disable, -4);
           if (_solverShouldStop) break;
           if (!ok) {
-            if (!await _backtrackToLastGuess(guesses)) break;
+            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           }
-          await Future.delayed(_solverStepDelay);
+          await Future.delayed(stepDelay);
           continue;
         }
 
@@ -921,9 +921,9 @@ class TrihexProvider with ChangeNotifier {
             await _solverApplyAndCheck(guess, themeColor.getNormalRandom());
         if (_solverShouldStop) break;
         if (!ok) {
-          if (!await _backtrackToLastGuess(guesses)) break;
+          if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
         }
-        await Future.delayed(_solverStepDelay);
+        await Future.delayed(stepDelay);
       }
     } finally {
       _solverRunning = false;
@@ -944,7 +944,7 @@ class TrihexProvider with ChangeNotifier {
   }
 
   Future<bool> _backtrackToLastGuess(
-      List<_TrihexGuessFrame> guesses) async {
+      List<_TrihexGuessFrame> guesses, Duration stepDelay) async {
     if (guesses.isEmpty) {
       _solverStatus = "solver_stuck";
       notifyListeners();
@@ -960,7 +960,7 @@ class TrihexProvider with ChangeNotifier {
     _applyConstraints();
     notifyListeners();
 
-    await Future.delayed(_solverStepDelay);
+    await Future.delayed(stepDelay);
     if (_solverShouldStop) return true;
 
     await updateEdge(frame.edgeId, -4);

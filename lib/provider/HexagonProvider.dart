@@ -912,7 +912,6 @@ class HexagonProvider with ChangeNotifier {
   /// 실패하면 직전 추측 시점의 submit 스냅샷으로 복원하고 실패 edge 를
   /// 사용자 X (-4) 로 잠근다. 최대 3 단계 추측.
   static const int _solverMaxGuesses = 3;
-  static const Duration _solverStepDelay = Duration(milliseconds: 500);
 
   bool _solverRunning = false;
   bool _solverShouldStop = false;
@@ -925,7 +924,8 @@ class HexagonProvider with ChangeNotifier {
     _solverShouldStop = true;
   }
 
-  Future<void> solveHumanLike() async {
+  /// [stepDelay] 한 수와 다음 수 사이의 대기. 기본 0 (지연 없음).
+  Future<void> solveHumanLike({Duration stepDelay = Duration.zero}) async {
     if (_solverRunning) return;
     _solverRunning = true;
     _solverShouldStop = false;
@@ -944,8 +944,8 @@ class HexagonProvider with ChangeNotifier {
         }
 
         if (!_isStateConsistent()) {
-          if (!await _backtrackToLastGuess(guesses)) break;
-          await Future.delayed(_solverStepDelay);
+          if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
+          await Future.delayed(stepDelay);
           continue;
         }
 
@@ -957,9 +957,9 @@ class HexagonProvider with ChangeNotifier {
               draw[0], draw[1], draw[2], themeColor.getNormalRandom());
           if (_solverShouldStop) break;
           if (!ok) {
-            if (!await _backtrackToLastGuess(guesses)) break;
+            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           }
-          await Future.delayed(_solverStepDelay);
+          await Future.delayed(stepDelay);
           continue;
         }
 
@@ -971,9 +971,9 @@ class HexagonProvider with ChangeNotifier {
               disable[0], disable[1], disable[2], -4);
           if (_solverShouldStop) break;
           if (!ok) {
-            if (!await _backtrackToLastGuess(guesses)) break;
+            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           }
-          await Future.delayed(_solverStepDelay);
+          await Future.delayed(stepDelay);
           continue;
         }
 
@@ -997,9 +997,9 @@ class HexagonProvider with ChangeNotifier {
             guess[0], guess[1], guess[2], themeColor.getNormalRandom());
         if (_solverShouldStop) break;
         if (!ok) {
-          if (!await _backtrackToLastGuess(guesses)) break;
+          if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
         }
-        await Future.delayed(_solverStepDelay);
+        await Future.delayed(stepDelay);
       }
     } finally {
       _solverRunning = false;
@@ -1023,7 +1023,7 @@ class HexagonProvider with ChangeNotifier {
   }
 
   Future<bool> _backtrackToLastGuess(
-      List<_HexagonGuessFrame> guesses) async {
+      List<_HexagonGuessFrame> guesses, Duration stepDelay) async {
     if (guesses.isEmpty) {
       _solverStatus = "solver_stuck";
       notifyListeners();
@@ -1041,7 +1041,7 @@ class HexagonProvider with ChangeNotifier {
     submit = _readSubmit();
     notifyListeners();
 
-    await Future.delayed(_solverStepDelay);
+    await Future.delayed(stepDelay);
     if (_solverShouldStop) return true;
 
     await updateEdge(frame.r, frame.c, frame.e, -4);

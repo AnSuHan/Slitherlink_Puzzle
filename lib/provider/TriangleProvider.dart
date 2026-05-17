@@ -846,7 +846,6 @@ class TriangleProvider with ChangeNotifier {
   /// 최대 3 단계까지 누적 (Square 의 R/G/B 슬롯과 동일한 깊이). 사용자가
   /// [cancelSolver] 를 호출하거나 restart 하면 즉시 종료한다.
   static const int _solverMaxGuesses = 3;
-  static const Duration _solverStepDelay = Duration(milliseconds: 500);
 
   bool _solverRunning = false;
   bool _solverShouldStop = false;
@@ -859,7 +858,8 @@ class TriangleProvider with ChangeNotifier {
     _solverShouldStop = true;
   }
 
-  Future<void> solveHumanLike() async {
+  /// [stepDelay] 한 수와 다음 수 사이의 대기. 기본 0 (지연 없음).
+  Future<void> solveHumanLike({Duration stepDelay = Duration.zero}) async {
     if (_solverRunning) return;
     _solverRunning = true;
     _solverShouldStop = false;
@@ -879,8 +879,8 @@ class TriangleProvider with ChangeNotifier {
 
         // 진입 시점 상태가 이미 모순이면 마지막 추측이 잘못된 것.
         if (!_isStateConsistent()) {
-          if (!await _backtrackToLastGuess(guesses)) break;
-          await Future.delayed(_solverStepDelay);
+          if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
+          await Future.delayed(stepDelay);
           continue;
         }
 
@@ -893,9 +893,9 @@ class TriangleProvider with ChangeNotifier {
               draw[0], draw[1], draw[2], themeColor.getNormalRandom());
           if (_solverShouldStop) break;
           if (!ok) {
-            if (!await _backtrackToLastGuess(guesses)) break;
+            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           }
-          await Future.delayed(_solverStepDelay);
+          await Future.delayed(stepDelay);
           continue;
         }
 
@@ -911,9 +911,9 @@ class TriangleProvider with ChangeNotifier {
               disable[0], disable[1], disable[2], -4);
           if (_solverShouldStop) break;
           if (!ok) {
-            if (!await _backtrackToLastGuess(guesses)) break;
+            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           }
-          await Future.delayed(_solverStepDelay);
+          await Future.delayed(stepDelay);
           continue;
         }
 
@@ -938,9 +938,9 @@ class TriangleProvider with ChangeNotifier {
             guess[0], guess[1], guess[2], themeColor.getNormalRandom());
         if (_solverShouldStop) break;
         if (!ok) {
-          if (!await _backtrackToLastGuess(guesses)) break;
+          if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
         }
-        await Future.delayed(_solverStepDelay);
+        await Future.delayed(stepDelay);
       }
     } finally {
       _solverRunning = false;
@@ -967,7 +967,7 @@ class TriangleProvider with ChangeNotifier {
   /// 사용자 X (-4) 로 잠가 같은 분기를 다시 시도하지 않게 한다. guesses 가
   /// 비어 있으면 false 를 반환해 호출자가 솔버를 멈추게 한다.
   Future<bool> _backtrackToLastGuess(
-      List<_TriangleGuessFrame> guesses) async {
+      List<_TriangleGuessFrame> guesses, Duration stepDelay) async {
     if (guesses.isEmpty) {
       _solverStatus = "solver_stuck";
       notifyListeners();
@@ -987,7 +987,7 @@ class TriangleProvider with ChangeNotifier {
     submit = _readSubmit();
     notifyListeners();
 
-    await Future.delayed(_solverStepDelay);
+    await Future.delayed(stepDelay);
     if (_solverShouldStop) return true;
 
     await updateEdge(frame.r, frame.i, frame.e, -4);

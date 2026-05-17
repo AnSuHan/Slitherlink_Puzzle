@@ -1912,7 +1912,6 @@ class SquareProvider with ChangeNotifier {
   /// 모순으로 이어지면 슬롯을 복원하고 반대값(-4 사용자 X)으로 확정. 슬롯 3 개를
   /// 모두 소진했거나 사용자가 [cancelSolver] 를 호출하면 종료한다.
   static const List<String> _solverSlotKeys = ["__solver_R", "__solver_G", "__solver_B"];
-  static const Duration _solverStepDelay = Duration(milliseconds: 500);
 
   bool _solverRunning = false;
   bool _solverShouldStop = false;
@@ -1928,7 +1927,9 @@ class SquareProvider with ChangeNotifier {
     _solverShouldStop = true;
   }
 
-  Future<void> solveHumanLike() async {
+  /// [stepDelay] 한 수와 다음 수 사이의 대기. 기본 0 (지연 없음).
+  /// 사람이 따라 볼 수 있게 늦추고 싶다면 호출 측에서 Duration 을 넘긴다.
+  Future<void> solveHumanLike({Duration stepDelay = Duration.zero}) async {
     if (_solverRunning) return;
     _solverRunning = true;
     _solverShouldStop = false;
@@ -1971,7 +1972,7 @@ class SquareProvider with ChangeNotifier {
           _solverStatus = "solver_backtrack";
           notifyListeners();
           await _solverRestoreAndDisproveGuess(frame);
-          await Future.delayed(_solverStepDelay);
+          await Future.delayed(stepDelay);
           continue;
         }
 
@@ -1988,7 +1989,7 @@ class SquareProvider with ChangeNotifier {
             // premise 가 깔려 있었던 셈. 가장 가까운 추측까지 backtrack.
             if (!await _backtrackToLastGuess(guesses)) break;
           }
-          await Future.delayed(_solverStepDelay);
+          await Future.delayed(stepDelay);
           continue;
         }
 
@@ -2007,7 +2008,7 @@ class SquareProvider with ChangeNotifier {
           if (!ok) {
             if (!await _backtrackToLastGuess(guesses)) break;
           }
-          await Future.delayed(_solverStepDelay);
+          await Future.delayed(stepDelay);
           continue;
         }
 
@@ -2034,7 +2035,7 @@ class SquareProvider with ChangeNotifier {
           // 추측이 deep contradiction 을 만들었다 — 정상 흐름. backtrack.
           if (!await _backtrackToLastGuess(guesses)) break;
         }
-        await Future.delayed(_solverStepDelay);
+        await Future.delayed(stepDelay);
       }
     } finally {
       _solverRunning = false;
