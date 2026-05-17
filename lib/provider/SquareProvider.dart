@@ -175,6 +175,12 @@ class SquareProvider with ChangeNotifier {
   /// "이 탭이 야기한 -1 만 적용" 동작에 사용. docs/click_toggle_bug_analysis.md §2.
   List<List<int>>? _preTapSubmit;
 
+  /// 사용자 탭이 야기한 -1 도 사용자 라인(≥1)/X(-4) 로부터 graph hop ≤ 값 인
+  /// 자리에만 적용. incremental diff (preBaseline) 와 결합해 cell rule cascade 가
+  /// 보드 멀리까지 가는 것을 추가로 제한. 솔버 (_silentMode) 는 무제한이라
+  /// proximityDist=null 로 호출한다.
+  static const int _userProximityHops = 3;
+
   /// Notify unless we're inside a batched update. Used by every intermediate
   /// paint path; the terminal notify in [updateSquareBox] stays unconditional
   /// so a single end-of-click paint always reaches the UI.
@@ -1751,13 +1757,24 @@ class SquareProvider with ChangeNotifier {
       wPreBaseline = wPre;
     }
 
+    // proximity 보조 필터: incremental diff 로 살아남은 새 -1 도 사용자 라인/X
+    // 로부터 graph hop ≤ _userProximityHops 인 자리에만 적용. cell rule cascade 가
+    // 단일 탭으로도 보드 멀리 퍼지는 것을 추가로 제한. 솔버는 정확도가 중요해
+    // null 로 두어 전체 propagation 결과 그대로 받는다.
+    final List<List<int>>? proximityDist = _silentMode
+        ? null
+        : _computeUserProximity(orig, rows, cols, _userProximityHops);
+
     // 3. Phase 1 — 직접 추론(셀+꼭짓점 fixed-point). 가벼움 (≤ 30ms 수준).
     //    여기 결과만으로도 사용자 시각 -1 의 80~90% 가 잡히므로 즉시 반영해
     //    탭 응답성을 확보한다. silentMode 라도 writeSubmit 은 그대로 수행해야
     //    Phase 2 가 아무 변화도 추가하지 않을 때 Phase 1 결과가 puzzle 에서
     //    누락되지 않는다. paint 는 _emitNotify 가 막아 한 클릭 = 한 paint 보장.
     propagateDirectSquare(w, rows, cols, nums);
-    _writeWorkingToEdge(edge, orig, w, preBaseline: wPreBaseline);
+    _writeWorkingToEdge(edge, orig, w,
+        preBaseline: wPreBaseline,
+        proximityDist: proximityDist,
+        maxProximity: _userProximityHops);
     await readSquare.writeSubmit(puzzle, edge);
     submit = edge;
     _emitNotify();
@@ -1772,8 +1789,13 @@ class SquareProvider with ChangeNotifier {
 
     // 5. Phase 2 — 1-step look-ahead. 라이브 상태가 이미 모순이면 모든 가설이
     //    모순으로 잘못 판정되므로 스킵 (모든 미정 변 -1 처리 사고 방지).
+    //
+    //    docs/click_toggle_bug_analysis.md §2: 사용자 탭 경로는 Phase 2 도
+    //    스킵한다. Phase 2 의 deep contradiction 은 보드 멀리까지 -1 을 도출하는데
+    //    wPreBaseline 에는 Phase 1 결과만 들어 있어 diff 통과로 cascade 가 된다.
+    //    proximity 필터로도 한계가 있어 솔버 (_silentMode) 만 Phase 2 사용.
     bool laAnyChanged = false;
-    if (isWorkingStateConsistent(w, rows, cols, nums)) {
+    if (_silentMode && isWorkingStateConsistent(w, rows, cols, nums)) {
       // outer iter 상한: 5 → 2. 통상 1~2 회면 수렴하며, 깊은 chain deduction 은
       // 사용자가 다음 입력 시 다시 잡힌다 (정확도 vs 응답성 균형).
       // hypChanges 는 호출 전 clear → propagateHypothesis 가 변경한 위치를 append
@@ -1818,7 +1840,10 @@ class SquareProvider with ChangeNotifier {
     // 6. Phase 2 결과 반영 (변화가 있었을 때만). edge 는 Phase 1 직후 puzzle 과
     //    동기화돼 있으므로 그 위에 추가 deduction 만 얹는다.
     if (laAnyChanged) {
-      _writeWorkingToEdge(edge, orig, w, preBaseline: wPreBaseline);
+      _writeWorkingToEdge(edge, orig, w,
+          preBaseline: wPreBaseline,
+          proximityDist: proximityDist,
+          maxProximity: _userProximityHops);
       await readSquare.writeSubmit(puzzle, edge);
     }
 
@@ -1867,9 +1892,15 @@ class SquareProvider with ChangeNotifier {
   /// pre-tap propagation 으로도 도출됐을 -1 (= w_pre[i][j] == -1) 은 이번 탭이
   /// 야기한 것이 아니므로 새로 적용에서 제외. 사용자 시각에는 "이 탭이 만든 -1" 만
   /// 보임. 솔버는 null 을 전달해 전체 propagation 결과를 그대로 받는다.
+  ///
+  /// proximity 필터: [proximityDist] 가 주어지면 새로 도출된 -1 은 사용자
+  /// 라인/X 로부터 graph hop ≤ [maxProximity] 인 자리에만 적용. 멀리 떨어진
+  /// 자리는 origValue 그대로 유지. 솔버는 null 을 전달해 무제한.
   void _writeWorkingToEdge(
       List<List<int>> edge, List<List<int>> orig, List<List<int>> w,
-      {List<List<int>>? preBaseline}) {
+      {List<List<int>>? preBaseline,
+      List<List<int>>? proximityDist,
+      int maxProximity = 0}) {
     for (int i = 0; i < edge.length; i++) {
       for (int j = 0; j < edge[i].length; j++) {
         final int origValue = orig[i][j];
@@ -1891,10 +1922,90 @@ class SquareProvider with ChangeNotifier {
             preBaseline[i][j] == -1) {
           continue;
         }
+        // proximity 필터: 사용자 라인/X 로부터 graph hop > maxProximity 이면
+        // 새 -1 적용 안 함. 기존 -1/-2 (origValue != 0) 는 monotonic 유지
+        // 정책에 따라 건드리지 않으므로 여기 필터는 origValue == 0 인 자리만
+        // 대상으로 한다.
+        if (proximityDist != null &&
+            origValue == 0 &&
+            derived == -1) {
+          final int d = proximityDist[i][j];
+          if (d < 0 || d > maxProximity) {
+            continue;
+          }
+        }
         edge[i][j] =
             (origValue == -2 && derived == -1) ? -2 : derived;
       }
     }
+  }
+
+  /// 사용자 라인 (≥1) 와 사용자 X (-4) 를 seed 로 canonical edge grid 위에서
+  /// BFS 해 각 edge 의 graph hop 거리를 구한다. 반환 dist[i][j] == -1 은
+  /// seed 가 없거나 [maxHops] 안에서 닿지 못한 자리. 두 edge 가 인접하다는
+  /// 정의는 공유 vertex 가 하나라도 있는 경우.
+  ///
+  /// Canonical edge 좌표 규약:
+  ///   i 짝수 (수평): [2k][c] = vertex(k,c)-vertex(k,c+1)
+  ///   i 홀수 (수직): [2k+1][c] = vertex(k,c)-vertex(k+1,c)
+  /// (j=0,1 은 col 0 의 left/right, j>=2 는 col j-1 의 right — 캐논 표 자체는
+  /// [c=0..pCols] 로 일관 vertex column 매핑이라 여기서 별도 변환 없이 처리.)
+  List<List<int>> _computeUserProximity(
+      List<List<int>> orig, int pRows, int pCols, int maxHops) {
+    final List<List<int>> dist = orig
+        .map((row) => List<int>.filled(row.length, -1))
+        .toList();
+    final List<int> queue = <int>[];
+    // Seed.
+    for (int i = 0; i < orig.length; i++) {
+      for (int j = 0; j < orig[i].length; j++) {
+        final int v = orig[i][j];
+        if (v >= 1 || v == -4) {
+          dist[i][j] = 0;
+          queue.add(i * 1024 + j);
+        }
+      }
+    }
+    int qIdx = 0;
+    while (qIdx < queue.length) {
+      final int pos = queue[qIdx++];
+      final int ci = pos ~/ 1024;
+      final int cj = pos & 1023;
+      final int d = dist[ci][cj];
+      if (d >= maxHops) continue;
+      // 두 endpoint vertex 결정.
+      late final int va, vb; // 4-튜플 인코드: vr*4096 + vc
+      if (ci.isEven) {
+        final int k = ci ~/ 2;
+        va = k * 4096 + cj;
+        vb = k * 4096 + (cj + 1);
+      } else {
+        final int k = (ci - 1) ~/ 2;
+        va = k * 4096 + cj;
+        vb = (k + 1) * 4096 + cj;
+      }
+      for (final v in [va, vb]) {
+        final int vr = v ~/ 4096;
+        final int vc = v & 4095;
+        // vertex 에 incident 한 4 종 후보 edge.
+        final List<List<int>> cands = [];
+        if (vc > 0) cands.add([2 * vr, vc - 1]);          // 수평 west
+        if (vc < pCols) cands.add([2 * vr, vc]);          // 수평 east
+        if (vr > 0) cands.add([2 * vr - 1, vc]);          // 수직 north
+        if (vr < pRows) cands.add([2 * vr + 1, vc]);      // 수직 south
+        for (final c in cands) {
+          final int ai = c[0];
+          final int aj = c[1];
+          if (ai < 0 || ai >= dist.length) continue;
+          if (aj < 0 || aj >= dist[ai].length) continue;
+          if (ai == ci && aj == cj) continue;
+          if (dist[ai][aj] >= 0) continue;
+          dist[ai][aj] = d + 1;
+          queue.add(ai * 1024 + aj);
+        }
+      }
+    }
+    return dist;
   }
 
   /// External entry point for callers outside this class (e.g. HowToPlay).
