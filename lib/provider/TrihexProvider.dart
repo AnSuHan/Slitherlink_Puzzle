@@ -387,6 +387,15 @@ class TrihexProvider with ChangeNotifier {
     });
     edgeState.removeWhere((_, v) => v == -1 || v == -2);
 
+    // Capture consistency AFTER clearing -1/-2 so it reflects what propagation
+    // actually sees. If the user already put the board into an inconsistent
+    // state (e.g. over-drew a num=1 cell), direct-rule cascade is local and
+    // we want it to run — that's how the user gets the visual "you can't draw
+    // here" feedback. Only revert when propagation TURNED a previously-OK
+    // state into an inconsistent one (e.g. look-ahead wiping the board after
+    // a critical X-mark — see docs §4-3-1).
+    final bool entryConsistent = _isStateConsistent();
+
     _propagateDirect();
     for (int laIter = 0; laIter < 5; laIter++) {
       if (!_runLookAhead()) break;
@@ -399,7 +408,7 @@ class TrihexProvider with ChangeNotifier {
       }
     }
 
-    if (!_isStateConsistent()) {
+    if (entryConsistent && !_isStateConsistent()) {
       _restore(guardSnap);
     }
   }
@@ -745,6 +754,15 @@ class TrihexProvider with ChangeNotifier {
   }
 
   Future<void> restart() async {
+    // 자동 풀기 중이었다면 먼저 중단 — restart 가 edgeState 를 비우는데
+    // 솔버 루프가 살아 있으면 다음 iter 가 비워진 보드 위에 추론 결과를
+    // 다시 덮어쓴다. SquareProvider.restart 와 동일한 가드.
+    if (_solverRunning) {
+      _solverShouldStop = true;
+      while (_solverRunning) {
+        await Future.delayed(const Duration(milliseconds: 30));
+      }
+    }
     _undoStack.clear();
     _redoStack.clear();
     edgeState.clear();
@@ -813,4 +831,218 @@ class TrihexProvider with ChangeNotifier {
       ),
     );
   }
+
+  ///**********************************************************************************
+  ///****************** human-like auto solver ******************
+  ///**********************************************************************************
+  /// Square / Triangle / Hexagon 솔버와 동일 골격이지만 Trihex 는 edgeState 가
+  /// Map<edgeId,int> 라 snapshot/restore 는 Map 복사 한 번이면 끝난다.
+  /// 추측 frame 도 edgeState snapshot 만 들고 있으면 충분.
+  static const int _solverMaxGuesses = 3;
+  static const Duration _solverStepDelay = Duration(milliseconds: 500);
+
+  bool _solverRunning = false;
+  bool _solverShouldStop = false;
+  String _solverStatus = "";
+
+  bool get isSolverRunning => _solverRunning;
+  String get solverStatus => _solverStatus;
+
+  void cancelSolver() {
+    _solverShouldStop = true;
+  }
+
+  Future<void> solveHumanLike() async {
+    if (_solverRunning) return;
+    _solverRunning = true;
+    _solverShouldStop = false;
+    _solverStatus = "solver_running";
+    notifyListeners();
+
+    final List<_TrihexGuessFrame> guesses = [];
+
+    try {
+      while (!_solverShouldStop) {
+        if (_isPuzzleSolvedLocal()) {
+          _solverStatus = "solver_done";
+          notifyListeners();
+          break;
+        }
+
+        if (!_isStateConsistent()) {
+          if (!await _backtrackToLastGuess(guesses)) break;
+          await Future.delayed(_solverStepDelay);
+          continue;
+        }
+
+        final int? draw = _findForcedDrawByContradiction();
+        if (draw != null) {
+          _solverStatus = "solver_step";
+          notifyListeners();
+          final ok =
+              await _solverApplyAndCheck(draw, themeColor.getNormalRandom());
+          if (_solverShouldStop) break;
+          if (!ok) {
+            if (!await _backtrackToLastGuess(guesses)) break;
+          }
+          await Future.delayed(_solverStepDelay);
+          continue;
+        }
+
+        final int? disable = _findForcedDisableByContradiction();
+        if (disable != null) {
+          _solverStatus = "solver_step";
+          notifyListeners();
+          final ok = await _solverApplyAndCheck(disable, -4);
+          if (_solverShouldStop) break;
+          if (!ok) {
+            if (!await _backtrackToLastGuess(guesses)) break;
+          }
+          await Future.delayed(_solverStepDelay);
+          continue;
+        }
+
+        if (guesses.length >= _solverMaxGuesses) {
+          _solverStatus = "solver_labels_full";
+          notifyListeners();
+          break;
+        }
+        final int? guess = _pickHighestImpactGuess();
+        if (guess == null) {
+          _solverStatus = "solver_stuck";
+          notifyListeners();
+          break;
+        }
+        final snap = _snapshot();
+        guesses.add(_TrihexGuessFrame(snap, guess));
+        _solverStatus = "solver_guess";
+        notifyListeners();
+        final ok =
+            await _solverApplyAndCheck(guess, themeColor.getNormalRandom());
+        if (_solverShouldStop) break;
+        if (!ok) {
+          if (!await _backtrackToLastGuess(guesses)) break;
+        }
+        await Future.delayed(_solverStepDelay);
+      }
+    } finally {
+      _solverRunning = false;
+      notifyListeners();
+    }
+  }
+
+  bool _isPuzzleSolvedLocal() {
+    for (final e in puzzle.activeEdges) {
+      if (edgeValue(e) < 1) return false;
+    }
+    for (final entry in edgeState.entries) {
+      if (entry.value >= 1 && !puzzle.activeEdges.contains(entry.key)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Future<bool> _backtrackToLastGuess(
+      List<_TrihexGuessFrame> guesses) async {
+    if (guesses.isEmpty) {
+      _solverStatus = "solver_stuck";
+      notifyListeners();
+      return false;
+    }
+    final frame = guesses.removeLast();
+    _solverStatus = "solver_backtrack";
+    notifyListeners();
+
+    _undoStack.add(_snapshot());
+    _redoStack.clear();
+    _restore(frame.snapshot);
+    _applyConstraints();
+    notifyListeners();
+
+    await Future.delayed(_solverStepDelay);
+    if (_solverShouldStop) return true;
+
+    await updateEdge(frame.edgeId, -4);
+    return true;
+  }
+
+  Future<bool> _solverApplyAndCheck(int edgeId, int value) async {
+    await updateEdge(edgeId, value);
+    if (_solverShouldStop) return true;
+    return !_detectDeepContradiction();
+  }
+
+  bool _detectDeepContradiction() {
+    final snap = _snapshot();
+    final contra = _propagateHypothesis();
+    _restore(snap);
+    return contra;
+  }
+
+  int? _findForcedDrawByContradiction() {
+    for (final e in _allEdges) {
+      if (edgeValue(e) != 0) continue;
+
+      final snap = _snapshot();
+      edgeState[e] = -1;
+      final contra = _propagateHypothesis();
+      _restore(snap);
+
+      if (contra) return e;
+    }
+    return null;
+  }
+
+  int? _findForcedDisableByContradiction() {
+    for (final e in _allEdges) {
+      if (edgeValue(e) != 0) continue;
+
+      final snap = _snapshot();
+      edgeState[e] = 1;
+      final contra = _propagateHypothesis();
+      _restore(snap);
+
+      if (contra) return e;
+    }
+    return null;
+  }
+
+  /// +1 가설 propagation 으로 변화량이 가장 큰 undecided edge 반환.
+  /// contradiction 인 edge 는 "확정 -1" 이므로 추측 후보에서 제외 —
+  /// docs/auto_solver_bug_analysis.md §1 의 contradiction-as-guess 트랩 방지.
+  int? _pickHighestImpactGuess() {
+    int bestScore = -1;
+    int? best;
+    for (final e in _allEdges) {
+      if (edgeValue(e) != 0) continue;
+
+      final snap = _snapshot();
+      edgeState[e] = 1;
+      final contra = _propagateHypothesis();
+
+      int changes = 0;
+      if (!contra) {
+        // edgeState 의 set/unset 모두 카운트. 0 (undefined) 은 unset 으로 본다.
+        final Set<int> keys = {...snap.keys, ...edgeState.keys};
+        for (final k in keys) {
+          if ((snap[k] ?? 0) != (edgeState[k] ?? 0)) changes++;
+        }
+      }
+      _restore(snap);
+
+      if (contra) continue;
+      if (changes > bestScore) {
+        bestScore = changes;
+        best = e;
+      }
+    }
+    return best;
+  }
+}
+
+class _TrihexGuessFrame {
+  final Map<int, int> snapshot;
+  final int edgeId;
+  _TrihexGuessFrame(this.snapshot, this.edgeId);
 }

@@ -13,6 +13,7 @@ import '../Platform/ExtractData.dart'
 import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
 import '../provider/HexagonProvider.dart';
+import '../provider/auto_solve_dispatcher.dart';
 import '../widgets/PuzzleAppBar.dart';
 
 class GameSceneHexagon extends StatefulWidget {
@@ -356,6 +357,10 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
                 onSaveBookmark: _saveBookmark,
                 onLoadBookmark: _loadBookmark,
                 onClearBookmark: _clearBookmark,
+                onAutoSolve: () {
+                  // 사각형/삼각형/육각형/Trihex 공용 박싱 디스패처.
+                  runAutoSolve(provider);
+                },
               ),
               body: Stack(
                 children: [

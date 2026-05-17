@@ -407,6 +407,13 @@ class HexagonProvider with ChangeNotifier {
       }
     }
 
+    // Capture consistency AFTER clearing so it reflects what propagation sees.
+    // Only revert when propagation TURNED a previously-OK state into an
+    // inconsistent one. If the user over-drew a clue cell, direct-rule
+    // cascade is local and provides useful "you can't draw here" feedback —
+    // we keep those results.
+    final bool entryConsistent = _isStateConsistent();
+
     _propagateDirect();
     for (int laIter = 0; laIter < 5; laIter++) {
       if (!_runLookAhead()) break;
@@ -423,7 +430,7 @@ class HexagonProvider with ChangeNotifier {
       }
     }
 
-    if (!_isStateConsistent()) {
+    if (entryConsistent && !_isStateConsistent()) {
       for (int rr = 0; rr < rows; rr++) {
         for (int cc = 0; cc < cols; cc++) {
           for (int ee = 0; ee < 6; ee++) {
@@ -809,6 +816,15 @@ class HexagonProvider with ChangeNotifier {
   }
 
   Future<void> restart() async {
+    // 자동 풀기 중이었다면 먼저 중단 — restart 가 puzzle 을 비우는데
+    // 솔버 루프가 살아 있으면 다음 iter 가 비워진 보드 위에 추론 결과를
+    // 다시 덮어쓴다. SquareProvider.restart 와 동일한 가드.
+    if (_solverRunning) {
+      _solverShouldStop = true;
+      while (_solverRunning) {
+        await Future.delayed(const Duration(milliseconds: 30));
+      }
+    }
     _undoStack.clear();
     _redoStack.clear();
     for (int r = 0; r < rows; r++) {
@@ -887,4 +903,281 @@ class HexagonProvider with ChangeNotifier {
   }
 
   int getBoxColor(int row, int col) => 0;
+
+  ///**********************************************************************************
+  ///****************** human-like auto solver ******************
+  ///**********************************************************************************
+  /// Square / Triangle 솔버와 동일 골격. 한 수씩 forced-draw → forced-disable
+  /// 순으로 확정을 그어주고, 확정이 없으면 영향력 최대 edge 로 추측. 추측이
+  /// 실패하면 직전 추측 시점의 submit 스냅샷으로 복원하고 실패 edge 를
+  /// 사용자 X (-4) 로 잠근다. 최대 3 단계 추측.
+  static const int _solverMaxGuesses = 3;
+  static const Duration _solverStepDelay = Duration(milliseconds: 500);
+
+  bool _solverRunning = false;
+  bool _solverShouldStop = false;
+  String _solverStatus = "";
+
+  bool get isSolverRunning => _solverRunning;
+  String get solverStatus => _solverStatus;
+
+  void cancelSolver() {
+    _solverShouldStop = true;
+  }
+
+  Future<void> solveHumanLike() async {
+    if (_solverRunning) return;
+    _solverRunning = true;
+    _solverShouldStop = false;
+    _solverStatus = "solver_running";
+    notifyListeners();
+
+    final List<_HexagonGuessFrame> guesses = [];
+
+    try {
+      while (!_solverShouldStop) {
+        submit = _readSubmit();
+        if (_isPuzzleSolvedLocal()) {
+          _solverStatus = "solver_done";
+          notifyListeners();
+          break;
+        }
+
+        if (!_isStateConsistent()) {
+          if (!await _backtrackToLastGuess(guesses)) break;
+          await Future.delayed(_solverStepDelay);
+          continue;
+        }
+
+        final List<int>? draw = _findForcedDrawByContradiction();
+        if (draw != null) {
+          _solverStatus = "solver_step";
+          notifyListeners();
+          final ok = await _solverApplyAndCheck(
+              draw[0], draw[1], draw[2], themeColor.getNormalRandom());
+          if (_solverShouldStop) break;
+          if (!ok) {
+            if (!await _backtrackToLastGuess(guesses)) break;
+          }
+          await Future.delayed(_solverStepDelay);
+          continue;
+        }
+
+        final List<int>? disable = _findForcedDisableByContradiction();
+        if (disable != null) {
+          _solverStatus = "solver_step";
+          notifyListeners();
+          final ok = await _solverApplyAndCheck(
+              disable[0], disable[1], disable[2], -4);
+          if (_solverShouldStop) break;
+          if (!ok) {
+            if (!await _backtrackToLastGuess(guesses)) break;
+          }
+          await Future.delayed(_solverStepDelay);
+          continue;
+        }
+
+        if (guesses.length >= _solverMaxGuesses) {
+          _solverStatus = "solver_labels_full";
+          notifyListeners();
+          break;
+        }
+        final List<int>? guess = _pickHighestImpactGuess();
+        if (guess == null) {
+          _solverStatus = "solver_stuck";
+          notifyListeners();
+          break;
+        }
+        final snap =
+            _readSubmit().map((r) => List<int>.from(r)).toList();
+        guesses.add(_HexagonGuessFrame(snap, guess[0], guess[1], guess[2]));
+        _solverStatus = "solver_guess";
+        notifyListeners();
+        final ok = await _solverApplyAndCheck(
+            guess[0], guess[1], guess[2], themeColor.getNormalRandom());
+        if (_solverShouldStop) break;
+        if (!ok) {
+          if (!await _backtrackToLastGuess(guesses)) break;
+        }
+        await Future.delayed(_solverStepDelay);
+      }
+    } finally {
+      _solverRunning = false;
+      notifyListeners();
+    }
+  }
+
+  bool _isPuzzleSolvedLocal() {
+    if (rows == 0 || answer.isEmpty) return false;
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final int base = c * 6;
+        for (int e = 0; e < 6; e++) {
+          final bool ansSel = answer[r][base + e] == 1;
+          final bool subSel = puzzle[r][c].edges[e] >= 1;
+          if (ansSel != subSel) return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  Future<bool> _backtrackToLastGuess(
+      List<_HexagonGuessFrame> guesses) async {
+    if (guesses.isEmpty) {
+      _solverStatus = "solver_stuck";
+      notifyListeners();
+      return false;
+    }
+    final frame = guesses.removeLast();
+    _solverStatus = "solver_backtrack";
+    notifyListeners();
+
+    _undoStack.add(submit.map((r) => List<int>.from(r)).toList());
+    _redoStack.clear();
+    submit = frame.snapshot.map((r) => List<int>.from(r)).toList();
+    _applySubmit();
+    _applyConstraints();
+    submit = _readSubmit();
+    notifyListeners();
+
+    await Future.delayed(_solverStepDelay);
+    if (_solverShouldStop) return true;
+
+    await updateEdge(frame.r, frame.c, frame.e, -4);
+    return true;
+  }
+
+  Future<bool> _solverApplyAndCheck(int r, int c, int e, int value) async {
+    await updateEdge(r, c, e, value);
+    if (_solverShouldStop) return true;
+    return !_detectDeepContradiction();
+  }
+
+  bool _detectDeepContradiction() {
+    final snap = _snapshotEdges();
+    final contra = _propagateHypothesis();
+    _restoreEdges(snap);
+    return contra;
+  }
+
+  /// undecided edge 마다 "이 edge 가 -1 이라고 가정하면 모순?" 검사 → 확정 +1.
+  List<int>? _findForcedDrawByContradiction() {
+    final Set<int> tested = {};
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        for (int e = 0; e < 6; e++) {
+          if (puzzle[r][c].edges[e] != 0) continue;
+          final canonical = _canonicalEdgeId(r, c, e);
+          if (!tested.add(canonical)) continue;
+
+          final snap = _snapshotEdges();
+          puzzle[r][c].edges[e] = -1;
+          final nb = _neighborEdge(r, c, e);
+          if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = -1;
+          final contra = _propagateHypothesis();
+          _restoreEdges(snap);
+
+          if (contra) return [r, c, e];
+        }
+      }
+    }
+    return null;
+  }
+
+  /// undecided edge 마다 "이 edge 가 +1 이라고 가정하면 모순?" 검사 → 확정 -1.
+  /// _runLookAhead 가 이미 _applyConstraints 안에서 잡지만 5 iter 제한이
+  /// 있어 깊은 체인 -1 확정을 놓칠 수 있어 solver 가 한 번 더 짚는다.
+  List<int>? _findForcedDisableByContradiction() {
+    final Set<int> tested = {};
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        for (int e = 0; e < 6; e++) {
+          if (puzzle[r][c].edges[e] != 0) continue;
+          final canonical = _canonicalEdgeId(r, c, e);
+          if (!tested.add(canonical)) continue;
+
+          final snap = _snapshotEdges();
+          puzzle[r][c].edges[e] = 1;
+          final nb = _neighborEdge(r, c, e);
+          if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = 1;
+          final contra = _propagateHypothesis();
+          _restoreEdges(snap);
+
+          if (contra) return [r, c, e];
+        }
+      }
+    }
+    return null;
+  }
+
+  /// +1 가설 propagation 으로 변화량이 가장 큰 undecided edge 반환.
+  /// contradiction 인 edge 는 "확정 -1" 이므로 추측 후보에서 제외 —
+  /// docs/auto_solver_bug_analysis.md §1 의 contradiction-as-guess 트랩 방지.
+  List<int>? _pickHighestImpactGuess() {
+    int bestScore = -1;
+    List<int>? best;
+    final Set<int> tested = {};
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        for (int e = 0; e < 6; e++) {
+          if (puzzle[r][c].edges[e] != 0) continue;
+          final canonical = _canonicalEdgeId(r, c, e);
+          if (!tested.add(canonical)) continue;
+
+          final snap = _snapshotEdges();
+          puzzle[r][c].edges[e] = 1;
+          final nb = _neighborEdge(r, c, e);
+          if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = 1;
+          final contra = _propagateHypothesis();
+
+          int changes = 0;
+          if (!contra) {
+            for (int rr = 0; rr < rows; rr++) {
+              for (int cc = 0; cc < cols; cc++) {
+                for (int ee = 0; ee < 6; ee++) {
+                  if (puzzle[rr][cc].edges[ee] != snap[rr][cc][ee]) {
+                    changes++;
+                  }
+                }
+              }
+            }
+          }
+          _restoreEdges(snap);
+
+          if (contra) continue;
+          if (changes > bestScore) {
+            bestScore = changes;
+            best = [r, c, e];
+          }
+        }
+      }
+    }
+    return best;
+  }
+
+  List<List<List<int>>> _snapshotEdges() {
+    return List.generate(
+        rows,
+        (rr) => List.generate(
+            cols, (cc) => List<int>.from(puzzle[rr][cc].edges)));
+  }
+
+  void _restoreEdges(List<List<List<int>>> snap) {
+    for (int rr = 0; rr < rows; rr++) {
+      for (int cc = 0; cc < cols; cc++) {
+        for (int ee = 0; ee < 6; ee++) {
+          puzzle[rr][cc].edges[ee] = snap[rr][cc][ee];
+        }
+      }
+    }
+  }
+}
+
+class _HexagonGuessFrame {
+  final List<List<int>> snapshot;
+  final int r;
+  final int c;
+  final int e;
+  _HexagonGuessFrame(this.snapshot, this.r, this.c, this.e);
 }

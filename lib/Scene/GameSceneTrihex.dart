@@ -13,6 +13,7 @@ import '../Platform/ExtractData.dart'
 import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
 import '../provider/TrihexProvider.dart';
+import '../provider/auto_solve_dispatcher.dart';
 import '../widgets/PuzzleAppBar.dart';
 import '../widgets/TrihexBox.dart';
 
@@ -380,6 +381,10 @@ class GameStateTrihex extends State<GameSceneTrihex>
                       onSaveBookmark: _saveBookmark,
                       onLoadBookmark: _loadBookmark,
                       onClearBookmark: _clearBookmark,
+                      onAutoSolve: () {
+                        // 사각형/삼각형/육각형/Trihex 공용 박싱 디스패처.
+                        runAutoSolve(provider);
+                      },
                     ),
               body: Stack(
                 children: [
