@@ -8,6 +8,7 @@ import '../MakePuzzle/ReadSquare.dart';
 import '../l10n/app_localizations.dart';
 import '../Scene/GameSceneSquare.dart';
 import '../provider/SquareProvider.dart';
+import '../provider/auto_solve_dispatcher.dart';
 import 'MainUI.dart';
 import 'PuzzleAppBar.dart';
 
@@ -91,8 +92,9 @@ class GameUI {
       onAutoSolve: () {
         // 무거운 propagation 루프이므로 await 하지 않고 백그라운드로 시작.
         // 사용자는 동일 메뉴/취소 버튼으로 중단 가능.
+        // 사각형/삼각형 공용 박싱 디스패처에 넘긴다.
         final provider = Provider.of<SquareProvider>(context, listen: false);
-        provider.solveHumanLike();
+        runAutoSolve(provider);
       },
       onSaveBookmark: (int idx) async {
         await saveData(PuzzleAppBar.colorNames[idx]);

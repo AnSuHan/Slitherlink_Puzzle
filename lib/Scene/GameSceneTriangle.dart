@@ -14,6 +14,7 @@ import '../Platform/ExtractData.dart'
 import '../ThemeColor.dart';
 import '../User/UserInfo.dart';
 import '../provider/TriangleProvider.dart';
+import '../provider/auto_solve_dispatcher.dart';
 import '../widgets/PuzzleAppBar.dart';
 
 class GameSceneTriangle extends StatefulWidget {
@@ -442,6 +443,11 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
                 onSaveBookmark: _saveBookmark,
                 onLoadBookmark: _loadBookmark,
                 onClearBookmark: _clearBookmark,
+                onAutoSolve: () {
+                  // 사각형/삼각형 공용 박싱 디스패처. await 하지 않고
+                  // 백그라운드로 시작하면 메뉴를 닫고도 솔버가 진행한다.
+                  runAutoSolve(provider);
+                },
               ),
               body: Stack(
                 children: [
