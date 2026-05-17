@@ -170,6 +170,11 @@ class SquareProvider with ChangeNotifier {
   /// flicker the auto-solver introduces by chaining many sub-updates rapidly.
   bool _silentMode = false;
 
+  /// updateSquareBox 가 진입 시점에 저장하는 탭 직전 submit 스냅샷.
+  /// _applyConstraints 가 incremental diff 용으로 소비 후 null 로 reset.
+  /// "이 탭이 야기한 -1 만 적용" 동작에 사용. docs/click_toggle_bug_analysis.md §2.
+  List<List<int>>? _preTapSubmit;
+
   /// Notify unless we're inside a batched update. Used by every intermediate
   /// paint path; the terminal notify in [updateSquareBox] stays unconditional
   /// so a single end-of-click paint always reaches the UI.
@@ -941,6 +946,15 @@ class SquareProvider with ChangeNotifier {
       // ignore: avoid_print
       print("update updateSquareBox : $_isUpdating");
     }
+
+    // 탭/chain merge 직전의 canonical edge 스냅샷. _applyConstraints 가
+    // "이 탭이 야기한 -1 만 적용" 하기 위해 pre/post propagation 결과를 diff 한다.
+    // 솔버 silentMode 경로는 _applyConstraints 가 이 값을 무시.
+    if (!_silentMode) {
+      final preSnap = await readSquare.readSubmit(puzzle);
+      _preTapSubmit = preSnap.map((r) => List<int>.from(r)).toList();
+    }
+
     Set<int> nearColor = {};
     int lineValue = 0; //new line's value
     String pos = "";
@@ -1429,6 +1443,8 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
+    // 0-clue 셀 4 변은 직접 의미 (no edges) 라 자동 -1 마킹 유지.
+    // 추가 propagation -1 은 사용자 탭의 incremental diff 로만 시각화.
     await setDefaultLineStep1();
   }
 
@@ -1685,14 +1701,14 @@ class SquareProvider with ChangeNotifier {
   /// Square 의 모든 propagation 진입점. Hexagon/Triangle/Trihex 의 _applyConstraints
   /// 와 동일한 흐름이며, 다음 단계는 docs/constraint_lookahead.md §5 와 1:1 대응한다.
   ///
-  /// 1. guardSnap = 모든 cell 의 4 방향 edge 풀스냅샷 (cascade-abort revert 용)
-  /// 2. 작업용 그리드 w 빌드 (≥1 → 1, 0/-1/-2 → 0, 그 외 → -1)
+  /// 1. 작업용 그리드 w 빌드 (≥1 → 1, 0/-1/-2 → 0, 그 외 → -1)
   ///    - -2 를 0 으로 매핑해 사용자 빨강 마킹이 hard premise 가 되지 않도록 한다.
-  /// 3. propagateDirectSquare(w, nums) fixed-point   (square_propagation_core.dart)
-  /// 4. isWorkingStateConsistent(w, nums) 가 true 이면 look-ahead loop ≤ 5 회
-  /// 5. puzzle 에 반영 (사용자 그림 ≥1, 힌트 -3/-5, 사용자 X -4 는 보존)
-  /// 6. 원래 -2 이던 자리에 새로 -1 이 도출되면 -2 로 복원 (빨강 마킹 의미 보존)
-  /// 7. 최종 isWorkingStateConsistent 가 false 면 guardSnap 으로 전체 revert
+  /// 2. propagateDirectSquare(w, nums) fixed-point   (square_propagation_core.dart)
+  /// 3. isWorkingStateConsistent(w, nums) 가 true 이면 look-ahead loop ≤ 5 회
+  /// 4. puzzle 에 반영 (사용자 그림 ≥1, 힌트 -3/-5, 사용자 X -4 는 보존,
+  ///    기존 -1/-2 도 monotonic 유지 — docs/click_toggle_bug_analysis.md §1)
+  /// 5. 원래 -2 이던 자리에 새로 -1 이 도출되면 -2 로 복원 (빨강 마킹 의미 보존)
+  /// 6. 최종 isWorkingStateConsistent 가 false 면 canonical edge 만 orig 로 되돌림
   Future<void> _applyConstraints() async {
     if (UserInfo.debugMode["print_methodName"]!) {
       // ignore: avoid_print
@@ -1703,10 +1719,6 @@ class SquareProvider with ChangeNotifier {
     if (rows == 0) return;
     final int cols = puzzle[0].length;
     if (cols == 0) return;
-
-    // 1. 진입 시점 풀스냅샷 (redundant up/down/left/right 모두 포함 — non-canonical
-    //    자리에 사용자 tap 이 남아 있을 수 있어 canonical edge 만으로는 보존 불가).
-    final List<List<List<int>>> guardSnap = _snapshotPuzzleEdges();
 
     // clue 그리드를 한 번만 빌드. propagation 안에서 매번 puzzle[i][j].num 을
     // 다시 읽지 않도록.
@@ -1722,13 +1734,30 @@ class SquareProvider with ChangeNotifier {
       return -1; // -3 정답 hint, -4 사용자 X, -5 오답 hint 모두 hard-disabled
     }).toList()).toList();
 
+    // incremental diff 용 pre-tap propagation 결과.
+    // 새 -1 도출 중 이번 탭 *이전* propagation 으로도 도출됐을 것은 적용에서 제외 →
+    // "이 탭이 야기한 -1 만 시각화" (docs/click_toggle_bug_analysis.md §2).
+    // pre-tap 스냅샷이 없거나 (외부 호출, 솔버) silentMode 면 diff 적용 안 함.
+    final List<List<int>>? preSnap = _preTapSubmit;
+    _preTapSubmit = null;
+    List<List<int>>? wPreBaseline;
+    if (preSnap != null && !_silentMode) {
+      final List<List<int>> wPre = preSnap.map((row) => row.map((v) {
+        if (v >= 1) return 1;
+        if (v == 0 || v == -1 || v == -2) return 0;
+        return -1;
+      }).toList()).toList();
+      propagateDirectSquare(wPre, rows, cols, nums);
+      wPreBaseline = wPre;
+    }
+
     // 3. Phase 1 — 직접 추론(셀+꼭짓점 fixed-point). 가벼움 (≤ 30ms 수준).
     //    여기 결과만으로도 사용자 시각 -1 의 80~90% 가 잡히므로 즉시 반영해
     //    탭 응답성을 확보한다. silentMode 라도 writeSubmit 은 그대로 수행해야
     //    Phase 2 가 아무 변화도 추가하지 않을 때 Phase 1 결과가 puzzle 에서
     //    누락되지 않는다. paint 는 _emitNotify 가 막아 한 클릭 = 한 paint 보장.
     propagateDirectSquare(w, rows, cols, nums);
-    _writeWorkingToEdge(edge, orig, w);
+    _writeWorkingToEdge(edge, orig, w, preBaseline: wPreBaseline);
     await readSquare.writeSubmit(puzzle, edge);
     submit = edge;
     _emitNotify();
@@ -1789,15 +1818,18 @@ class SquareProvider with ChangeNotifier {
     // 6. Phase 2 결과 반영 (변화가 있었을 때만). edge 는 Phase 1 직후 puzzle 과
     //    동기화돼 있으므로 그 위에 추가 deduction 만 얹는다.
     if (laAnyChanged) {
-      _writeWorkingToEdge(edge, orig, w);
+      _writeWorkingToEdge(edge, orig, w, preBaseline: wPreBaseline);
       await readSquare.writeSubmit(puzzle, edge);
     }
 
     // 7. 사후 일관성 가드. propagation 이 보드를 globally infeasible 하게 만들었다면
     //    (예: 사용자가 정답 라인을 -4 로 잠근 직후) 이 시점에 false.
     //
-    //    사용자 1회 탭 (_silentMode == false): 진입 스냅샷으로 전체 복원해
-    //    cascade 비활성화 사고를 차단 (기존 동작 유지).
+    //    사용자 1회 탭 (_silentMode == false): canonical edge 만 pre-propagation
+    //    스냅샷(orig)으로 되돌려 새 -1 도출만 무효화한다. 사용자 탭/chain merge 와
+    //    prior -1 은 그대로 유지되어 보드 전체가 "snap" 으로 변하는 churn 이 사라짐
+    //    (docs/click_toggle_bug_analysis.md §1번 대응). non-canonical 위치(inner cell
+    //    .left/.up)는 propagation 이 건드리지 않았으므로 복원할 것이 없음.
     //
     //    솔버 (_silentMode == true): revert 하지 않고 _solverDetectedInconsistency
     //    플래그만 set. 이대로 두면 puzzle 에 모순 상태가 남지만, 솔버 측에서 즉시
@@ -1814,8 +1846,8 @@ class SquareProvider with ChangeNotifier {
         _solverDetectedInconsistency = true;
         submit = edge;
       } else {
-        _restorePuzzleEdges(guardSnap);
-        submit = await readSquare.readSubmit(puzzle);
+        await readSquare.writeSubmit(puzzle, orig);
+        submit = orig;
       }
     } else {
       submit = edge;
@@ -1825,8 +1857,19 @@ class SquareProvider with ChangeNotifier {
 
   /// w 의 -1/0 결과를 edge 에 반영. 잠금 자리(-3, -4, -5, ≥1)는 보존하고
   /// 원래 -2 자리에 새로 -1 이 도출되면 -2 로 복원한다 (사용자 빨강 마킹 의미 보존).
+  ///
+  /// docs/click_toggle_bug_analysis.md §1 대응: 기존 -1/-2 도 propagation 이 재도출
+  /// 하지 못해도 유지해 한 탭에 보드 전체 -1 분포가 churn 되는 것을 방지. propagation
+  /// 은 -1 을 추가만 하고 제거하지 않는다 (monotonic). 사용자가 라인을 지워 prior -1
+  /// 의 전제가 사라진 경우는 undo (doSubmit) 가 정상 정리.
+  ///
+  /// docs/click_toggle_bug_analysis.md §2 대응: [preBaseline] 이 주어지면
+  /// pre-tap propagation 으로도 도출됐을 -1 (= w_pre[i][j] == -1) 은 이번 탭이
+  /// 야기한 것이 아니므로 새로 적용에서 제외. 사용자 시각에는 "이 탭이 만든 -1" 만
+  /// 보임. 솔버는 null 을 전달해 전체 propagation 결과를 그대로 받는다.
   void _writeWorkingToEdge(
-      List<List<int>> edge, List<List<int>> orig, List<List<int>> w) {
+      List<List<int>> edge, List<List<int>> orig, List<List<int>> w,
+      {List<List<int>>? preBaseline}) {
     for (int i = 0; i < edge.length; i++) {
       for (int j = 0; j < edge[i].length; j++) {
         final int origValue = orig[i][j];
@@ -1837,6 +1880,17 @@ class SquareProvider with ChangeNotifier {
           continue;
         }
         final int derived = w[i][j] == -1 ? -1 : 0;
+        if ((origValue == -1 || origValue == -2) && derived == 0) {
+          continue;
+        }
+        // 새 -1 마크: pre-tap propagation 결과에서도 -1 이면 이번 탭이 야기한
+        // 것이 아니라 clue 만으로도 도출됐을 것 → 적용하지 않음.
+        if (preBaseline != null &&
+            origValue == 0 &&
+            derived == -1 &&
+            preBaseline[i][j] == -1) {
+          continue;
+        }
         edge[i][j] =
             (origValue == -2 && derived == -1) ? -2 : derived;
       }
@@ -1846,32 +1900,6 @@ class SquareProvider with ChangeNotifier {
   /// External entry point for callers outside this class (e.g. HowToPlay).
   /// Internal callers should use [_applyConstraints] directly.
   Future<void> applyConstraints() => _applyConstraints();
-
-  /// Snapshot every cell's 4-direction edge values. Stores all four sides
-  /// even though for inner cells only `down`/`right` are canonical — the
-  /// non-canonical sides (`up`/`left` of inner cells) carry user-tap state
-  /// that updateSquareBox writes there, so they must round-trip through
-  /// snapshot/restore.
-  List<List<List<int>>> _snapshotPuzzleEdges() {
-    return List.generate(puzzle.length, (i) =>
-      List.generate(puzzle[i].length, (j) => [
-        puzzle[i][j].up,
-        puzzle[i][j].down,
-        puzzle[i][j].left,
-        puzzle[i][j].right,
-      ]));
-  }
-
-  void _restorePuzzleEdges(List<List<List<int>>> snap) {
-    for (int i = 0; i < puzzle.length; i++) {
-      for (int j = 0; j < puzzle[i].length; j++) {
-        puzzle[i][j].up = snap[i][j][0];
-        puzzle[i][j].down = snap[i][j][1];
-        puzzle[i][j].left = snap[i][j][2];
-        puzzle[i][j].right = snap[i][j][3];
-      }
-    }
-  }
 
   ///**********************************************************************************
   ///**********************************************************************************
