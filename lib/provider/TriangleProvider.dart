@@ -851,7 +851,7 @@ class TriangleProvider with ChangeNotifier {
   /// 사용자 X (-4) 로 잠가 같은 분기를 다시 시도하지 않게 한다. 추측 슬롯은
   /// 최대 3 단계까지 누적 (Square 의 R/G/B 슬롯과 동일한 깊이). 사용자가
   /// [cancelSolver] 를 호출하거나 restart 하면 즉시 종료한다.
-  static const int _solverMaxGuesses = 3;
+  static const int _solverMaxGuesses = 10;
 
   bool _solverRunning = false;
   bool _solverShouldStop = false;
@@ -873,6 +873,13 @@ class TriangleProvider with ChangeNotifier {
     notifyListeners();
 
     final List<_TriangleGuessFrame> guesses = [];
+
+    // 솔버 시작 시점 submit 스냅샷 — done 외 종료 시 보드 전체를 이 시점으로
+    // 복원해 솔버가 남긴 +1 추측 라인, look-ahead -1 cascade, forced
+    // disable (-4) 를 모두 폐기한다. 사용자가 직접 그어 두었던 ≥1/-2/-3/-4
+    // 등은 스냅샷에 들어 있어 그대로 보존된다.
+    final List<List<int>> preSolverSubmit =
+        _readSubmit().map((r) => List<int>.from(r)).toList();
 
     try {
       while (!_solverShouldStop) {
@@ -950,6 +957,15 @@ class TriangleProvider with ChangeNotifier {
       }
     } finally {
       _solverRunning = false;
+      // done 외 종료 시 pre-solver 시점으로 전체 복원. 솔버가 추가한 +1/-1/-4
+      // 가 다음 사용자 탭의 propagation seed 가 되어 잘못된 cascade 를 만드는
+      // 사고를 막는다 (SquareProvider 와 동일 정책).
+      if (_solverStatus != "solver_done") {
+        submit = preSolverSubmit.map((r) => List<int>.from(r)).toList();
+        _applySubmit();
+        _applyConstraints();
+        submit = _readSubmit();
+      }
       notifyListeners();
     }
   }

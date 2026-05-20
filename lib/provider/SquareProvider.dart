@@ -2022,7 +2022,11 @@ class SquareProvider with ChangeNotifier {
   /// 저장하고, propagation 영향이 가장 큰 undecided edge 로 추측한다. 추측이
   /// 모순으로 이어지면 슬롯을 복원하고 반대값(-4 사용자 X)으로 확정. 슬롯 3 개를
   /// 모두 소진했거나 사용자가 [cancelSolver] 를 호출하면 종료한다.
-  static const List<String> _solverSlotKeys = ["__solver_R", "__solver_G", "__solver_B"];
+  static const List<String> _solverSlotKeys = [
+    "__solver_R", "__solver_G", "__solver_B",
+    "__solver_C", "__solver_M", "__solver_Y",
+    "__solver_O", "__solver_P", "__solver_T", "__solver_W",
+  ];
 
   bool _solverRunning = false;
   bool _solverShouldStop = false;
@@ -2048,6 +2052,13 @@ class SquareProvider with ChangeNotifier {
     notifyListeners();
 
     final List<_SolverGuessFrame> guesses = [];
+
+    // 솔버 시작 시점 submit 스냅샷 — stuck/labels_full 종료 시 솔버가 새로
+    // 박은 -4 잠금을 사용자 의도로 보존했던 자리는 빼고 모두 0 으로 정리해,
+    // 이후 사용자 탭의 propagation 이 잘못된 -4 시드로부터 -1 cascade 를
+    // 만들지 않도록 한다.
+    final List<List<int>> preSolverSubmit =
+        await readSquare.readSubmit(puzzle);
 
     try {
       while (!_solverShouldStop) {
@@ -2150,6 +2161,21 @@ class SquareProvider with ChangeNotifier {
       }
     } finally {
       _solverRunning = false;
+      // 솔버가 done 이외로 종료한 경우 — 보드 전체를 pre-solver 시점으로 복원.
+      // 솔버가 그은 +1 추측 라인, look-ahead 가 도출한 -1 cascade, forced
+      // disable (-4) 모두 폐기된다. 사용자가 직접 그어 두었던 ≥1/-2/-3/-4/-5
+      // 등은 preSolverSubmit 스냅샷에 들어 있어 그대로 보존된다.
+      //
+      // 이전 구현은 -4 만 되돌렸는데, 솔버 종료 시점의 잔존 +1 추측 라인이
+      // 다음 사용자 탭의 propagation seed 가 되어 잘못된 -1 cascade 를
+      // 만들었다 (보고: 클릭 한 번에 비활성되지 않아야 할 변이 비활성됨).
+      if (_solverStatus != "solver_done") {
+        final List<List<int>> restored =
+            preSolverSubmit.map((r) => List<int>.from(r)).toList();
+        await readSquare.writeSubmit(puzzle, restored);
+        submit = restored;
+        await _applyConstraints();
+      }
       // 사용한 슬롯 키 정리 (사용자 Red/Green/Blue 라벨은 건드리지 않음).
       for (int i = 0; i < _solverSlotKeys.length; i++) {
         await _solverClearSlot(i);

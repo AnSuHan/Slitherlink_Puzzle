@@ -842,7 +842,7 @@ class TrihexProvider with ChangeNotifier {
   /// Square / Triangle / Hexagon 솔버와 동일 골격이지만 Trihex 는 edgeState 가
   /// Map<edgeId,int> 라 snapshot/restore 는 Map 복사 한 번이면 끝난다.
   /// 추측 frame 도 edgeState snapshot 만 들고 있으면 충분.
-  static const int _solverMaxGuesses = 3;
+  static const int _solverMaxGuesses = 10;
 
   bool _solverRunning = false;
   bool _solverShouldStop = false;
@@ -864,6 +864,12 @@ class TrihexProvider with ChangeNotifier {
     notifyListeners();
 
     final List<_TrihexGuessFrame> guesses = [];
+
+    // 솔버 시작 시점 edgeState 스냅샷 — done 외 종료 시 보드 전체를 이 시점으로
+    // 복원해 솔버가 남긴 +1 추측 라인, look-ahead -1 cascade, forced disable
+    // (-4) 를 모두 폐기한다. 사용자가 직접 그어 두었던 entry 는 스냅샷에
+    // 들어 있어 그대로 보존된다 (SquareProvider 와 동일 정책).
+    final Map<int, int> preSolverEdgeState = _snapshot();
 
     try {
       while (!_solverShouldStop) {
@@ -931,6 +937,11 @@ class TrihexProvider with ChangeNotifier {
       }
     } finally {
       _solverRunning = false;
+      // done 외 종료 시 pre-solver 시점으로 전체 복원.
+      if (_solverStatus != "solver_done") {
+        _restore(preSolverEdgeState);
+        _applyConstraints();
+      }
       notifyListeners();
     }
   }

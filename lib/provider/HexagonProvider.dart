@@ -921,7 +921,7 @@ class HexagonProvider with ChangeNotifier {
   /// 순으로 확정을 그어주고, 확정이 없으면 영향력 최대 edge 로 추측. 추측이
   /// 실패하면 직전 추측 시점의 submit 스냅샷으로 복원하고 실패 edge 를
   /// 사용자 X (-4) 로 잠근다. 최대 3 단계 추측.
-  static const int _solverMaxGuesses = 3;
+  static const int _solverMaxGuesses = 10;
 
   bool _solverRunning = false;
   bool _solverShouldStop = false;
@@ -943,6 +943,13 @@ class HexagonProvider with ChangeNotifier {
     notifyListeners();
 
     final List<_HexagonGuessFrame> guesses = [];
+
+    // 솔버 시작 시점 submit 스냅샷 — done 외 종료 시 보드 전체를 이 시점으로
+    // 복원해 솔버가 남긴 +1 추측 라인, look-ahead -1 cascade, forced disable
+    // (-4) 를 모두 폐기한다. 사용자가 직접 그어 두었던 ≥1/-2/-3/-4 등은
+    // 스냅샷에 들어 있어 그대로 보존된다 (SquareProvider 와 동일 정책).
+    final List<List<int>> preSolverSubmit =
+        _readSubmit().map((r) => List<int>.from(r)).toList();
 
     try {
       while (!_solverShouldStop) {
@@ -1013,6 +1020,13 @@ class HexagonProvider with ChangeNotifier {
       }
     } finally {
       _solverRunning = false;
+      // done 외 종료 시 pre-solver 시점으로 전체 복원.
+      if (_solverStatus != "solver_done") {
+        submit = preSolverSubmit.map((r) => List<int>.from(r)).toList();
+        _applySubmit();
+        _applyConstraints();
+        submit = _readSubmit();
+      }
       notifyListeners();
     }
   }
