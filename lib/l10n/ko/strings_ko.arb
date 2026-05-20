@@ -82,6 +82,7 @@
   "solver_guess": "추측 시도 중",
   "solver_backtrack": "추측 실패, 복원 중",
   "solver_done": "완료",
-  "solver_stuck": "더 이상 진행할 수 없음",
-  "solver_labels_full": "라벨 슬롯 모두 사용함"
+  "solver_stuck": "더 이상 진행할 수 없음 — 보드를 복원했습니다",
+  "solver_labels_full": "추측 슬롯을 모두 써도 풀지 못함 — 보드를 복원했습니다",
+  "solver_ok": "확인"
 }

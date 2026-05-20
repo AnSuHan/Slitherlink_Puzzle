@@ -2031,15 +2031,28 @@ class SquareProvider with ChangeNotifier {
   bool _solverRunning = false;
   bool _solverShouldStop = false;
   String _solverStatus = "";
+  /// done 외로 종료한 솔버의 마지막 status 를 banner 로 사용자에게 보여주기
+  /// 위한 플래그. true 인 동안 banner 가 OK 버튼과 함께 유지된다.
+  /// `dismissSolverNotice` 로 사용자가 닫으면 false.
+  bool _solverFinished = false;
   /// `_applyConstraints` 가 silentMode 중 사후 inconsistency 를 감지하면 set.
   /// 솔버는 매 click 함수 반환 직후 이 값을 확인해 backtrack 여부를 결정한다.
   bool _solverDetectedInconsistency = false;
 
   bool get isSolverRunning => _solverRunning;
+  bool get showSolverBanner => _solverRunning || _solverFinished;
   String get solverStatus => _solverStatus;
 
   void cancelSolver() {
     _solverShouldStop = true;
+  }
+
+  /// 사용자가 OK 를 눌러 결과 banner 를 닫을 때 호출. 솔버 자체는 이미 종료된
+  /// 상태이므로 보드를 추가로 건드리지 않는다.
+  void dismissSolverNotice() {
+    if (!_solverFinished) return;
+    _solverFinished = false;
+    notifyListeners();
   }
 
   /// [stepDelay] 한 수와 다음 수 사이의 대기. 기본 0 (지연 없음).
@@ -2048,6 +2061,7 @@ class SquareProvider with ChangeNotifier {
     if (_solverRunning) return;
     _solverRunning = true;
     _solverShouldStop = false;
+    _solverFinished = false;
     _solverStatus = "solver_running";
     notifyListeners();
 
@@ -2175,6 +2189,10 @@ class SquareProvider with ChangeNotifier {
         await readSquare.writeSubmit(puzzle, restored);
         submit = restored;
         await _applyConstraints();
+        // 사용자가 OK 를 눌러 닫을 때까지 banner 가 마지막 status (예:
+        // solver_stuck / solver_labels_full) 를 표시. 그렇지 않으면 banner 가
+        // 그냥 사라져 사용자가 "솔버가 성공했나? 보드가 왜 비었지?" 로 오해.
+        _solverFinished = true;
       }
       // 사용한 슬롯 키 정리 (사용자 Red/Green/Blue 라벨은 건드리지 않음).
       for (int i = 0; i < _solverSlotKeys.length; i++) {

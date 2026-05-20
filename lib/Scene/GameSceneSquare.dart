@@ -547,7 +547,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
                               child: const Icon(Icons.upload_rounded),
                             ),
                           ),
-                        if (_provider.isSolverRunning)
+                        if (_provider.showSolverBanner)
                           Positioned(
                             top: 12,
                             left: 12,
@@ -640,10 +640,14 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
      */
   }
 
-  /// Auto-solver 가 동작 중일 때 상단에 표시되는 상태/중지 배너.
-  /// 사용자는 여기서만 솔버를 멈출 수 있다.
+  /// Auto-solver 의 상태 배너.
+  /// - 솔버 실행 중: spinner + 현재 status + "Stop" 버튼 (cancelSolver)
+  /// - 솔버 종료 (done 외): 최종 status 텍스트 + "OK" 버튼 (dismissSolverNotice).
+  ///   사용자가 OK 누르기 전까지 유지돼 "솔버가 풀지 못해 보드를 복원했다" 를
+  ///   알린다. 보드는 이미 pre-solver 시점으로 롤백된 상태.
   Widget _buildSolverBanner(BuildContext context, SquareProvider provider) {
     final l10n = AppLocalizations.of(context);
+    final bool isRunning = provider.isSolverRunning;
     final String statusKey = provider.solverStatus.isEmpty
         ? 'solver_running'
         : provider.solverStatus;
@@ -655,15 +659,17 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         child: Row(
           children: [
-            const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.4,
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            if (isRunning) ...[
+              const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.4,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
+              const SizedBox(width: 12),
+            ],
             Expanded(
               child: Text(
                 statusText,
@@ -672,13 +678,17 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
               ),
             ),
             TextButton(
-              onPressed: provider.cancelSolver,
+              onPressed: isRunning
+                  ? provider.cancelSolver
+                  : provider.dismissSolverNotice,
               style: TextButton.styleFrom(
                 foregroundColor: Colors.white,
                 minimumSize: const Size(0, 32),
                 padding: const EdgeInsets.symmetric(horizontal: 12),
               ),
-              child: Text(l10n?.translate('solver_cancel') ?? 'Stop'),
+              child: Text(isRunning
+                  ? (l10n?.translate('solver_cancel') ?? 'Stop')
+                  : (l10n?.translate('solver_ok') ?? 'OK')),
             ),
           ],
         ),

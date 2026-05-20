@@ -82,6 +82,7 @@
   "solver_guess": "Trying a guess",
   "solver_backtrack": "Guess failed, restoring",
   "solver_done": "Done",
-  "solver_stuck": "Cannot make further progress",
-  "solver_labels_full": "All label slots used"
+  "solver_stuck": "Cannot make further progress — board restored",
+  "solver_labels_full": "Ran out of guess slots — board restored",
+  "solver_ok": "OK"
 }
