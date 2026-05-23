@@ -243,16 +243,18 @@ bool propagateColoringSquare(
 
 /// direct propagation + coloring propagation 를 fixed-point 까지 교대로
 /// 반복한다. 한 쪽이 변화 없으면 종료. 둘 다 변화 없을 때 완전 수렴.
+///
+/// **HOTFIX 2026-05-23**: propagateColoringSquare 의 weighted union-find
+/// path-compression 로직이 큰 보드에서 false-positive contradiction 을 만들어
+/// 솔버가 첫 iter 에서 stuck 종료하는 회귀가 보고됨. 단위 테스트 작성/디버깅
+/// 전까지 coloring 호출을 임시 비활성화 — Tier 1 (iter cap) + Tier 2
+/// (no-progress 가드) 효과만 살린다.
 void propagateDirectAndColoringSquare(
     List<List<int>> w, int rows, int cols, List<List<int>> nums) {
-  // 외부 안전 cap. 정상 케이스는 2-3회 cycle 안에 수렴.
-  int outerIter = 0;
-  while (outerIter < 20) {
-    outerIter++;
-    propagateDirectSquare(w, rows, cols, nums);
-    final bool coloringChanged = propagateColoringSquare(w, rows, cols);
-    if (!coloringChanged) return;
-  }
+  propagateDirectSquare(w, rows, cols, nums);
+  // TODO(coloring): propagateColoringSquare 디버깅 후 재투입.
+  // 단위 테스트: test/square_coloring_test.dart 에서 (a) 2x2 0+1 케이스,
+  // (b) 4x4 0 대각 케이스, (c) 16x11 hard 보드의 첫 iter 결과 비교.
 }
 
 /// Returns false iff the working grid already violates a hard constraint
