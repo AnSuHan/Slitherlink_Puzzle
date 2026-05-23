@@ -111,11 +111,16 @@ void propagateDirectSquare(
 /// 즉시 결정해 분기 폭을 급격히 줄인다 — Slitherlink 솔버 문헌의 핵심 기법.
 /// 16×11 hard 보드 기준 한 호출 비용 O(E + V·α(V)) ≈ ~1000 ops.
 ///
-/// 반환: w 에 새로 마킹된 edge 가 있으면 true. 호출자는 true 이면 다시
-/// direct propagation 을 돌려야 한다. coloring 에서 자체 모순이 검출되면
-/// false 반환 (cell/vertex 규칙이 propagateDirectSquare 다음 패스에서 잡음).
+/// **방어 rollback**: Phase 2 가 마킹한 mutation 으로 셀 quota / 꼭짓점 차수
+/// 가 깨지면 (예: 0-인접 1-셀의 모든 edge 가 disable 되어 cell rule 위반) 모든
+/// mutation 을 rollback 하고 false 반환. coloring 이 (수학적으로 옳지만) puzzle
+/// 의 다른 제약과 충돌하는 forced 를 만드는 경우 솔버를 더럽히지 않게 한다.
+///
+/// 반환: w 에 새로 마킹된 edge 가 있고 일관성이 유지되면 true. coloring 자체
+/// union 단계에서 contradiction 이거나 mutation 으로 셀/꼭짓점 일관성이 깨지면
+/// false 반환 (호출자는 false 면 그 round 의 coloring 효과는 없는 것으로 본다).
 bool propagateColoringSquare(
-    List<List<int>> w, int rows, int cols) {
+    List<List<int>> w, int rows, int cols, List<List<int>> nums) {
   final int nCells = rows * cols;
   final int outsideIdx = nCells;
   final int nNodes = nCells + 1;
@@ -207,7 +212,8 @@ bool propagateColoringSquare(
   }
 
   // 2단계: 미정 edge 에서 양쪽 parity 관계가 결정되어 있으면 forced.
-  bool changed = false;
+  // mutation 좌표를 따로 저장 — 사후 일관성 검증에서 fail 하면 rollback.
+  final List<int> mutations = [];
   for (int i = 0; i <= rows; i++) {
     final int ei = 2 * i;
     final List<int> row = w[ei];
@@ -220,7 +226,7 @@ bool propagateColoringSquare(
       if (rx[0] != ry[0]) continue;
       final int requiredParity = rx[1] ^ ry[1];
       row[j] = requiredParity == 1 ? 1 : -1;
-      changed = true;
+      mutations.add(ei * 1024 + j);
     }
   }
   for (int i = 0; i < rows; i++) {
@@ -235,26 +241,37 @@ bool propagateColoringSquare(
       if (rx[0] != ry[0]) continue;
       final int requiredParity = rx[1] ^ ry[1];
       row[j] = requiredParity == 1 ? 1 : -1;
-      changed = true;
+      mutations.add(ei * 1024 + j);
     }
   }
-  return changed;
+
+  if (mutations.isEmpty) return false;
+
+  // 사후 검증: coloring 이 마킹한 결과가 cell quota / 꼭짓점 차수 와 충돌하면
+  // (예: 0-인접 1-셀이 모든 edge -1 으로 starved) 전체 mutation 을 rollback.
+  // 솔버에게 가짜 forced 를 흘려보내지 않는다.
+  if (!isWorkingStateConsistent(w, rows, cols, nums)) {
+    for (final pos in mutations) {
+      w[pos ~/ 1024][pos & 1023] = 0;
+    }
+    return false;
+  }
+  return true;
 }
 
 /// direct propagation + coloring propagation 를 fixed-point 까지 교대로
-/// 반복한다. 한 쪽이 변화 없으면 종료. 둘 다 변화 없을 때 완전 수렴.
-///
-/// **HOTFIX 2026-05-23**: propagateColoringSquare 의 weighted union-find
-/// path-compression 로직이 큰 보드에서 false-positive contradiction 을 만들어
-/// 솔버가 첫 iter 에서 stuck 종료하는 회귀가 보고됨. 단위 테스트 작성/디버깅
-/// 전까지 coloring 호출을 임시 비활성화 — Tier 1 (iter cap) + Tier 2
-/// (no-progress 가드) 효과만 살린다.
+/// 반복한다. coloring 자체 mutation 후에는 cell/vertex 일관성 검증으로 잘못된
+/// forced 를 거른다 (propagateColoringSquare 내부에서 rollback). 그래도 외부
+/// loop 가 안전망 (둘 다 변화 없을 때 종료, 외부 cap 20).
 void propagateDirectAndColoringSquare(
     List<List<int>> w, int rows, int cols, List<List<int>> nums) {
-  propagateDirectSquare(w, rows, cols, nums);
-  // TODO(coloring): propagateColoringSquare 디버깅 후 재투입.
-  // 단위 테스트: test/square_coloring_test.dart 에서 (a) 2x2 0+1 케이스,
-  // (b) 4x4 0 대각 케이스, (c) 16x11 hard 보드의 첫 iter 결과 비교.
+  int outerIter = 0;
+  while (outerIter < 20) {
+    outerIter++;
+    propagateDirectSquare(w, rows, cols, nums);
+    final bool coloringChanged = propagateColoringSquare(w, rows, cols, nums);
+    if (!coloringChanged) return;
+  }
 }
 
 /// Returns false iff the working grid already violates a hard constraint

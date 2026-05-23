@@ -195,8 +195,18 @@ Tier 1 적용 후에도 16×11 hard 보드에서 솔버가 분기 폭발로 사�
 - 어떤 경우든 5000 iter 또는 80 무진행 streak 안에 종료 보장.
 
 ### 7-4. 회귀 위험
-- `propagateColoringSquare` 의 path-compression 로직: weighted union-find 의 parity 누적 갱신이 잘못되면 잘못된 forced move 가 나와 솔버가 wrong path 로 진입 가능. → reverse-order 누적 (deeper-first) 방식으로 단순화. 테스트로 검증 필요.
+- `propagateColoringSquare` 의 path-compression 로직: weighted union-find 의 parity 누적 갱신이 잘못되면 잘못된 forced move 가 나와 솔버가 wrong path 로 진입 가능. → reverse-order 누적 (deeper-first) 방식으로 단순화 + `test/square_coloring_test.dart` 8 케이스로 검증 통과.
 - coloring 자체 모순 시 (예: 다중 해 또는 사용자 X 충돌) `unionPair` 가 false 반환 → 함수 false 반환. 호출자(`propagateDirectAndColoringSquare`) 가 그 시점에 종료. cell/vertex 규칙은 다음 outer iter 에서 동일 모순을 잡으므로 결과적으로 backtrack 트리거.
+
+### 7-4b. coloring 사후 검증 + rollback (2026-05-23 추가)
+
+처음 통합 시 사용자 11×10 보드에서 첫 iter "solver_stuck" 회귀 발생. 원인: coloring 이 수학적으로 올바른 forced 를 마킹하지만, 그 결과가 cell quota / 꼭짓점 차수 규칙과 즉시 충돌하는 transient state 가 존재. 예: 0-인접 1-셀의 모든 edge 가 coloring 으로 disable 되어 cell rule (dr+un < num) 위반.
+
+수정: `propagateColoringSquare` 의 Phase 2 mutation 을 `mutations` 리스트로 누적, 종료 직전 `isWorkingStateConsistent(w, rows, cols, nums)` 검증. 일관성 깨지면 모든 mutation rollback + false 반환. 솔버에 잘못된 forced 를 흘려보내지 않는다.
+
+서명 변경: `propagateColoringSquare(w, rows, cols)` → `propagateColoringSquare(w, rows, cols, nums)`. wrapper 도 같이 갱신.
+
+테스트: `test/square_coloring_test.dart` 의 contradiction 케이스가 이 rollback 동작도 함께 확인.
 
 ### 7-5. 미적용 항목 (잔여)
 - Tier 2 — forced inference cross-backtrack 캐시: 구현 비용이 커서 보류. coloring 으로 backtrack 자체가 줄어들면 불필요.
