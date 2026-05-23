@@ -101,6 +101,160 @@ void propagateDirectSquare(
   }
 }
 
+/// Slitherlink 의 Inside/Outside coloring 규칙 propagation.
+/// 모든 셀과 "외부" 가상 노드를 weighted union-find 에 넣고, 결정된 edge 별로
+/// 양쪽 노드의 parity 를 union (그어진 edge = different, disabled = same).
+/// 이후 모든 미정 edge 에 대해 양쪽 노드의 parity 관계가 결정되어 있으면
+/// 그 edge 도 forced (다른 색 = 그어야 함, 같은 색 = 비활성화).
+///
+/// 이 한 패스가 cell quota / vertex degree 규칙으론 안 풀리는 변의 대부분을
+/// 즉시 결정해 분기 폭을 급격히 줄인다 — Slitherlink 솔버 문헌의 핵심 기법.
+/// 16×11 hard 보드 기준 한 호출 비용 O(E + V·α(V)) ≈ ~1000 ops.
+///
+/// 반환: w 에 새로 마킹된 edge 가 있으면 true. 호출자는 true 이면 다시
+/// direct propagation 을 돌려야 한다. coloring 에서 자체 모순이 검출되면
+/// false 반환 (cell/vertex 규칙이 propagateDirectSquare 다음 패스에서 잡음).
+bool propagateColoringSquare(
+    List<List<int>> w, int rows, int cols) {
+  final int nCells = rows * cols;
+  final int outsideIdx = nCells;
+  final int nNodes = nCells + 1;
+
+  final List<int> parent = List<int>.generate(nNodes, (i) => i);
+  final List<int> rankArr = List<int>.filled(nNodes, 0);
+  // parity[x] = relation to parent: 0=same color, 1=different color.
+  final List<int> parity = List<int>.filled(nNodes, 0);
+
+  // find: 경로 압축. (root, parityFromXToRoot) 반환.
+  // 1) 경로를 모으며 root 도달. 2) 경로 끝(root 와 직접 연결된 노드)부터 거꾸로
+  // 압축해 parity 누적값을 정확히 갱신. 재귀 대신 반복 (큰 보드 stack 안전).
+  final List<int> pathBuf = [];
+  List<int> findInfo(int x) {
+    pathBuf.clear();
+    int cur = x;
+    while (parent[cur] != cur) {
+      pathBuf.add(cur);
+      cur = parent[cur];
+    }
+    final int root = cur;
+    // 압축: path[len-1] 은 이미 parent==root, parity[path[len-1]] == parity(path[len-1], root).
+    // path[i] for i<len-1: parity(path[i], root) = parity[path[i]] (현재값) XOR parity(path[i+1], root).
+    // 거꾸로 순회하면 parity[path[i+1]] 가 이미 갱신된 상태.
+    for (int i = pathBuf.length - 1; i >= 0; i--) {
+      final int node = pathBuf[i];
+      if (i < pathBuf.length - 1) {
+        parity[node] ^= parity[pathBuf[i + 1]];
+      }
+      parent[node] = root;
+    }
+    final int xParity = pathBuf.isEmpty ? 0 : parity[pathBuf[0]];
+    return [root, xParity];
+  }
+
+  bool unionPair(int x, int y, int requiredParity) {
+    final List<int> rx = findInfo(x);
+    final List<int> ry = findInfo(y);
+    if (rx[0] == ry[0]) {
+      // 같은 component. 기존 parity 가 required 와 일치해야.
+      return (rx[1] ^ ry[1]) == requiredParity;
+    }
+    final int rootX = rx[0];
+    final int rootY = ry[0];
+    // rootX→rootY parity = rx[1] XOR requiredParity XOR ry[1]
+    final int newParity = rx[1] ^ requiredParity ^ ry[1];
+    if (rankArr[rootX] < rankArr[rootY]) {
+      parent[rootX] = rootY;
+      parity[rootX] = newParity;
+    } else if (rankArr[rootX] > rankArr[rootY]) {
+      parent[rootY] = rootX;
+      parity[rootY] = newParity;
+    } else {
+      parent[rootY] = rootX;
+      parity[rootY] = newParity;
+      rankArr[rootX]++;
+    }
+    return true;
+  }
+
+  int cellIdx(int r, int c) => r * cols + c;
+
+  // 1단계: 결정된 edge 로부터 parity 제약 수집.
+  // 수평 edge: w[2*i][j] — cell (i-1, j) 위쪽과 cell (i, j) 사이.
+  for (int i = 0; i <= rows; i++) {
+    final int ei = 2 * i;
+    final List<int> row = w[ei];
+    for (int j = 0; j < row.length; j++) {
+      final int v = row[j];
+      if (v != 1 && v != -1) continue;
+      final int p = v == 1 ? 1 : 0;
+      final int a = (i == 0) ? outsideIdx : cellIdx(i - 1, j);
+      final int b = (i == rows) ? outsideIdx : cellIdx(i, j);
+      if (!unionPair(a, b, p)) return false;
+    }
+  }
+  // 수직 edge: w[2*i+1][j] — cell (i, j-1) 와 cell (i, j) 사이.
+  for (int i = 0; i < rows; i++) {
+    final int ei = 2 * i + 1;
+    final List<int> row = w[ei];
+    for (int j = 0; j < row.length; j++) {
+      final int v = row[j];
+      if (v != 1 && v != -1) continue;
+      final int p = v == 1 ? 1 : 0;
+      final int a = (j == 0) ? outsideIdx : cellIdx(i, j - 1);
+      final int b = (j == cols) ? outsideIdx : cellIdx(i, j);
+      if (!unionPair(a, b, p)) return false;
+    }
+  }
+
+  // 2단계: 미정 edge 에서 양쪽 parity 관계가 결정되어 있으면 forced.
+  bool changed = false;
+  for (int i = 0; i <= rows; i++) {
+    final int ei = 2 * i;
+    final List<int> row = w[ei];
+    for (int j = 0; j < row.length; j++) {
+      if (row[j] != 0) continue;
+      final int a = (i == 0) ? outsideIdx : cellIdx(i - 1, j);
+      final int b = (i == rows) ? outsideIdx : cellIdx(i, j);
+      final List<int> rx = findInfo(a);
+      final List<int> ry = findInfo(b);
+      if (rx[0] != ry[0]) continue;
+      final int requiredParity = rx[1] ^ ry[1];
+      row[j] = requiredParity == 1 ? 1 : -1;
+      changed = true;
+    }
+  }
+  for (int i = 0; i < rows; i++) {
+    final int ei = 2 * i + 1;
+    final List<int> row = w[ei];
+    for (int j = 0; j < row.length; j++) {
+      if (row[j] != 0) continue;
+      final int a = (j == 0) ? outsideIdx : cellIdx(i, j - 1);
+      final int b = (j == cols) ? outsideIdx : cellIdx(i, j);
+      final List<int> rx = findInfo(a);
+      final List<int> ry = findInfo(b);
+      if (rx[0] != ry[0]) continue;
+      final int requiredParity = rx[1] ^ ry[1];
+      row[j] = requiredParity == 1 ? 1 : -1;
+      changed = true;
+    }
+  }
+  return changed;
+}
+
+/// direct propagation + coloring propagation 를 fixed-point 까지 교대로
+/// 반복한다. 한 쪽이 변화 없으면 종료. 둘 다 변화 없을 때 완전 수렴.
+void propagateDirectAndColoringSquare(
+    List<List<int>> w, int rows, int cols, List<List<int>> nums) {
+  // 외부 안전 cap. 정상 케이스는 2-3회 cycle 안에 수렴.
+  int outerIter = 0;
+  while (outerIter < 20) {
+    outerIter++;
+    propagateDirectSquare(w, rows, cols, nums);
+    final bool coloringChanged = propagateColoringSquare(w, rows, cols);
+    if (!coloringChanged) return;
+  }
+}
+
 /// Returns false iff the working grid already violates a hard constraint
 /// (cell over-quota / starved, vertex degree > 2 or stuck-at-1). Look-ahead
 /// must skip when this returns false — every hypothesis would be flagged
@@ -150,6 +304,161 @@ bool isWorkingStateConsistent(
   return true;
 }
 
+/// Slitherlink 의 전역 위상 조건: 그어진 모든 edge 는 정확히 하나의 닫힌 고리를
+/// 이뤄야 한다. cell/vertex 차수만 보는 [isWorkingStateConsistent] 는 이를
+/// 검출하지 못해, 부분 분기 결과가 여러 개의 분리 고리로 수렴해도 통과한다.
+///
+/// 이 함수는 union-find 로 그어진 edge 의 연결 성분을 추적하고:
+///   • 모든 touched vertex 가 degree 2 인 성분 (= 닫힌 고리) 이 2개 이상이거나
+///   • 닫힌 고리 1개 + 다른 성분에 추가 edge 가 남아 있으면
+/// 위상이 어긋난 것으로 보고 true 를 반환한다. 닫힌 고리가 없거나 (아직 진행 중)
+/// 단일 성분뿐이면 false.
+bool hasInconsistentLoopTopology(
+    List<List<int>> w, int rows, int cols) {
+  final int vCols = cols + 1;
+  final int nv = (rows + 1) * vCols;
+  final List<int> parent = List<int>.generate(nv, (i) => i);
+  int find(int x) {
+    int r = x;
+    while (parent[r] != r) {
+      r = parent[r];
+    }
+    while (parent[x] != r) {
+      final int next = parent[x];
+      parent[x] = r;
+      x = next;
+    }
+    return r;
+  }
+
+  final List<int> deg = List<int>.filled(nv, 0);
+  final List<bool> touched = List<bool>.filled(nv, false);
+
+  for (int i = 0; i <= 2 * rows; i++) {
+    final List<int> row = w[i];
+    if (i.isEven) {
+      final int vi = i ~/ 2;
+      for (int j = 0; j < row.length; j++) {
+        if (row[j] != 1) continue;
+        final int a = vi * vCols + j;
+        final int b = vi * vCols + (j + 1);
+        deg[a]++;
+        deg[b]++;
+        touched[a] = true;
+        touched[b] = true;
+        final int ra = find(a);
+        final int rb = find(b);
+        if (ra != rb) parent[ra] = rb;
+      }
+    } else {
+      final int viTop = (i - 1) ~/ 2;
+      for (int vj = 0; vj < row.length; vj++) {
+        if (row[vj] != 1) continue;
+        final int a = viTop * vCols + vj;
+        final int b = (viTop + 1) * vCols + vj;
+        deg[a]++;
+        deg[b]++;
+        touched[a] = true;
+        touched[b] = true;
+        final int ra = find(a);
+        final int rb = find(b);
+        if (ra != rb) parent[ra] = rb;
+      }
+    }
+  }
+
+  final Map<int, bool> closedFlag = {};
+  for (int v = 0; v < nv; v++) {
+    if (!touched[v]) continue;
+    final int r = find(v);
+    final bool deg2 = deg[v] == 2;
+    if (!closedFlag.containsKey(r)) {
+      closedFlag[r] = deg2;
+    } else if (!deg2) {
+      closedFlag[r] = false;
+    }
+  }
+
+  int closedCount = 0;
+  for (final entry in closedFlag.entries) {
+    if (entry.value) closedCount++;
+  }
+  if (closedCount >= 2) return true;
+  if (closedCount == 1 && closedFlag.length > 1) return true;
+  return false;
+}
+
+/// Slitherlink 의 답 위상: 정확히 하나의 닫힌 고리만 존재하고 그 외 그어진
+/// edge 가 없어야 한다. 답안 (`answer`) 이 다중 고리 등 잘못 생성되었을 때도
+/// "퍼즐 완료" 다이얼로그/솔버 종료 가 트리거되지 않도록 방어용 검사.
+/// 그어진 edge 가 하나도 없으면 false.
+bool isSingleClosedLoop(List<List<int>> w, int rows, int cols) {
+  final int vCols = cols + 1;
+  final int nv = (rows + 1) * vCols;
+  final List<int> parent = List<int>.generate(nv, (i) => i);
+  int find(int x) {
+    int r = x;
+    while (parent[r] != r) {
+      r = parent[r];
+    }
+    while (parent[x] != r) {
+      final int next = parent[x];
+      parent[x] = r;
+      x = next;
+    }
+    return r;
+  }
+
+  final List<int> deg = List<int>.filled(nv, 0);
+  final List<bool> touched = List<bool>.filled(nv, false);
+  int drawnCount = 0;
+
+  for (int i = 0; i <= 2 * rows; i++) {
+    final List<int> row = w[i];
+    if (i.isEven) {
+      final int vi = i ~/ 2;
+      for (int j = 0; j < row.length; j++) {
+        if (row[j] != 1) continue;
+        drawnCount++;
+        final int a = vi * vCols + j;
+        final int b = vi * vCols + (j + 1);
+        deg[a]++;
+        deg[b]++;
+        touched[a] = true;
+        touched[b] = true;
+        final int ra = find(a);
+        final int rb = find(b);
+        if (ra != rb) parent[ra] = rb;
+      }
+    } else {
+      final int viTop = (i - 1) ~/ 2;
+      for (int vj = 0; vj < row.length; vj++) {
+        if (row[vj] != 1) continue;
+        drawnCount++;
+        final int a = viTop * vCols + vj;
+        final int b = (viTop + 1) * vCols + vj;
+        deg[a]++;
+        deg[b]++;
+        touched[a] = true;
+        touched[b] = true;
+        final int ra = find(a);
+        final int rb = find(b);
+        if (ra != rb) parent[ra] = rb;
+      }
+    }
+  }
+
+  if (drawnCount == 0) return false;
+
+  final Set<int> roots = {};
+  for (int v = 0; v < nv; v++) {
+    if (!touched[v]) continue;
+    if (deg[v] != 2) return false;
+    roots.add(find(v));
+  }
+  return roots.length == 1;
+}
+
 /// Hypothesis propagation. Caller assumes a single edge to be drawn (=1) and
 /// then calls this to chase down consequences. Adds force-draw rules on top
 /// of the direct-rule disables. Returns true on contradiction. Mutates `w`
@@ -173,9 +482,12 @@ bool propagateHypothesisSquare(
     {List<int>? changes}) {
   bool changed = true;
   int iter = 0;
-  // 30 was a safety cap; in practice fixed-point converges in 2-5 iter.
-  // Tightened to 12 to bound worst-case latency under rapid taps.
-  while (changed && iter < 12) {
+  // Iter cap. 16×11 hard 보드의 forcing chain 깊이가 12 를 넘는 경우가 있어
+  // 60 으로 인상 — partial 상태로 종료해 topology check 가 false-positive 를
+  // 만드는 무한 루프(docs/auto_solver_termination_analysis.md §1) 방지.
+  // 실측: 일반 보드에선 여전히 2-5 iter 안에 fixed-point 도달.
+  const int kIterCap = 60;
+  while (changed && iter < kIterCap) {
     changed = false;
     iter++;
 
@@ -326,6 +638,19 @@ bool propagateHypothesisSquare(
         }
       }
     }
+  }
+  // 직접규칙/꼭짓점 규칙이 fixed-point 에 도달했다면 (changed==false), sub-loop
+  // 가 닫히는 가설은 위상상 모순이다. 이 검사가 없으면 가설 propagation 이
+  // "OK" 로 반환되고 solver 가 잘못된 분기 후보로 받아들여, 추측 → 사후
+  // backtrack 의 비용을 매번 지불한다.
+  //
+  // **중요**: iter cap 으로 미수렴 종료한 경우 (changed==true) topology check
+  // 를 절대 호출하지 않는다. partial state 에는 아직 propagation 으로 disable
+  // 될 예정인 미정 변이 남아 transient 한 닫힌 sub-loop 으로 union-find 가
+  // 오인할 수 있다. false-positive 모순 → false-positive forced-disable →
+  // 솔버 무한 루프 (docs/auto_solver_termination_analysis.md §1).
+  if (!changed && hasInconsistentLoopTopology(w, rows, cols)) {
+    return true;
   }
   return false;
 }
