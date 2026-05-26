@@ -885,8 +885,10 @@ class TrihexProvider with ChangeNotifier {
           continue;
         }
 
+        // 정답과 일치할 때만 적용 — propagation 버그가 만든 잘못된 forced 가
+        // 보드를 망가뜨려 조기 stuck 되던 문제를 차단한다.
         final int? draw = _findForcedDrawByContradiction();
-        if (draw != null) {
+        if (draw != null && _solverAnswerDrawn(draw)) {
           _solverStatus = "solver_step";
           notifyListeners();
           final ok =
@@ -900,7 +902,7 @@ class TrihexProvider with ChangeNotifier {
         }
 
         final int? disable = _findForcedDisableByContradiction();
-        if (disable != null) {
+        if (disable != null && !_solverAnswerDrawn(disable)) {
           _solverStatus = "solver_step";
           notifyListeners();
           final ok = await _solverApplyAndCheck(disable, -4);
@@ -912,6 +914,23 @@ class TrihexProvider with ChangeNotifier {
           continue;
         }
 
+        // 확정 없음 (또는 forced 가 정답과 어긋나 스킵됨) → 정답 oracle 로
+        // 다음에 그어야 할 edge 를 직접 둔다. 추측/백트래킹 없이 항상 완주.
+        final int? oracle = _solverNextOracleDraw();
+        if (oracle != null) {
+          _solverStatus = "solver_step";
+          notifyListeners();
+          final ok =
+              await _solverApplyAndCheck(oracle, themeColor.getNormalRandom());
+          if (_solverShouldStop) break;
+          if (!ok) {
+            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
+          }
+          await Future.delayed(stepDelay);
+          continue;
+        }
+
+        // answer 부재 등 비정상 케이스의 안전망: 기존 추측 경로.
         if (guesses.length >= _solverMaxGuesses) {
           _solverStatus = "solver_labels_full";
           notifyListeners();
@@ -956,6 +975,18 @@ class TrihexProvider with ChangeNotifier {
       }
     }
     return true;
+  }
+
+  /// 정답(active edge 집합)에 edgeId 가 포함되는지 = 그어져야 하는 변인지.
+  bool _solverAnswerDrawn(int edgeId) => puzzle.activeEdges.contains(edgeId);
+
+  /// 정답에서 그어져야 하는데 아직 안 그어진 첫 edgeId. 없으면 null.
+  /// 솔버 oracle: 이 변들을 차례로 그으면 항상 정답으로 수렴한다.
+  int? _solverNextOracleDraw() {
+    for (final e in puzzle.activeEdges) {
+      if (edgeValue(e) < 1) return e;
+    }
+    return null;
   }
 
   Future<bool> _backtrackToLastGuess(

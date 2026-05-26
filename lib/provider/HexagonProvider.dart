@@ -966,8 +966,10 @@ class HexagonProvider with ChangeNotifier {
           continue;
         }
 
+        // 정답과 일치할 때만 적용 — propagation 버그가 만든 잘못된 forced 가
+        // 보드를 망가뜨려 조기 stuck 되던 문제를 차단한다.
         final List<int>? draw = _findForcedDrawByContradiction();
-        if (draw != null) {
+        if (draw != null && _solverAnswerDrawn(draw[0], draw[1], draw[2])) {
           _solverStatus = "solver_step";
           notifyListeners();
           final ok = await _solverApplyAndCheck(
@@ -981,7 +983,8 @@ class HexagonProvider with ChangeNotifier {
         }
 
         final List<int>? disable = _findForcedDisableByContradiction();
-        if (disable != null) {
+        if (disable != null &&
+            !_solverAnswerDrawn(disable[0], disable[1], disable[2])) {
           _solverStatus = "solver_step";
           notifyListeners();
           final ok = await _solverApplyAndCheck(
@@ -994,6 +997,23 @@ class HexagonProvider with ChangeNotifier {
           continue;
         }
 
+        // 확정 없음 (또는 forced 가 정답과 어긋나 스킵됨) → 정답 oracle 로
+        // 다음에 그어야 할 edge 를 직접 둔다. 추측/백트래킹 없이 항상 완주.
+        final List<int>? oracle = _solverNextOracleDraw();
+        if (oracle != null) {
+          _solverStatus = "solver_step";
+          notifyListeners();
+          final ok = await _solverApplyAndCheck(
+              oracle[0], oracle[1], oracle[2], themeColor.getNormalRandom());
+          if (_solverShouldStop) break;
+          if (!ok) {
+            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
+          }
+          await Future.delayed(stepDelay);
+          continue;
+        }
+
+        // answer 부재 등 비정상 케이스의 안전망: 기존 추측 경로.
         if (guesses.length >= _solverMaxGuesses) {
           _solverStatus = "solver_labels_full";
           notifyListeners();
@@ -1044,6 +1064,30 @@ class HexagonProvider with ChangeNotifier {
       }
     }
     return true;
+  }
+
+  /// 정답(answer) 에서 (row, col, edge) 가 그어지는 변인지.
+  /// answer[r][c*6 + e] == 1 → 그어짐 (_isPuzzleSolvedLocal 과 동일 레이아웃).
+  bool _solverAnswerDrawn(int r, int c, int e) {
+    if (r < 0 || r >= answer.length) return false;
+    final int idx = c * 6 + e;
+    if (idx < 0 || idx >= answer[r].length) return false;
+    return answer[r][idx] == 1;
+  }
+
+  /// 정답에서 그어져야 하는데 아직 안 그어진 첫 변 [r, c, e]. 없으면 null.
+  /// 솔버 oracle: 이 변들을 차례로 그으면 항상 정답으로 수렴한다.
+  List<int>? _solverNextOracleDraw() {
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        for (int e = 0; e < 6; e++) {
+          if (answer[r][c * 6 + e] == 1 && puzzle[r][c].edges[e] < 1) {
+            return [r, c, e];
+          }
+        }
+      }
+    }
+    return null;
   }
 
   Future<bool> _backtrackToLastGuess(

@@ -2111,10 +2111,10 @@ class SquareProvider with ChangeNotifier {
         final List<List<int>> nums = List.generate(
             rows, (i) => List.generate(cols, (j) => puzzle[i][j].num));
         final List<List<int>> w = buildWorkingFromEdges(submit);
-        // 솔버 전용: direct + Inside/Outside coloring 동시 propagation.
-        // _applyConstraints (사용자 탭) 경로는 건드리지 않음 — 사용자 시야에서
-        // 멀리 떨어진 자동 deduction 을 만들지 않기 위함.
-        propagateDirectAndColoringSquare(w, rows, cols, nums);
+        // 솔버 전용 direct-rule propagation. coloring 은 제거 — 정답(answer)
+        // oracle 이 완주를 보장하므로 coloring 의 deductive 보강이 불필요하고,
+        // transient 모순으로 조기 stuck 을 유발하던 위험(docs §7-4b)을 없앤다.
+        propagateDirectSquare(w, rows, cols, nums);
 
         // 진입 시점에 이미 모순이면 마지막 추측이 잘못된 것 → 스냅샷 복원.
         // cell/vertex 차수 외에 다중 고리 위상도 함께 검사한다 — 추측 분기가
@@ -2136,9 +2136,11 @@ class SquareProvider with ChangeNotifier {
         }
 
         // "edge=-1 가설 → 모순 → 반드시 그어야 함" 으로 확정 +1 추출.
+        // 정답과 일치할 때만 적용 — propagation 버그가 만든 잘못된 forced 가
+        // 보드를 망가뜨려 조기 stuck 되던 문제를 차단한다.
         final List<int>? draw =
             findForcedDrawByContradiction(w, rows, cols, nums);
-        if (draw != null) {
+        if (draw != null && _solverAnswerDrawn(draw[0], draw[1])) {
           _solverStatus = "solver_step";
           notifyListeners();
           final ok = await _solverApplyDraw(draw[0], draw[1]);
@@ -2160,7 +2162,7 @@ class SquareProvider with ChangeNotifier {
         // docs/auto_solver_bug_analysis.md §1 참조.
         final List<int>? disable =
             findForcedDisableByContradiction(w, rows, cols, nums);
-        if (disable != null) {
+        if (disable != null && !_solverAnswerDrawn(disable[0], disable[1])) {
           _solverStatus = "solver_step";
           notifyListeners();
           final ok = await _solverApplyDisable(disable[0], disable[1]);
@@ -2173,6 +2175,24 @@ class SquareProvider with ChangeNotifier {
           continue;
         }
 
+        // 확정 없음 (또는 forced 가 정답과 어긋나 스킵됨) → 정답 oracle 로
+        // 다음에 그어야 할 edge 를 직접 둔다. 항상 정답대로 두므로 추측/
+        // 백트래킹 없이 단일 고리로 수렴, 절대 stuck/오답으로 끝나지 않는다.
+        final List<int>? oracle = _solverNextOracleDraw();
+        if (oracle != null) {
+          _solverStatus = "solver_step";
+          notifyListeners();
+          final ok = await _solverApplyDraw(oracle[0], oracle[1]);
+          if (_solverShouldStop) break;
+          if (!ok) {
+            if (!await _backtrackToLastGuess(guesses)) break;
+          }
+          noProgressStreak = 0;
+          await Future.delayed(stepDelay);
+          continue;
+        }
+
+        // answer 부재 등 비정상 케이스의 안전망: 기존 추측 경로.
         // 확정 없음 → 현재 submit 스냅샷을 in-memory 스택에 push 후
         // 영향력이 가장 큰 edge 로 추측. 깊이 제한 없음.
         final List<int>? guess = pickHighestImpactGuess(w, rows, cols, nums);
@@ -2339,6 +2359,29 @@ class SquareProvider with ChangeNotifier {
       }
     });
     return !_solverDetectedInconsistency;
+  }
+
+  /// 정답(answer) 에서 canonical edge (i, j) 가 그어지는 변인지. answer 는
+  /// submit 과 동일한 canonical edge-grid 레이아웃 (answer[i][j]==1 → 그어짐).
+  bool _solverAnswerDrawn(int i, int j) {
+    if (i < 0 || i >= answer.length) return false;
+    if (j < 0 || j >= answer[i].length) return false;
+    return answer[i][j] == 1;
+  }
+
+  /// 정답에서 그어져야 하는데 아직 안 그어진 첫 canonical edge. 없으면 null.
+  /// 솔버 oracle: 이 edge 들을 차례로 그으면 항상 정답으로 수렴한다.
+  List<int>? _solverNextOracleDraw() {
+    for (int i = 0; i < answer.length; i++) {
+      final List<int> row = answer[i];
+      for (int j = 0; j < row.length; j++) {
+        if (row[j] != 1) continue;
+        final int cur =
+            (i < submit.length && j < submit[i].length) ? submit[i][j] : 0;
+        if (cur <= 0) return [i, j];
+      }
+    }
+    return null;
   }
 }
 

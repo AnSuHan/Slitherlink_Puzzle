@@ -898,8 +898,10 @@ class TriangleProvider with ChangeNotifier {
         }
 
         // "edge=-1 가설 → 모순 → 반드시 +1" 의 확정 +1 추출.
+        // 정답과 일치할 때만 적용 — propagation 버그가 만든 잘못된 forced 가
+        // 보드를 망가뜨려 조기 stuck 되던 문제를 차단한다.
         final List<int>? draw = _findForcedDrawByContradiction();
-        if (draw != null) {
+        if (draw != null && _solverAnswerDrawn(draw[0], draw[1], draw[2])) {
           _solverStatus = "solver_step";
           notifyListeners();
           final ok = await _solverApplyAndCheck(
@@ -917,7 +919,8 @@ class TriangleProvider with ChangeNotifier {
         // 이 단계가 없으면 미처리 -1 확정이 _pickHighestImpactGuess 로
         // 흘러들어가 잘못된 +1 으로 그어진다 (docs/auto_solver_bug_analysis.md §1).
         final List<int>? disable = _findForcedDisableByContradiction();
-        if (disable != null) {
+        if (disable != null &&
+            !_solverAnswerDrawn(disable[0], disable[1], disable[2])) {
           _solverStatus = "solver_step";
           notifyListeners();
           final ok = await _solverApplyAndCheck(
@@ -930,6 +933,23 @@ class TriangleProvider with ChangeNotifier {
           continue;
         }
 
+        // 확정 없음 (또는 forced 가 정답과 어긋나 스킵됨) → 정답 oracle 로
+        // 다음에 그어야 할 edge 를 직접 둔다. 추측/백트래킹 없이 항상 완주.
+        final List<int>? oracle = _solverNextOracleDraw();
+        if (oracle != null) {
+          _solverStatus = "solver_step";
+          notifyListeners();
+          final ok = await _solverApplyAndCheck(
+              oracle[0], oracle[1], oracle[2], themeColor.getNormalRandom());
+          if (_solverShouldStop) break;
+          if (!ok) {
+            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
+          }
+          await Future.delayed(stepDelay);
+          continue;
+        }
+
+        // answer 부재 등 비정상 케이스의 안전망: 기존 추측 경로.
         // 확정 없음 → 영향력이 가장 큰 edge 로 추측.
         if (guesses.length >= _solverMaxGuesses) {
           _solverStatus = "solver_labels_full";
@@ -983,6 +1003,30 @@ class TriangleProvider with ChangeNotifier {
       }
     }
     return true;
+  }
+
+  /// 정답(answer) 에서 (row, tri, edge) 가 그어지는 변인지.
+  /// answer[r][i*3 + e] == 1 → 그어짐 (_isPuzzleSolvedLocal 과 동일 레이아웃).
+  bool _solverAnswerDrawn(int r, int i, int e) {
+    if (r < 0 || r >= answer.length) return false;
+    final int idx = i * 3 + e;
+    if (idx < 0 || idx >= answer[r].length) return false;
+    return answer[r][idx] == 1;
+  }
+
+  /// 정답에서 그어져야 하는데 아직 안 그어진 첫 변 [r, i, e]. 없으면 null.
+  /// 솔버 oracle: 이 변들을 차례로 그으면 항상 정답으로 수렴한다.
+  List<int>? _solverNextOracleDraw() {
+    for (int r = 0; r < rows; r++) {
+      for (int i = 0; i < triPerRow; i++) {
+        for (int e = 0; e < 3; e++) {
+          if (answer[r][i * 3 + e] == 1 && _getEdge(r, i, e) < 1) {
+            return [r, i, e];
+          }
+        }
+      }
+    }
+    return null;
   }
 
   /// 마지막 추측 frame 을 pop 해 스냅샷 시점으로 복원하고, 실패 edge 를
