@@ -110,7 +110,11 @@ class TriangleProvider with ChangeNotifier {
 
   Future<void> init() async {
     _buildPuzzle();
-    _applyConstraints();
+    // 갓 로드된 보드는 단서만 보여준다. _applyConstraints 의 look-ahead 추론까지
+    // 돌리면 풀 수 없는 대량의 edge 가 즉시 -1 로 칠해지며 정답 라인이 첫
+    // 화면에 드러난다(스포일러). 자명한 직접규칙(_propagateDirect)만 적용하고,
+    // 깊은 추론은 사용자 첫 수에 updateEdge → _applyConstraints 에서 나타난다.
+    _propagateDirect();
     notifyListeners();
   }
 

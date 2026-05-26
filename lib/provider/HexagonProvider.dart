@@ -101,7 +101,12 @@ class HexagonProvider with ChangeNotifier {
 
   Future<void> init() async {
     _buildPuzzle();
-    _applyConstraints();
+    // 갓 로드된 보드는 단서만 보여준다. 여기서 _applyConstraints 의 look-ahead
+    // 추론까지 돌리면, 풀 수 없는 대량의 edge 가 즉시 -1 로 칠해지면서 남은
+    // 후보(=정답 라인)가 첫 화면에 드러난다 (스포일러). 자명한 직접규칙
+    // (0-clue 셀, starved 꼭짓점)만 적용하고, 깊은 추론은 사용자가 첫 수를
+    // 두는 순간 updateEdge → _applyConstraints 에서 자연스럽게 나타나게 한다.
+    _propagateDirect();
     notifyListeners();
   }
 
