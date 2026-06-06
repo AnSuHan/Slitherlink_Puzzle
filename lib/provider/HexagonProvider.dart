@@ -426,9 +426,15 @@ class HexagonProvider with ChangeNotifier {
     final List<List<List<int>>> afterDirect = List.generate(rows, (rr) =>
         List.generate(cols, (cc) => List<int>.from(puzzle[rr][cc].edges)));
 
-    for (int laIter = 0; laIter < 5; laIter++) {
-      if (!_runLookAhead()) break;
-      _propagateDirect();
+    // 자동풀기 oracle 수에서는 look-ahead 를 건너뛴다 (per-edge 가설 →
+    // O(edges) 비용). oracle 이 정답을 보장하므로 look-ahead 의 추가 -1 표시는
+    // cosmetic 일 뿐이고, 이 패스가 육각형 자동풀기 속도를 좌우했다. 사용자 탭/
+    // backtrack/init 등 _solverFastApply 가 꺼진 경로에서는 그대로 동작한다.
+    if (!_solverFastApply) {
+      for (int laIter = 0; laIter < 5; laIter++) {
+        if (!_runLookAhead()) break;
+        _propagateDirect();
+      }
     }
 
     for (final pos in redSnapshot) {
@@ -932,6 +938,13 @@ class HexagonProvider with ChangeNotifier {
   bool _solverShouldStop = false;
   String _solverStatus = "";
 
+  /// While true, [_applyConstraints] skips its expensive per-edge look-ahead
+  /// pass and [_solverApplyAndCheck] skips deep-contradiction detection. Set
+  /// only around answer-oracle moves: the oracle draws verified-correct edges,
+  /// so the look-ahead / contradiction passes (each O(edges) hypotheses) are
+  /// pure cosmetic overhead there — and they dominated auto-solve time.
+  bool _solverFastApply = false;
+
   bool get isSolverRunning => _solverRunning;
   String get solverStatus => _solverStatus;
 
@@ -971,10 +984,31 @@ class HexagonProvider with ChangeNotifier {
           continue;
         }
 
-        // 정답과 일치할 때만 적용 — propagation 버그가 만든 잘못된 forced 가
-        // 보드를 망가뜨려 조기 stuck 되던 문제를 차단한다.
+        // 정답 oracle 우선 (fast path). updateEdge 의 직접규칙 propagation 이
+        // 보이는 자동 비활성(-1)을 처리하고, 비싼 per-edge contradiction 탐색과
+        // look-ahead 는 _solverFastApply 로 건너뛴다 — oracle 이 완주를
+        // 보장하므로 그 둘은 결과에 영향 없는 비용일 뿐이며 육각형 자동풀기
+        // 런타임을 지배했다. 정답에 있는데 아직 안 그은 변을 차례로 그어 완주.
+        final List<int>? oracle = _solverNextOracleDraw();
+        if (oracle != null) {
+          _solverStatus = "solver_step";
+          notifyListeners();
+          _solverFastApply = true;
+          final ok = await _solverApplyAndCheck(
+              oracle[0], oracle[1], oracle[2], themeColor.getNormalRandom());
+          _solverFastApply = false;
+          if (_solverShouldStop) break;
+          if (!ok) {
+            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
+          }
+          await Future.delayed(stepDelay);
+          continue;
+        }
+
+        // answer 부재 등 비정상 케이스의 안전망: 정답이 없으면 full deductive
+        // 솔버 (contradiction 기반 forced 추론 + look-ahead, 그 뒤 추측) 로 푼다.
         final List<int>? draw = _findForcedDrawByContradiction();
-        if (draw != null && _solverAnswerDrawn(draw[0], draw[1], draw[2])) {
+        if (draw != null) {
           _solverStatus = "solver_step";
           notifyListeners();
           final ok = await _solverApplyAndCheck(
@@ -988,28 +1022,11 @@ class HexagonProvider with ChangeNotifier {
         }
 
         final List<int>? disable = _findForcedDisableByContradiction();
-        if (disable != null &&
-            !_solverAnswerDrawn(disable[0], disable[1], disable[2])) {
+        if (disable != null) {
           _solverStatus = "solver_step";
           notifyListeners();
           final ok = await _solverApplyAndCheck(
               disable[0], disable[1], disable[2], -4);
-          if (_solverShouldStop) break;
-          if (!ok) {
-            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
-          }
-          await Future.delayed(stepDelay);
-          continue;
-        }
-
-        // 확정 없음 (또는 forced 가 정답과 어긋나 스킵됨) → 정답 oracle 로
-        // 다음에 그어야 할 edge 를 직접 둔다. 추측/백트래킹 없이 항상 완주.
-        final List<int>? oracle = _solverNextOracleDraw();
-        if (oracle != null) {
-          _solverStatus = "solver_step";
-          notifyListeners();
-          final ok = await _solverApplyAndCheck(
-              oracle[0], oracle[1], oracle[2], themeColor.getNormalRandom());
           if (_solverShouldStop) break;
           if (!ok) {
             if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
@@ -1045,6 +1062,7 @@ class HexagonProvider with ChangeNotifier {
       }
     } finally {
       _solverRunning = false;
+      _solverFastApply = false;
       // done 외 종료 시 pre-solver 시점으로 전체 복원.
       if (_solverStatus != "solver_done") {
         submit = preSolverSubmit.map((r) => List<int>.from(r)).toList();
@@ -1069,15 +1087,6 @@ class HexagonProvider with ChangeNotifier {
       }
     }
     return true;
-  }
-
-  /// 정답(answer) 에서 (row, col, edge) 가 그어지는 변인지.
-  /// answer[r][c*6 + e] == 1 → 그어짐 (_isPuzzleSolvedLocal 과 동일 레이아웃).
-  bool _solverAnswerDrawn(int r, int c, int e) {
-    if (r < 0 || r >= answer.length) return false;
-    final int idx = c * 6 + e;
-    if (idx < 0 || idx >= answer[r].length) return false;
-    return answer[r][idx] == 1;
   }
 
   /// 정답에서 그어져야 하는데 아직 안 그어진 첫 변 [r, c, e]. 없으면 null.
@@ -1124,6 +1133,9 @@ class HexagonProvider with ChangeNotifier {
   Future<bool> _solverApplyAndCheck(int r, int c, int e, int value) async {
     await updateEdge(r, c, e, value);
     if (_solverShouldStop) return true;
+    // oracle 수는 정답에서 검증된 변이라 deep-contradiction 검사가 불필요한
+    // O(edges) 비용일 뿐 — fast path 에서는 건너뛴다.
+    if (_solverFastApply) return true;
     return !_detectDeepContradiction();
   }
 
