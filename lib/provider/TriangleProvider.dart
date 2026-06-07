@@ -207,10 +207,33 @@ class TriangleProvider with ChangeNotifier {
     _undoStack.add(submit.map((r) => List<int>.from(r)).toList());
     _redoStack.clear();
 
-    _setEdgeValue(row, idx, edgeIdx, value);
+    // Color merging: if a positive (drawn) edge is added, prefer an adjacent
+    // chain's color over the random one passed in. If multiple chains meet at
+    // this edge's vertices, recolor the others into the chosen color so the
+    // whole connected component shares one colour. Matches Hexagon/Trihex/Square.
+    int finalValue = value;
+    if (value >= 1) {
+      final List<List<int>> adj = _adjacentEdges(row, idx, edgeIdx);
+      final Set<int> nearColors = {};
+      for (final a in adj) {
+        final v = _getEdge(a[0], a[1], a[2]);
+        if (v >= 1) nearColors.add(v);
+      }
+      if (nearColors.isNotEmpty) {
+        finalValue = nearColors.first;
+        for (final a in adj) {
+          final v = _getEdge(a[0], a[1], a[2]);
+          if (v >= 1 && v != finalValue) {
+            _recolorChain(a[0], a[1], a[2], finalValue);
+          }
+        }
+      }
+    }
+
+    _setEdgeValue(row, idx, edgeIdx, finalValue);
     final mirror = _sharedEdge(row, idx, edgeIdx);
     if (mirror != null) {
-      _setEdgeValue(mirror[0], mirror[1], mirror[2], value);
+      _setEdgeValue(mirror[0], mirror[1], mirror[2], finalValue);
     }
 
     _applyConstraints();
@@ -399,6 +422,74 @@ class TriangleProvider with ChangeNotifier {
     if (m == null) return selfId;
     final otherId = (m[0] * 1000 + m[1]) * 10 + m[2];
     return selfId <= otherId ? selfId : otherId;
+  }
+
+  // --- Color chain adjacency (vertex-shared edges) ------------------------
+  // Inverse of [_incidentEdges]: canonical edge id -> its (≤2) endpoint
+  // vertices. Built once per board geometry; rebuilt if rows/triPerRow change
+  // (restart / new game with a different size). Drives the color-merging in
+  // [updateEdge] so a connected line shares one colour.
+  Map<int, List<List<int>>>? _edgeVertCache;
+  int _edgeVertCacheKey = -1;
+
+  Map<int, List<List<int>>> _edgeVertices() {
+    final int key = rows * 100000 + triPerRow;
+    final cached = _edgeVertCache;
+    if (cached != null && _edgeVertCacheKey == key) return cached;
+    final Map<int, List<List<int>>> map = {};
+    for (int vr = 0; vr <= rows; vr++) {
+      for (int vi = 0; vi <= triPerRow + 1; vi++) {
+        if ((vr + vi).isEven) continue; // only vr+vi odd are real vertices
+        for (final e in _incidentEdges(vr, vi)) {
+          final id = _canonicalEdgeId(e[0], e[1], e[2]);
+          (map[id] ??= []).add([vr, vi]);
+        }
+      }
+    }
+    _edgeVertCache = map;
+    _edgeVertCacheKey = key;
+    return map;
+  }
+
+  /// All edges sharing a vertex with edge (r, i, e), excluding the edge itself.
+  /// One representative [r, i, e] per unique (canonical) edge.
+  List<List<int>> _adjacentEdges(int r, int i, int e) {
+    final int selfId = _canonicalEdgeId(r, i, e);
+    final verts = _edgeVertices()[selfId] ?? const [];
+    final List<List<int>> out = [];
+    final Set<int> seen = {selfId};
+    for (final v in verts) {
+      for (final adj in _incidentEdges(v[0], v[1])) {
+        final id = _canonicalEdgeId(adj[0], adj[1], adj[2]);
+        if (seen.add(id)) out.add(adj);
+      }
+    }
+    return out;
+  }
+
+  /// BFS from (r, i, e), recoloring every drawn edge reachable through the
+  /// current colour into [newValue]. Walks adjacency at shared vertices.
+  void _recolorChain(int r, int i, int e, int newValue) {
+    final int oldValue = _getEdge(r, i, e);
+    if (oldValue == newValue || oldValue < 1) return;
+    final List<List<int>> queue = [
+      [r, i, e]
+    ];
+    final Set<int> visited = {_canonicalEdgeId(r, i, e)};
+    int idx = 0;
+    while (idx < queue.length) {
+      final cur = queue[idx++];
+      if (_getEdge(cur[0], cur[1], cur[2]) != oldValue) continue;
+      _setEdgeValue(cur[0], cur[1], cur[2], newValue);
+      final m = _sharedEdge(cur[0], cur[1], cur[2]);
+      if (m != null) _setEdgeValue(m[0], m[1], m[2], newValue);
+      for (final adj in _adjacentEdges(cur[0], cur[1], cur[2])) {
+        if (_getEdge(adj[0], adj[1], adj[2]) == oldValue) {
+          final id = _canonicalEdgeId(adj[0], adj[1], adj[2]);
+          if (visited.add(id)) queue.add(adj);
+        }
+      }
+    }
   }
 
   /// Returns true iff the live puzzle state already violates a hard
