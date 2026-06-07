@@ -691,9 +691,107 @@ class TrihexProvider with ChangeNotifier {
         }
       }
 
-      if (!changed) break;
+      if (!changed) {
+        // 수렴 시점에만 전역 고리 위상 검사 (partial 상태의 transient 닫힌
+        // 고리 오판 방지). HexagonProvider._propagateHypothesis 와 동일 규칙.
+        if (_hasInconsistentLoopTopology()) return true;
+        break;
+      }
     }
     return false;
+  }
+
+  /// 그어진 변(>=1)들의 연결 성분을 union-find 로 추적해 전역 고리 위상을
+  /// 검사한다. edge id 는 두 끝점 vertex 를 (lo, hi) 로 인코딩하므로 추가
+  /// geometry 조회 없이 바로 union 한다. 닫힌 고리가 2개 이상이거나 닫힌 고리
+  /// 1개 + 다른 성분이 더 있으면 위상 모순(true).
+  bool _hasInconsistentLoopTopology() {
+    final Map<int, int> parent = {};
+    int find(int x) {
+      parent.putIfAbsent(x, () => x);
+      int root = x;
+      while (parent[root] != root) {
+        root = parent[root]!;
+      }
+      while (parent[x] != root) {
+        final next = parent[x]!;
+        parent[x] = root;
+        x = next;
+      }
+      return root;
+    }
+
+    final Map<int, int> deg = {};
+    for (final e in _allEdges) {
+      if (edgeValue(e) < 1) continue;
+      final int a = e ~/ 1000000000;
+      final int b = e % 1000000000;
+      deg[a] = (deg[a] ?? 0) + 1;
+      deg[b] = (deg[b] ?? 0) + 1;
+      final ra = find(a);
+      final rb = find(b);
+      if (ra != rb) parent[ra] = rb;
+    }
+    if (deg.isEmpty) return false;
+
+    final Map<int, bool> closedFlag = {};
+    for (final v in deg.keys) {
+      final root = find(v);
+      final bool d2 = deg[v] == 2;
+      if (!closedFlag.containsKey(root)) {
+        closedFlag[root] = d2;
+      } else if (!d2) {
+        closedFlag[root] = false;
+      }
+    }
+    int closed = 0;
+    for (final f in closedFlag.values) {
+      if (f) closed++;
+    }
+    if (closed >= 2) return true;
+    if (closed == 1 && closedFlag.length > 1) return true;
+    return false;
+  }
+
+  /// 그어진 변이 정확히 하나의 닫힌 고리를 이루는지 (정답 비참조 완료 판정용).
+  bool _isSingleClosedLoop() {
+    final Map<int, int> parent = {};
+    int find(int x) {
+      parent.putIfAbsent(x, () => x);
+      int root = x;
+      while (parent[root] != root) {
+        root = parent[root]!;
+      }
+      while (parent[x] != root) {
+        final next = parent[x]!;
+        parent[x] = root;
+        x = next;
+      }
+      return root;
+    }
+
+    final Map<int, int> deg = {};
+    int drawn = 0;
+    for (final e in _allEdges) {
+      if (edgeValue(e) < 1) continue;
+      drawn++;
+      final int a = e ~/ 1000000000;
+      final int b = e % 1000000000;
+      deg[a] = (deg[a] ?? 0) + 1;
+      deg[b] = (deg[b] ?? 0) + 1;
+      final ra = find(a);
+      final rb = find(b);
+      if (ra != rb) parent[ra] = rb;
+    }
+    if (drawn == 0) return false;
+    for (final v in deg.keys) {
+      if (deg[v] != 2) return false;
+    }
+    final Set<int> roots = {};
+    for (final v in deg.keys) {
+      roots.add(find(v));
+    }
+    return roots.length == 1;
   }
 
   // --- Completion ---------------------------------------------------------
@@ -851,8 +949,10 @@ class TrihexProvider with ChangeNotifier {
   ///**********************************************************************************
   /// Square / Triangle / Hexagon 솔버와 동일 골격이지만 Trihex 는 edgeState 가
   /// Map<edgeId,int> 라 snapshot/restore 는 Map 복사 한 번이면 끝난다.
-  /// 추측 frame 도 edgeState snapshot 만 들고 있으면 충분.
-  static const int _solverMaxGuesses = 10;
+  /// 추측 frame 도 edgeState snapshot 만 들고 있으면 충분. 정답 oracle 제거 후
+  /// 추측+백트래킹이 유일한 풀이 동력이므로 깊이 상한을 크게 둬 완전 탐색을
+  /// 보장하고, 무한 루프는 solveHumanLike 의 총 iter 상한으로 막는다.
+  static const int _solverMaxGuesses = 100000;
 
   bool _solverRunning = false;
   bool _solverShouldStop = false;
@@ -888,43 +988,34 @@ class TrihexProvider with ChangeNotifier {
     // 들어 있어 그대로 보존된다 (SquareProvider 와 동일 정책).
     final Map<int, int> preSolverEdgeState = _snapshot();
 
+    // 정답 oracle 제거로 종료 보장이 사라져 외부 안전망을 둔다.
+    const int kMaxIter = 20000;
+    const int kMaxNoProgress = 400;
+    int iterCount = 0;
+    int noProgressStreak = 0;
+
     try {
       while (!_solverShouldStop) {
+        if (++iterCount > kMaxIter || noProgressStreak > kMaxNoProgress) {
+          _solverStatus = "solver_stuck";
+          notifyListeners();
+          break;
+        }
         if (_isPuzzleSolvedLocal()) {
           _solverStatus = "solver_done";
           notifyListeners();
           break;
         }
 
-        if (!_isStateConsistent()) {
+        if (!_isStateConsistent() || _hasInconsistentLoopTopology()) {
           if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           await Future.delayed(stepDelay);
           continue;
         }
 
-        // 정답 oracle 우선 (fast path). updateEdge 의 직접규칙 propagation 이
-        // 보이는 자동 비활성(-1)을 처리하고, 비싼 per-edge contradiction 탐색과
-        // look-ahead 는 _solverFastApply 로 건너뛴다 — oracle 이 완주를
-        // 보장하므로 그 둘은 결과에 영향 없는 비용일 뿐이며 Trihex 런타임을
-        // 지배했다. 정답에 있는데 아직 안 그은 edge 를 차례로 그어 항상 완주.
-        final int? oracle = _solverNextOracleDraw();
-        if (oracle != null) {
-          _solverStatus = "solver_step";
-          notifyListeners();
-          _solverFastApply = true;
-          final ok =
-              await _solverApplyAndCheck(oracle, themeColor.getNormalRandom());
-          _solverFastApply = false;
-          if (_solverShouldStop) break;
-          if (!ok) {
-            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
-          }
-          await Future.delayed(stepDelay);
-          continue;
-        }
-
-        // answer 부재 등 비정상 케이스의 안전망: 정답이 없으면 full deductive
-        // 솔버 (contradiction 기반 forced 추론 + look-ahead, 그 뒤 추측) 로 푼다.
+        // 정답을 보지 않고 화면 단서만으로 푼다 (사용자 관점). 모순 기반 forced
+        // 추론을 먼저 적용하고, 확정이 없으면 영향력 최대 변으로 추측 후 모순
+        // 시 백트래킹한다.
         final int? draw = _findForcedDrawByContradiction();
         if (draw != null) {
           _solverStatus = "solver_step";
@@ -935,6 +1026,7 @@ class TrihexProvider with ChangeNotifier {
           if (!ok) {
             if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           }
+          noProgressStreak = 0;
           await Future.delayed(stepDelay);
           continue;
         }
@@ -948,11 +1040,12 @@ class TrihexProvider with ChangeNotifier {
           if (!ok) {
             if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           }
+          noProgressStreak = 0;
           await Future.delayed(stepDelay);
           continue;
         }
 
-        // 그 외: 기존 추측 경로.
+        // 확정 없음 → 영향력이 가장 큰 edge 로 추측 후 백트래킹.
         if (guesses.length >= _solverMaxGuesses) {
           _solverStatus = "solver_labels_full";
           notifyListeners();
@@ -974,6 +1067,7 @@ class TrihexProvider with ChangeNotifier {
         if (!ok) {
           if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
         }
+        noProgressStreak++;
         await Future.delayed(stepDelay);
       }
     } finally {
@@ -988,25 +1082,126 @@ class TrihexProvider with ChangeNotifier {
     }
   }
 
+  /// 정답(activeEdges)을 보지 않는 완료 판정: 그어진 변이 단일 닫힌 고리를
+  /// 이루고, 보이는 모든 단서(hex/triangle, clue<0 숨김 제외)가 정확히
+  /// 충족되면 완료.
   bool _isPuzzleSolvedLocal() {
-    for (final e in puzzle.activeEdges) {
-      if (edgeValue(e) < 1) return false;
-    }
-    for (final entry in edgeState.entries) {
-      if (entry.value >= 1 && !puzzle.activeEdges.contains(entry.key)) {
-        return false;
+    if (!_isSingleClosedLoop()) return false;
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        final int clue = puzzle.hexClue[r][c];
+        if (clue < 0) continue;
+        int active = 0;
+        for (final e in _hexEdgeIdsByCell[r * cols + c]) {
+          if (edgeValue(e) >= 1) active++;
+        }
+        if (active != clue) return false;
       }
+    }
+    for (final id in puzzle.triangleIds) {
+      final int clue = puzzle.triClue[id] ?? -1;
+      if (clue < 0) continue;
+      int active = 0;
+      for (final e in _triEdgeIdsByCell[id]!) {
+        if (edgeValue(e) >= 1) active++;
+      }
+      if (active != clue) return false;
     }
     return true;
   }
 
-  /// 정답에서 그어져야 하는데 아직 안 그어진 첫 edgeId. 없으면 null.
-  /// 솔버 oracle: 이 변들을 차례로 그으면 항상 정답으로 수렴한다.
-  int? _solverNextOracleDraw() {
-    for (final e in puzzle.activeEdges) {
-      if (edgeValue(e) < 1) return e;
+  /// 정답(activeEdges)을 보지 않고, 보이는 단서만으로 추측 없이 끝까지 풀리는지
+  /// (공정한 퍼즐 검증). 직접규칙 전파 + 모순기반 forced draw/disable + 고리위상
+  /// 검사만 반복 적용한다. 계산 후 원래 edgeState 로 복원하므로 보드를 바꾸지
+  /// 않는다.
+  bool isLogicSolvable() {
+    final snap = _snapshot();
+    bool result = false;
+    const int maxIter = 100000;
+    for (int iter = 0; iter < maxIter; iter++) {
+      _propagateDirect();
+      if (!_isStateConsistent() || _hasInconsistentLoopTopology()) {
+        result = false;
+        break;
+      }
+      if (_isPuzzleSolvedLocal()) {
+        result = true;
+        break;
+      }
+      final int? draw = _findForcedDrawByContradiction();
+      if (draw != null) {
+        edgeState[draw] = 1;
+        continue;
+      }
+      final int? disable = _findForcedDisableByContradiction();
+      if (disable != null) {
+        edgeState[disable] = -1;
+        continue;
+      }
+      result = false; // 확정 수 없음 → 추측 필요 → 불공정
+      break;
     }
-    return null;
+    _restore(snap);
+    return result;
+  }
+
+  /// 백그라운드 검증용: 화면 자동풀기와 동일한 추측+백트래킹 완전탐색을
+  /// headless·동기로 돌려 풀리는지 확인한다. 정답(activeEdges) 비참조(완료판정
+  /// 단일고리+단서), 고리위상 검사 포함, 계산 후 edgeState 원복으로 보드를
+  /// 바꾸지 않는다.
+  bool canAutoSolve() {
+    final outer = _snapshot();
+    final List<List<dynamic>> stack = []; // [snapshot(Map), edgeId]
+    bool result = false;
+    const int maxIter = 20000;
+    const int maxNoProg = 400;
+    int iter = 0;
+    int noProg = 0;
+    while (iter++ < maxIter && noProg <= maxNoProg) {
+      _propagateDirect();
+      if (!_isStateConsistent() || _hasInconsistentLoopTopology()) {
+        if (stack.isEmpty) {
+          result = false;
+          break;
+        }
+        final f = stack.removeLast();
+        _restore(f[0] as Map<int, int>);
+        edgeState[f[1] as int] = -1;
+        continue;
+      }
+      if (_isPuzzleSolvedLocal()) {
+        result = true;
+        break;
+      }
+      final int? draw = _findForcedDrawByContradiction();
+      if (draw != null) {
+        edgeState[draw] = 1;
+        noProg = 0;
+        continue;
+      }
+      final int? dis = _findForcedDisableByContradiction();
+      if (dis != null) {
+        edgeState[dis] = -1;
+        noProg = 0;
+        continue;
+      }
+      final int? guess = _pickHighestImpactGuess();
+      if (guess == null) {
+        if (stack.isEmpty) {
+          result = false;
+          break;
+        }
+        final f = stack.removeLast();
+        _restore(f[0] as Map<int, int>);
+        edgeState[f[1] as int] = -1;
+        continue;
+      }
+      stack.add([_snapshot(), guess]);
+      edgeState[guess] = 1;
+      noProg++;
+    }
+    _restore(outer);
+    return result;
   }
 
   Future<bool> _backtrackToLastGuess(

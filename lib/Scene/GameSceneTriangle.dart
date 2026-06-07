@@ -239,6 +239,49 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
     _provider.setSubmit(submit);
     _provider.init();
 
+    // 백그라운드 검증: 생성된 퍼즐이 자동풀기(추측+백트래킹 완전탐색)로 실제
+    // 풀리는지 확인하고, 안 풀리면 풀리는 퍼즐이 나올 때까지 재생성한다.
+    if (!widget.isContinue) {
+      final List<String> sp = tokens[2].split("x");
+      final int gRows = int.parse(sp[0]);
+      final int gCols = int.parse(sp[1]);
+      final String diffStr = tokens.length >= 4 ? tokens[3] : "normal";
+      int attempts = 0;
+      const int maxAttempts = 25;
+      while (mounted && attempts < maxAttempts) {
+        attempts++;
+        if (mounted) {
+          setState(() {
+            _isGenerating = true;
+            _generationStatus = '검증 중';
+          });
+        }
+        await Future.delayed(const Duration(milliseconds: 16));
+        if (_provider.canAutoSolve()) break;
+        if (mounted) setState(() => _generationStatus = '재생성 중');
+        try {
+          final gen2 = await compute(_generateIsolate, {
+            'rows': gRows,
+            'cols': gCols,
+            'difficulty': diffStr,
+          });
+          answer = gen2['answer']!;
+          clue = gen2['clue']!;
+        } catch (_) {
+          break; // 재생성 실패 시 현재 보드 그대로 사용
+        }
+        submit =
+            List.generate(answer.length, (r) => List.filled(answer[r].length, 0));
+        final prefs = ExtractData();
+        await prefs.saveDataToLocal(widget.loadKey, jsonEncode(answer));
+        await prefs.saveDataToLocal("${widget.loadKey}_clue", jsonEncode(clue));
+        _provider.setAnswer(answer);
+        _provider.setClue(clue);
+        _provider.setSubmit(submit);
+        _provider.init();
+      }
+    }
+
     if (mounted) setState(() {
       _generationStatus = '100%';
       _isGenerating = false;

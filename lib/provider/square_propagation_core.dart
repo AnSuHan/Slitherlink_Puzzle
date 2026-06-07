@@ -897,3 +897,204 @@ List<int>? pickHighestImpactGuess(
   if (bestR < 0) return null;
   return [bestR, bestC];
 }
+
+// ---------------------------------------------------------------------------
+// Pure, answer-free DFS solver.
+//
+// Everything above either propagates one step or scores a single guess. The
+// functions below tie them into a *complete* search that never looks at any
+// stored answer — it only consumes the visible clues in `nums` (num < 0 =
+// hidden, skipped by every rule). This is the shared foundation for both the
+// visible auto-solver (take the first solution and replay it onto the board)
+// and puzzle verification (count solutions: exactly 1 → a proper puzzle).
+// ---------------------------------------------------------------------------
+
+/// An empty canonical working grid (all 0 = undecided) sized for a
+/// rows×cols clue board: even rows hold `cols` horizontal edges, odd rows
+/// hold `cols + 1` vertical edges.
+List<List<int>> emptyWorkingGrid(int rows, int cols) {
+  return List.generate(2 * rows + 1,
+      (i) => List<int>.filled(i.isEven ? cols : cols + 1, 0));
+}
+
+/// True iff every edge in `w` is decided (no 0 remains).
+bool _allEdgesDecided(List<List<int>> w) {
+  for (final row in w) {
+    for (final v in row) {
+      if (v == 0) return false;
+    }
+  }
+  return true;
+}
+
+/// Propagate `w` to a fixed point using the cheap direct/vertex/cell rules
+/// (via [propagateHypothesisSquare], which also force-draws) interleaved with
+/// the inside/outside coloring pass. Returns true on a detected contradiction.
+///
+/// Note: [propagateColoringSquare] rolls back and returns false both when it
+/// makes no progress *and* when it hits a parity contradiction without marking
+/// — so we can't treat its false as a hard contradiction. That only costs a
+/// little extra search; the completeness checks in the DFS reject any invalid
+/// full assignment, so correctness is unaffected.
+bool _propagateToFixedPoint(
+    List<List<int>> w, int rows, int cols, List<List<int>> nums) {
+  while (true) {
+    if (propagateHypothesisSquare(w, rows, cols, nums)) return true;
+    final bool coloringChanged = propagateColoringSquare(w, rows, cols, nums);
+    if (!coloringChanged) return false;
+    // Coloring marked new edges; loop so the direct rules can consume them.
+  }
+}
+
+/// A fully-decided working grid is a real solution iff it satisfies every
+/// visible clue and forms exactly one closed loop.
+bool _isCompleteSolution(
+    List<List<int>> w, int rows, int cols, List<List<int>> nums) {
+  if (!_allEdgesDecided(w)) return false;
+  // With no undecided edges, isWorkingStateConsistent collapses to
+  // "drawn count == clue" per cell and vertex degree ∈ {0, 2}.
+  if (!isWorkingStateConsistent(w, rows, cols, nums)) return false;
+  return isSingleClosedLoop(w, rows, cols);
+}
+
+/// Depth-first search over the canonical edge grid. Collects up to
+/// [solutionCap] distinct complete solutions (each a fresh 1/-1 grid) into
+/// [out]. Branches on the first undecided edge, trying drawn (1) then
+/// disabled (-1), pruning with full propagation + consistency/topology checks
+/// at every node. Honours [nodeLimit]: when the node budget is exhausted the
+/// search aborts early and [budgetExhausted] is set so callers can tell an
+/// "unsolved" result apart from a "gave up" one.
+class _SquareDfs {
+  _SquareDfs(this.rows, this.cols, this.nums,
+      {required this.solutionCap, this.nodeLimit});
+
+  final int rows;
+  final int cols;
+  final List<List<int>> nums;
+  final int solutionCap;
+  final int? nodeLimit;
+
+  final List<List<List<int>>> out = [];
+  int _nodes = 0;
+  bool budgetExhausted = false;
+
+  void run(List<List<int>> start) => _dfs(start);
+
+  void _dfs(List<List<int>> w) {
+    if (out.length >= solutionCap || budgetExhausted) return;
+    if (nodeLimit != null && _nodes++ >= nodeLimit!) {
+      budgetExhausted = true;
+      return;
+    }
+
+    if (_propagateToFixedPoint(w, rows, cols, nums)) return; // contradiction
+    if (!isWorkingStateConsistent(w, rows, cols, nums)) return;
+    if (hasInconsistentLoopTopology(w, rows, cols)) return;
+
+    int er = -1, ec = -1;
+    outer:
+    for (int i = 0; i < w.length; i++) {
+      final List<int> row = w[i];
+      for (int j = 0; j < row.length; j++) {
+        if (row[j] == 0) {
+          er = i;
+          ec = j;
+          break outer;
+        }
+      }
+    }
+
+    if (er == -1) {
+      if (_isCompleteSolution(w, rows, cols, nums)) {
+        out.add(w.map((r) => List<int>.from(r)).toList());
+      }
+      return;
+    }
+
+    for (final int val in const [1, -1]) {
+      if (out.length >= solutionCap || budgetExhausted) return;
+      final List<List<int>> branch = w.map((r) => List<int>.from(r)).toList();
+      branch[er][ec] = val;
+      _dfs(branch);
+    }
+  }
+}
+
+/// Solve the board from the visible clues alone. Returns the solution working
+/// grid (1 = drawn, -1 = not drawn) or null if no solution exists / the node
+/// budget was exhausted before one was found.
+List<List<int>>? solveSquareFromClues(
+    List<List<int>> nums, int rows, int cols,
+    {int? nodeLimit}) {
+  final dfs = _SquareDfs(rows, cols, nums, solutionCap: 1, nodeLimit: nodeLimit);
+  dfs.run(emptyWorkingGrid(rows, cols));
+  return dfs.out.isEmpty ? null : dfs.out.first;
+}
+
+/// Outcome of verifying a board against the visible clues.
+enum SquareVerifyResult {
+  /// Exactly one solution exists — a proper, well-formed puzzle.
+  unique,
+
+  /// More than one solution exists — the clues are ambiguous.
+  multiple,
+
+  /// No solution satisfies the visible clues.
+  none,
+
+  /// The search hit its node budget before resolving — result unknown.
+  timeout,
+}
+
+/// Verify a board from the visible clues only. Counts solutions up to two
+/// (enough to distinguish unique from ambiguous) under an optional node
+/// budget. Never references any stored answer.
+SquareVerifyResult verifySquareFromClues(
+    List<List<int>> nums, int rows, int cols,
+    {int? nodeLimit}) {
+  final dfs = _SquareDfs(rows, cols, nums, solutionCap: 2, nodeLimit: nodeLimit);
+  dfs.run(emptyWorkingGrid(rows, cols));
+  if (dfs.out.length >= 2) return SquareVerifyResult.multiple;
+  if (dfs.out.length == 1) return SquareVerifyResult.unique;
+  return dfs.budgetExhausted
+      ? SquareVerifyResult.timeout
+      : SquareVerifyResult.none;
+}
+
+/// "공정한 퍼즐" 검증: 추측(branching) 없이 보이는 단서만으로 끝까지 풀리는지.
+/// direct+coloring 전파와 모순기반 forced draw/disable 만 반복 적용한다.
+/// 완성된 단일 닫힌 고리에 도달하면 true; 더 둘 forced 수가 없는데 미정 변이
+/// 남으면(=사람이 추측해야 함) false. 모순/미완성도 false.
+///
+/// 정답을 전혀 참조하지 않으며, 퍼즐 생성 직후 백그라운드 검증에 쓴다 —
+/// 통과한 보드만 사용자에게 노출해 "막히지 않고 논리로 풀리는" 경험을 보장.
+bool isSquareLogicSolvable(List<List<int>> nums, int rows, int cols) {
+  final List<List<int>> w = emptyWorkingGrid(rows, cols);
+  // 안전망: edge 총수보다 넉넉히. 매 반복 최소 한 변이 확정되므로 충분.
+  int totalEdges = 0;
+  for (final row in w) {
+    totalEdges += row.length;
+  }
+  final int maxIter = totalEdges + 10;
+  for (int iter = 0; iter < maxIter; iter++) {
+    propagateDirectAndColoringSquare(w, rows, cols, nums);
+    if (!isWorkingStateConsistent(w, rows, cols, nums)) return false;
+    if (hasInconsistentLoopTopology(w, rows, cols)) return false;
+    if (_allEdgesDecided(w)) {
+      return _isCompleteSolution(w, rows, cols, nums);
+    }
+    final List<int>? draw = findForcedDrawByContradiction(w, rows, cols, nums);
+    if (draw != null) {
+      w[draw[0]][draw[1]] = 1;
+      continue;
+    }
+    final List<int>? disable =
+        findForcedDisableByContradiction(w, rows, cols, nums);
+    if (disable != null) {
+      w[disable[0]][disable[1]] = -1;
+      continue;
+    }
+    return false; // 확정 수 없음 → 추측 필요 → 불공정
+  }
+  return false;
+}

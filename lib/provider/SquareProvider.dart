@@ -631,6 +631,31 @@ class SquareProvider with ChangeNotifier {
     }
   }
 
+  /// 정답을 보지 않고, 현재 보드의 보이는 단서만으로 추측 없이 끝까지 풀리는지
+  /// (공정한 퍼즐 검증). 보드를 변경하지 않는다 — 임시 working grid 에서만 계산.
+  /// init() 후(마스킹 적용 후) 호출해야 사용자가 보는 단서 기준으로 검증된다.
+  bool isLogicSolvable() {
+    if (puzzle.isEmpty || puzzle[0].isEmpty) return false;
+    final int rows = puzzle.length;
+    final int cols = puzzle[0].length;
+    final List<List<int>> nums = List.generate(
+        rows, (i) => List.generate(cols, (j) => puzzle[i][j].num));
+    return isSquareLogicSolvable(nums, rows, cols);
+  }
+
+  /// 백그라운드 검증용: 화면 자동풀기(추측+백트래킹 완전탐색)와 동일한 솔버로
+  /// 보이는 단서만 갖고 풀리는지 확인한다. 정답 비참조, 보드 미변경.
+  /// 풀리면 true (생성된 보드는 정답이 해이므로 거의 항상 통과), 안전망(node
+  /// 상한) 초과 등으로 못 풀면 false → 씬이 재생성한다.
+  bool canAutoSolve() {
+    if (puzzle.isEmpty || puzzle[0].isEmpty) return false;
+    final int rows = puzzle.length;
+    final int cols = puzzle[0].length;
+    final List<List<int>> nums = List.generate(
+        rows, (i) => List.generate(cols, (j) => puzzle[i][j].num));
+    return solveSquareFromClues(nums, rows, cols, nodeLimit: 2000000) != null;
+  }
+
   List<List<SquareBox>> getPuzzle() {
     return puzzle;
   }
@@ -2077,164 +2102,89 @@ class SquareProvider with ChangeNotifier {
     _solverStatus = "solver_running";
     notifyListeners();
 
-    final List<_SolverGuessFrame> guesses = [];
-
-    // Tier 2 안전망 (docs/auto_solver_termination_analysis.md §6.x).
-    // (a) 총 iter 상한 — 어떤 경로로든 무한 회피.
-    // (b) consecutive no-progress (forced move 0 + guess push 만) 상한 —
-    //     speculation 만 쌓이고 결판이 안 나면 조기 stuck 종료.
-    const int kMaxIter = 5000;
-    const int kMaxNoProgress = 80;
-    int iterCount = 0;
-    int noProgressStreak = 0;
-
     try {
+      // 진행 중인 propagation 잠금이 풀릴 때까지 대기.
+      while (_isUpdating != 0 && !_solverShouldStop) {
+        await Future.delayed(const Duration(milliseconds: 30));
+      }
+      if (_solverShouldStop) return;
+
+      if (puzzle.isEmpty || puzzle[0].isEmpty) {
+        _solverStatus = "solver_stuck";
+        notifyListeners();
+        return;
+      }
+      final int rows = puzzle.length;
+      final int cols = puzzle[0].length;
+      final List<List<int>> nums = List.generate(
+          rows, (i) => List.generate(cols, (j) => puzzle[i][j].num));
+
+      // 정답(answer)을 보지 않고, 화면에 보이는 단서만으로 해를 추론한다 —
+      // 사용자 관점의 풀이. 직접규칙 + coloring 전파 → 막히면 추측 + 완전
+      // 백트래킹 DFS (square_propagation_core.solveSquareFromClues). 추론은
+      // 동기 계산이라 한 번에 끝나고, 그 결과(단일 닫힌 고리)를 아래에서 한
+      // 변씩 그려 보여 준다. 정답은 이 경로에서 절대 참조하지 않는다.
+      final List<List<int>>? solution =
+          solveSquareFromClues(nums, rows, cols, nodeLimit: 2000000);
+      if (_solverShouldStop) return;
+      if (solution == null) {
+        _solverStatus = "solver_stuck";
+        notifyListeners();
+        return;
+      }
+
+      // 추론된 해의 변을 차례로 그린다. 매 반복마다 submit 을 다시 읽어,
+      // 한 변을 그을 때 propagation 이 자동으로 확정한 다른 변까지 인식하고
+      // 건너뛴다 (이미 그어진 변을 다시 클릭해 토글로 지우는 일 방지).
+      final int maxSteps = rows * cols * 4 + 100;
+      int steps = 0;
       while (!_solverShouldStop) {
-        iterCount++;
-        if (iterCount > kMaxIter) {
+        if (++steps > maxSteps) {
           _solverStatus = "solver_stuck";
           notifyListeners();
           break;
         }
-        if (noProgressStreak > kMaxNoProgress) {
-          _solverStatus = "solver_stuck";
-          notifyListeners();
-          break;
-        }
-        // 진행 중인 propagation 잠금이 풀릴 때까지 대기.
         while (_isUpdating != 0 && !_solverShouldStop) {
           await Future.delayed(const Duration(milliseconds: 30));
         }
         if (_solverShouldStop) break;
 
         submit = await readSquare.readSubmit(puzzle);
-        if (_isPuzzleSolvedLocal()) {
-          _solverStatus = "solver_done";
+        List<int>? next;
+        for (int i = 0; i < solution.length && next == null; i++) {
+          for (int j = 0; j < solution[i].length; j++) {
+            if (solution[i][j] != 1) continue;
+            final int cur =
+                (i < submit.length && j < submit[i].length) ? submit[i][j] : 0;
+            if (cur <= 0) {
+              next = [i, j];
+              break;
+            }
+          }
+        }
+        if (next == null) break; // 해의 모든 변을 그었다.
+
+        _solverStatus = "solver_step";
+        notifyListeners();
+        _solverFastApply = true;
+        final bool ok = await _solverApplyDraw(next[0], next[1]);
+        _solverFastApply = false;
+        if (_solverShouldStop) break;
+        if (!ok) {
+          // 유효한 해의 변을 긋는 중 모순이 나는 일은 없어야 하지만(방어),
+          // 사용자가 미리 둔 잘못된 표시 등으로 발생하면 stuck 처리.
+          _solverStatus = "solver_stuck";
           notifyListeners();
           break;
         }
-
-        final int rows = puzzle.length;
-        if (rows == 0) break;
-        final int cols = puzzle[0].length;
-        final List<List<int>> nums = List.generate(
-            rows, (i) => List.generate(cols, (j) => puzzle[i][j].num));
-        final List<List<int>> w = buildWorkingFromEdges(submit);
-        // 솔버 전용 direct-rule propagation. coloring 은 제거 — 정답(answer)
-        // oracle 이 완주를 보장하므로 coloring 의 deductive 보강이 불필요하고,
-        // transient 모순으로 조기 stuck 을 유발하던 위험(docs §7-4b)을 없앤다.
-        propagateDirectSquare(w, rows, cols, nums);
-
-        // 진입 시점에 이미 모순이면 마지막 추측이 잘못된 것 → 스냅샷 복원.
-        // cell/vertex 차수 외에 다중 고리 위상도 함께 검사한다 — 추측 분기가
-        // 셀 숫자를 다 만족시키면서 닫힌 분리 고리를 만든 경우 cell/vertex
-        // 검사는 통과하지만 답은 아니므로 backtrack 해야 한다.
-        if (!isWorkingStateConsistent(w, rows, cols, nums) ||
-            hasInconsistentLoopTopology(w, rows, cols)) {
-          if (guesses.isEmpty) {
-            _solverStatus = "solver_stuck";
-            notifyListeners();
-            break;
-          }
-          final frame = guesses.removeLast();
-          _solverStatus = "solver_backtrack";
-          notifyListeners();
-          await _solverRestoreAndDisproveGuess(frame);
-          await Future.delayed(stepDelay);
-          continue;
-        }
-
-        // 정답 oracle 우선 (fast path). 정답에 있는데 아직 안 그은 edge 를 차례로
-        // 그으면 추측/백트래킹 없이 단일 고리로 수렴, 절대 stuck/오답으로 끝나지
-        // 않는다. 비싼 per-edge contradiction 탐색(findForcedDraw/Disable)과
-        // _applyConstraints 의 Phase 2 look-ahead 는 _solverFastApply 로 건너뛴다 —
-        // oracle 이 완주를 보장하므로 그 둘은 결과에 영향 없는 비용일 뿐이며 Square
-        // 자동풀기 런타임을 지배했다 (Triangle/Hexagon/Trihex 와 동일한 패리티 —
-        // docs/auto_solver_bug_analysis.md).
-        final List<int>? oracle = _solverNextOracleDraw();
-        if (oracle != null) {
-          _solverStatus = "solver_step";
-          notifyListeners();
-          _solverFastApply = true;
-          final ok = await _solverApplyDraw(oracle[0], oracle[1]);
-          _solverFastApply = false;
-          if (_solverShouldStop) break;
-          if (!ok) {
-            if (!await _backtrackToLastGuess(guesses)) break;
-          }
-          noProgressStreak = 0;
-          await Future.delayed(stepDelay);
-          continue;
-        }
-
-        // answer 부재 등 비정상 케이스의 안전망: full deductive 경로.
-        // "edge=-1 가설 → 모순 → 반드시 그어야 함" 으로 확정 +1 추출.
-        // 정답과 일치할 때만 적용 — propagation 버그가 만든 잘못된 forced 가
-        // 보드를 망가뜨려 조기 stuck 되던 문제를 차단한다.
-        final List<int>? draw =
-            findForcedDrawByContradiction(w, rows, cols, nums);
-        if (draw != null && _solverAnswerDrawn(draw[0], draw[1])) {
-          _solverStatus = "solver_step";
-          notifyListeners();
-          final ok = await _solverApplyDraw(draw[0], draw[1]);
-          if (_solverShouldStop) break;
-          if (!ok) {
-            // 확정 추론이 deep contradiction 을 만들었다 — 입력 상태에 wrong
-            // premise 가 깔려 있었던 셈. 가장 가까운 추측까지 backtrack.
-            if (!await _backtrackToLastGuess(guesses)) break;
-          }
-          noProgressStreak = 0;
-          await Future.delayed(stepDelay);
-          continue;
-        }
-
-        // "edge=+1 가설 → 모순 → 반드시 비활성" 으로 확정 -1 추출.
-        // 직접규칙과 _applyConstraints 의 2-iter look-ahead 가 놓친 깊은 -1
-        // 확정을 잡아 -4 (사용자 X) 로 잠근다. 이 단계가 없으면 미처리분이
-        // pickHighestImpactGuess 로 흘러들어가 잘못된 +1 으로 그어졌다 —
-        // docs/auto_solver_bug_analysis.md §1 참조.
-        final List<int>? disable =
-            findForcedDisableByContradiction(w, rows, cols, nums);
-        if (disable != null && !_solverAnswerDrawn(disable[0], disable[1])) {
-          _solverStatus = "solver_step";
-          notifyListeners();
-          final ok = await _solverApplyDisable(disable[0], disable[1]);
-          if (_solverShouldStop) break;
-          if (!ok) {
-            if (!await _backtrackToLastGuess(guesses)) break;
-          }
-          noProgressStreak = 0;
-          await Future.delayed(stepDelay);
-          continue;
-        }
-
-        // answer 부재 등 비정상 케이스의 안전망: 기존 추측 경로.
-        // 확정 없음 → 현재 submit 스냅샷을 in-memory 스택에 push 후
-        // 영향력이 가장 큰 edge 로 추측. 깊이 제한 없음.
-        final List<int>? guess = pickHighestImpactGuess(w, rows, cols, nums);
-        if (guess == null) {
-          // undecided edge 가 없는데도 _isPuzzleSolvedLocal 이 false 였다 →
-          // 셀 숫자/꼭짓점 차수는 통과했지만 globally 답이 아님 (예: 다중 고리).
-          // hasInconsistentLoopTopology 도 못 잡은 경우의 안전망: 스택이
-          // 비어 있지 않으면 backtrack.
-          if (!await _backtrackToLastGuess(guesses)) break;
-          await Future.delayed(stepDelay);
-          continue;
-        }
-        final List<List<int>> snapshot =
-            submit.map((r) => List<int>.from(r)).toList();
-        guesses.add(_SolverGuessFrame(snapshot, guess[0], guess[1]));
-        _solverStatus = "solver_guess";
-        notifyListeners();
-        final ok = await _solverApplyDraw(guess[0], guess[1]);
-        if (_solverShouldStop) break;
-        if (!ok) {
-          // 추측이 deep contradiction 을 만들었다 — 정상 흐름. backtrack.
-          if (!await _backtrackToLastGuess(guesses)) break;
-        }
-        // guess push 만 한 iter — 결정적 진행이 없는 streak 누적.
-        noProgressStreak++;
         await Future.delayed(stepDelay);
+      }
+
+      if (!_solverShouldStop) {
+        submit = await readSquare.readSubmit(puzzle);
+        _solverStatus =
+            _isPuzzleSolvedLocal() ? "solver_done" : "solver_stuck";
+        notifyListeners();
       }
     } finally {
       _solverRunning = false;
@@ -2242,10 +2192,6 @@ class SquareProvider with ChangeNotifier {
       // 솔버가 done 이외로 종료한 경우 — 보드를 초기화하지 않고 현재까지의
       // 진행 상황을 그대로 둔다. 사용자가 OK 를 눌러 닫을 때까지 banner 가
       // 마지막 status (예: solver_stuck) 를 표시.
-      //
-      // 분기 깊이 제한이 없으므로 종료 시점에 unproven +1 추측 라인이 남는
-      // 경우는 사용자 cancel 뿐이다 (스택 위 frame 만큼). solver_stuck 자연
-      // 종료는 guesses 가 비어 있어 잔존 추측 라인이 없다.
       if (_solverStatus != "solver_done") {
         _solverFinished = true;
       }
@@ -2253,49 +2199,27 @@ class SquareProvider with ChangeNotifier {
     }
   }
 
+  /// 정답을 보지 않는 완료 판정: 그어진 변이 단일 닫힌 고리를 이루고, 화면에
+  /// 보이는 모든 단서(숨은 단서 num<0 은 제외)가 정확히 충족되면 완료.
   bool _isPuzzleSolvedLocal() {
-    if (answer.isEmpty || submit.isEmpty) return false;
-    for (int i = 0; i < answer.length; i++) {
-      for (int j = 0; j < answer[i].length; j++) {
-        final bool ansSel = answer[i][j] == 1;
-        final bool subSel = submit[i][j] > 0;
-        if (ansSel != subSel) return false;
-      }
-    }
-    // answer 자체가 multi-loop 으로 잘못 생성된 경우에도 "완료" 가 트리거
-    // 되지 않도록 단일 닫힌 고리 위상까지 확인.
-    if (puzzle.isEmpty) return false;
+    if (submit.isEmpty || puzzle.isEmpty) return false;
     final int rows = puzzle.length;
     final int cols = puzzle[0].length;
     final List<List<int>> w = buildWorkingFromEdges(submit);
-    return isSingleClosedLoop(w, rows, cols);
-  }
-
-  /// 마지막 추측 frame 을 pop 하고 복원 + 잠금. guesses 가 비어 있으면 false 를
-  /// 반환해 호출자가 솔버를 멈추게 한다. true 면 backtrack 완료, 다음 iter 계속.
-  Future<bool> _backtrackToLastGuess(List<_SolverGuessFrame> guesses) async {
-    if (guesses.isEmpty) {
-      _solverStatus = "solver_stuck";
-      notifyListeners();
-      return false;
+    if (!isSingleClosedLoop(w, rows, cols)) return false;
+    for (int i = 0; i < rows; i++) {
+      for (int j = 0; j < cols; j++) {
+        final int num = puzzle[i][j].num;
+        if (num < 0 || num > 4) continue;
+        int dr = 0;
+        if (w[2 * i][j] == 1) dr++;
+        if (w[2 * i + 2][j] == 1) dr++;
+        if (w[2 * i + 1][j] == 1) dr++;
+        if (w[2 * i + 1][j + 1] == 1) dr++;
+        if (dr != num) return false;
+      }
     }
-    final frame = guesses.removeLast();
-    _solverStatus = "solver_backtrack";
-    notifyListeners();
-    await _solverRestoreAndDisproveGuess(frame);
     return true;
-  }
-
-  /// in-memory 스냅샷에서 보드를 복원하고, 실패한 추측 edge 를 사용자 X (-4)
-  /// 로 잠가 같은 분기를 다시 시도하지 않게 한다. 두 단계 모두 _silentMode 로
-  /// 묶어 사이 paint 가 새지 않게 한다.
-  Future<void> _solverRestoreAndDisproveGuess(_SolverGuessFrame frame) async {
-    await _runSilently(() async {
-      await applyBookmarkSubmit(frame.snapshot);
-      await _solverApplyDisable(frame.canonRow, frame.canonCol);
-    });
-    // 배경 작업이 끝났으니 한 번만 paint.
-    notifyListeners();
   }
 
   /// canonical edge (i, j) 를 (puzzleRow, puzzleCol, dir) 로 변환.
@@ -2321,9 +2245,8 @@ class SquareProvider with ChangeNotifier {
   }
 
   /// 호출자가 nested 로 [_silentMode] 를 켜더라도 안전하게 동작하도록
-  /// try/finally 로 이전 값을 복원한다. solveHumanLike 의 backtrack 경로처럼
-  /// `_silentMode=true` 가 이미 set 된 상태에서 _solverApplyDisable 이 다시
-  /// 호출되어도 silent mode 가 조기 해제되지 않는다.
+  /// try/finally 로 이전 값을 복원한다. `_silentMode=true` 가 이미 set 된
+  /// 상태에서 다시 호출되어도 silent mode 가 조기 해제되지 않는다.
   Future<void> _runSilently(Future<void> Function() body) async {
     final bool outer = _silentMode;
     _silentMode = true;
@@ -2359,54 +2282,4 @@ class SquareProvider with ChangeNotifier {
     });
     return !_solverDetectedInconsistency;
   }
-
-  Future<bool> _solverApplyDisable(int canonI, int canonJ) async {
-    final mapped = _canonicalToPuzzle(canonI, canonJ);
-    if (mapped == null) return true;
-    final int row = mapped[0] as int;
-    final int col = mapped[1] as int;
-    final String dir = mapped[2] as String;
-    _solverDetectedInconsistency = false;
-    await _runSilently(() async {
-      switch (dir) {
-        case "up":    await updateSquareBox(row, col, up: -4); break;
-        case "down":  await updateSquareBox(row, col, down: -4); break;
-        case "left":  await updateSquareBox(row, col, left: -4); break;
-        case "right": await updateSquareBox(row, col, right: -4); break;
-      }
-    });
-    return !_solverDetectedInconsistency;
-  }
-
-  /// 정답(answer) 에서 canonical edge (i, j) 가 그어지는 변인지. answer 는
-  /// submit 과 동일한 canonical edge-grid 레이아웃 (answer[i][j]==1 → 그어짐).
-  bool _solverAnswerDrawn(int i, int j) {
-    if (i < 0 || i >= answer.length) return false;
-    if (j < 0 || j >= answer[i].length) return false;
-    return answer[i][j] == 1;
-  }
-
-  /// 정답에서 그어져야 하는데 아직 안 그어진 첫 canonical edge. 없으면 null.
-  /// 솔버 oracle: 이 edge 들을 차례로 그으면 항상 정답으로 수렴한다.
-  List<int>? _solverNextOracleDraw() {
-    for (int i = 0; i < answer.length; i++) {
-      final List<int> row = answer[i];
-      for (int j = 0; j < row.length; j++) {
-        if (row[j] != 1) continue;
-        final int cur =
-            (i < submit.length && j < submit[i].length) ? submit[i][j] : 0;
-        if (cur <= 0) return [i, j];
-      }
-    }
-    return null;
-  }
-}
-
-class _SolverGuessFrame {
-  /// 추측 직전 submit 그리드 deep copy. backtrack 시 이 시점으로 복원한 뒤
-  /// canonical edge 를 -4 (사용자 X) 로 잠근다.
-  final List<List<int>> snapshot;
-  final int canonRow;
-  final int canonCol;
-  _SolverGuessFrame(this.snapshot, this.canonRow, this.canonCol);
 }

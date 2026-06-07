@@ -752,9 +752,128 @@ class HexagonProvider with ChangeNotifier {
         }
       }
 
-      if (!changed) break;
+      if (!changed) {
+        // 수렴 시점에만 전역 고리 위상 검사 — 부분 상태에서 돌리면 곧 disable
+        // 될 미정 변 때문에 transient 닫힌 고리를 모순으로 오인할 수 있다
+        // (square_propagation_core.propagateHypothesisSquare 와 동일 규칙).
+        if (_hasInconsistentLoopTopology()) return true;
+        break;
+      }
     }
     return false;
+  }
+
+  int _vertexKey(int r, int c, int vi) {
+    final coord = _vertexCoord(r, c, vi);
+    return coord[0] * 100000 + coord[1];
+  }
+
+  /// 그어진 변(>=1)들의 연결 성분을 union-find 로 추적해 전역 고리 위상을
+  /// 검사한다. 닫힌 고리(모든 정점 degree 2)가 2개 이상이거나, 닫힌 고리 1개 +
+  /// 다른 성분이 더 있으면 위상 모순(true). 닫힌 고리가 없거나 단일 성분뿐이면
+  /// false. cell/vertex 차수만 보는 [_isStateConsistent] 가 못 잡는 분리 고리를
+  /// 잡아 솔버가 막다른 분기에서 backtrack 하도록 한다.
+  bool _hasInconsistentLoopTopology() {
+    final Map<int, int> parent = {};
+    int find(int x) {
+      parent.putIfAbsent(x, () => x);
+      int root = x;
+      while (parent[root] != root) {
+        root = parent[root]!;
+      }
+      while (parent[x] != root) {
+        final next = parent[x]!;
+        parent[x] = root;
+        x = next;
+      }
+      return root;
+    }
+
+    final Map<int, int> deg = {};
+    final Set<int> seen = {};
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        for (int e = 0; e < 6; e++) {
+          if (puzzle[r][c].edges[e] < 1) continue;
+          final canon = _canonicalEdgeId(r, c, e);
+          if (!seen.add(canon)) continue;
+          final va = _vertexKey(r, c, e);
+          final vb = _vertexKey(r, c, (e + 1) % 6);
+          deg[va] = (deg[va] ?? 0) + 1;
+          deg[vb] = (deg[vb] ?? 0) + 1;
+          final ra = find(va);
+          final rb = find(vb);
+          if (ra != rb) parent[ra] = rb;
+        }
+      }
+    }
+    if (deg.isEmpty) return false;
+
+    final Map<int, bool> closedFlag = {};
+    for (final v in deg.keys) {
+      final root = find(v);
+      final bool d2 = deg[v] == 2;
+      if (!closedFlag.containsKey(root)) {
+        closedFlag[root] = d2;
+      } else if (!d2) {
+        closedFlag[root] = false;
+      }
+    }
+    int closed = 0;
+    for (final f in closedFlag.values) {
+      if (f) closed++;
+    }
+    if (closed >= 2) return true;
+    if (closed == 1 && closedFlag.length > 1) return true;
+    return false;
+  }
+
+  /// 그어진 변이 정확히 하나의 닫힌 고리를 이루는지 (정답 비참조 완료 판정용).
+  bool _isSingleClosedLoop() {
+    final Map<int, int> parent = {};
+    int find(int x) {
+      parent.putIfAbsent(x, () => x);
+      int root = x;
+      while (parent[root] != root) {
+        root = parent[root]!;
+      }
+      while (parent[x] != root) {
+        final next = parent[x]!;
+        parent[x] = root;
+        x = next;
+      }
+      return root;
+    }
+
+    final Map<int, int> deg = {};
+    final Set<int> seen = {};
+    int drawn = 0;
+    for (int r = 0; r < rows; r++) {
+      for (int c = 0; c < cols; c++) {
+        for (int e = 0; e < 6; e++) {
+          if (puzzle[r][c].edges[e] < 1) continue;
+          final canon = _canonicalEdgeId(r, c, e);
+          if (!seen.add(canon)) continue;
+          drawn++;
+          final va = _vertexKey(r, c, e);
+          final vb = _vertexKey(r, c, (e + 1) % 6);
+          deg[va] = (deg[va] ?? 0) + 1;
+          deg[vb] = (deg[vb] ?? 0) + 1;
+          final ra = find(va);
+          final rb = find(vb);
+          if (ra != rb) parent[ra] = rb;
+        }
+      }
+    }
+    if (drawn == 0) return false;
+    for (final v in deg.keys) {
+      if (deg[v] != 2) return false;
+    }
+    final Set<int> roots = {};
+    for (final v in deg.keys) {
+      roots.add(find(v));
+    }
+    return roots.length == 1;
   }
 
   /// Integer vertex coordinate in (W/2, R/2) units. v[0]=top, v[1]=top-right,
@@ -931,8 +1050,10 @@ class HexagonProvider with ChangeNotifier {
   /// Square / Triangle 솔버와 동일 골격. 한 수씩 forced-draw → forced-disable
   /// 순으로 확정을 그어주고, 확정이 없으면 영향력 최대 edge 로 추측. 추측이
   /// 실패하면 직전 추측 시점의 submit 스냅샷으로 복원하고 실패 edge 를
-  /// 사용자 X (-4) 로 잠근다. 최대 3 단계 추측.
-  static const int _solverMaxGuesses = 10;
+  /// 사용자 X (-4) 로 잠근다. 정답 oracle 제거 후 추측+백트래킹이 유일한 풀이
+  /// 동력이므로 깊이 상한을 크게 둬 완전 탐색을 보장하고, 무한 루프는
+  /// solveHumanLike 의 총 iter 상한으로 막는다.
+  static const int _solverMaxGuesses = 100000;
 
   bool _solverRunning = false;
   bool _solverShouldStop = false;
@@ -969,8 +1090,19 @@ class HexagonProvider with ChangeNotifier {
     final List<List<int>> preSolverSubmit =
         _readSubmit().map((r) => List<int>.from(r)).toList();
 
+    // 정답 oracle 제거로 종료 보장이 사라져 외부 안전망을 둔다.
+    const int kMaxIter = 20000;
+    const int kMaxNoProgress = 400;
+    int iterCount = 0;
+    int noProgressStreak = 0;
+
     try {
       while (!_solverShouldStop) {
+        if (++iterCount > kMaxIter || noProgressStreak > kMaxNoProgress) {
+          _solverStatus = "solver_stuck";
+          notifyListeners();
+          break;
+        }
         submit = _readSubmit();
         if (_isPuzzleSolvedLocal()) {
           _solverStatus = "solver_done";
@@ -978,35 +1110,15 @@ class HexagonProvider with ChangeNotifier {
           break;
         }
 
-        if (!_isStateConsistent()) {
+        if (!_isStateConsistent() || _hasInconsistentLoopTopology()) {
           if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           await Future.delayed(stepDelay);
           continue;
         }
 
-        // 정답 oracle 우선 (fast path). updateEdge 의 직접규칙 propagation 이
-        // 보이는 자동 비활성(-1)을 처리하고, 비싼 per-edge contradiction 탐색과
-        // look-ahead 는 _solverFastApply 로 건너뛴다 — oracle 이 완주를
-        // 보장하므로 그 둘은 결과에 영향 없는 비용일 뿐이며 육각형 자동풀기
-        // 런타임을 지배했다. 정답에 있는데 아직 안 그은 변을 차례로 그어 완주.
-        final List<int>? oracle = _solverNextOracleDraw();
-        if (oracle != null) {
-          _solverStatus = "solver_step";
-          notifyListeners();
-          _solverFastApply = true;
-          final ok = await _solverApplyAndCheck(
-              oracle[0], oracle[1], oracle[2], themeColor.getNormalRandom());
-          _solverFastApply = false;
-          if (_solverShouldStop) break;
-          if (!ok) {
-            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
-          }
-          await Future.delayed(stepDelay);
-          continue;
-        }
-
-        // answer 부재 등 비정상 케이스의 안전망: 정답이 없으면 full deductive
-        // 솔버 (contradiction 기반 forced 추론 + look-ahead, 그 뒤 추측) 로 푼다.
+        // 정답을 보지 않고 화면 단서만으로 푼다 (사용자 관점). 모순 기반 forced
+        // 추론을 먼저 적용하고, 확정이 없으면 영향력 최대 변으로 추측 후 모순
+        // 시 백트래킹한다.
         final List<int>? draw = _findForcedDrawByContradiction();
         if (draw != null) {
           _solverStatus = "solver_step";
@@ -1017,6 +1129,7 @@ class HexagonProvider with ChangeNotifier {
           if (!ok) {
             if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           }
+          noProgressStreak = 0;
           await Future.delayed(stepDelay);
           continue;
         }
@@ -1031,11 +1144,12 @@ class HexagonProvider with ChangeNotifier {
           if (!ok) {
             if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           }
+          noProgressStreak = 0;
           await Future.delayed(stepDelay);
           continue;
         }
 
-        // answer 부재 등 비정상 케이스의 안전망: 기존 추측 경로.
+        // 확정 없음 → 영향력이 가장 큰 edge 로 추측 후 백트래킹.
         if (guesses.length >= _solverMaxGuesses) {
           _solverStatus = "solver_labels_full";
           notifyListeners();
@@ -1058,6 +1172,7 @@ class HexagonProvider with ChangeNotifier {
         if (!ok) {
           if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
         }
+        noProgressStreak++;
         await Future.delayed(stepDelay);
       }
     } finally {
@@ -1074,34 +1189,127 @@ class HexagonProvider with ChangeNotifier {
     }
   }
 
+  /// 정답을 보지 않는 완료 판정: 그어진 변이 단일 닫힌 고리를 이루고, 보이는
+  /// 모든 단서(num<0 숨김 제외)가 정확히 충족되면 완료.
   bool _isPuzzleSolvedLocal() {
-    if (rows == 0 || answer.isEmpty) return false;
+    if (rows == 0) return false;
+    if (!_isSingleClosedLoop()) return false;
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
-        final int base = c * 6;
+        final int num = puzzle[r][c].num;
+        if (num < 0) continue;
+        int active = 0;
         for (int e = 0; e < 6; e++) {
-          final bool ansSel = answer[r][base + e] == 1;
-          final bool subSel = puzzle[r][c].edges[e] >= 1;
-          if (ansSel != subSel) return false;
+          if (puzzle[r][c].edges[e] >= 1) active++;
         }
+        if (active != num) return false;
       }
     }
     return true;
   }
 
-  /// 정답에서 그어져야 하는데 아직 안 그어진 첫 변 [r, c, e]. 없으면 null.
-  /// 솔버 oracle: 이 변들을 차례로 그으면 항상 정답으로 수렴한다.
-  List<int>? _solverNextOracleDraw() {
-    for (int r = 0; r < rows; r++) {
-      for (int c = 0; c < cols; c++) {
-        for (int e = 0; e < 6; e++) {
-          if (answer[r][c * 6 + e] == 1 && puzzle[r][c].edges[e] < 1) {
-            return [r, c, e];
-          }
-        }
+  /// 정답을 보지 않고, 보이는 단서만으로 추측 없이 끝까지 풀리는지(공정한 퍼즐
+  /// 검증). 직접규칙 전파 + 모순기반 forced draw/disable + 고리위상 검사만
+  /// 반복 적용한다. 계산 후 원래 edge 상태로 복원하므로 보드를 바꾸지 않는다.
+  bool isLogicSolvable() {
+    if (rows == 0) return false;
+    final snap = _snapshotEdges();
+    bool result = false;
+    const int maxIter = 100000;
+    for (int iter = 0; iter < maxIter; iter++) {
+      _propagateDirect();
+      if (!_isStateConsistent() || _hasInconsistentLoopTopology()) {
+        result = false;
+        break;
       }
+      if (_isPuzzleSolvedLocal()) {
+        result = true;
+        break;
+      }
+      final List<int>? draw = _findForcedDrawByContradiction();
+      if (draw != null) {
+        puzzle[draw[0]][draw[1]].edges[draw[2]] = 1;
+        final nb = _neighborEdge(draw[0], draw[1], draw[2]);
+        if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = 1;
+        continue;
+      }
+      final List<int>? disable = _findForcedDisableByContradiction();
+      if (disable != null) {
+        puzzle[disable[0]][disable[1]].edges[disable[2]] = -1;
+        final nb = _neighborEdge(disable[0], disable[1], disable[2]);
+        if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = -1;
+        continue;
+      }
+      result = false; // 확정 수 없음 → 추측 필요 → 불공정
+      break;
     }
-    return null;
+    _restoreEdges(snap);
+    return result;
+  }
+
+  void _setEdgeBoth(int r, int c, int e, int val) {
+    puzzle[r][c].edges[e] = val;
+    final nb = _neighborEdge(r, c, e);
+    if (nb != null) puzzle[nb[0]][nb[1]].edges[nb[2]] = val;
+  }
+
+  /// 백그라운드 검증용: 화면 자동풀기와 동일한 추측+백트래킹 완전탐색을
+  /// headless·동기로 돌려 풀리는지 확인한다. 정답 비참조(완료판정 단일고리+단서),
+  /// 고리위상 검사 포함, 계산 후 edge 원복으로 보드를 바꾸지 않는다.
+  bool canAutoSolve() {
+    if (rows == 0) return false;
+    final outer = _snapshotEdges();
+    final List<List<dynamic>> stack = []; // [snapshot, r, c, e]
+    bool result = false;
+    const int maxIter = 20000;
+    const int maxNoProg = 400;
+    int iter = 0;
+    int noProg = 0;
+    while (iter++ < maxIter && noProg <= maxNoProg) {
+      _propagateDirect();
+      if (!_isStateConsistent() || _hasInconsistentLoopTopology()) {
+        if (stack.isEmpty) {
+          result = false;
+          break;
+        }
+        final f = stack.removeLast();
+        _restoreEdges(f[0] as List<List<List<int>>>);
+        _setEdgeBoth(f[1] as int, f[2] as int, f[3] as int, -1);
+        continue;
+      }
+      if (_isPuzzleSolvedLocal()) {
+        result = true;
+        break;
+      }
+      final List<int>? draw = _findForcedDrawByContradiction();
+      if (draw != null) {
+        _setEdgeBoth(draw[0], draw[1], draw[2], 1);
+        noProg = 0;
+        continue;
+      }
+      final List<int>? dis = _findForcedDisableByContradiction();
+      if (dis != null) {
+        _setEdgeBoth(dis[0], dis[1], dis[2], -1);
+        noProg = 0;
+        continue;
+      }
+      final List<int>? guess = _pickHighestImpactGuess();
+      if (guess == null) {
+        if (stack.isEmpty) {
+          result = false;
+          break;
+        }
+        final f = stack.removeLast();
+        _restoreEdges(f[0] as List<List<List<int>>>);
+        _setEdgeBoth(f[1] as int, f[2] as int, f[3] as int, -1);
+        continue;
+      }
+      stack.add([_snapshotEdges(), guess[0], guess[1], guess[2]]);
+      _setEdgeBoth(guess[0], guess[1], guess[2], 1);
+      noProg++;
+    }
+    _restoreEdges(outer);
+    return result;
   }
 
   Future<bool> _backtrackToLastGuess(

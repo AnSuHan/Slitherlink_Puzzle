@@ -949,10 +949,11 @@ class TriangleProvider with ChangeNotifier {
   /// 확정 라인 (forced-draw / forced-disable) 을 찾아 사용자 탭처럼 그어준다.
   /// 확정이 없으면 영향력이 가장 큰 undecided edge 를 추측 후보로 골라 그어보고,
   /// 모순이 발생하면 직전 추측 시점의 submit 스냅샷으로 복원한 뒤 실패 edge 를
-  /// 사용자 X (-4) 로 잠가 같은 분기를 다시 시도하지 않게 한다. 추측 슬롯은
-  /// 최대 3 단계까지 누적 (Square 의 R/G/B 슬롯과 동일한 깊이). 사용자가
-  /// [cancelSolver] 를 호출하거나 restart 하면 즉시 종료한다.
-  static const int _solverMaxGuesses = 10;
+  /// 사용자 X (-4) 로 잠가 같은 분기를 다시 시도하지 않게 한다. 정답 oracle 을
+  /// 제거한 뒤로는 추측+백트래킹이 유일한 풀이 동력이므로 깊이 상한을 크게 둬
+  /// 완전 탐색(complete search)을 보장한다. 무한 루프는 solveHumanLike 의 총
+  /// iter 상한으로 막는다. 사용자가 [cancelSolver]/restart 하면 즉시 종료.
+  static const int _solverMaxGuesses = 100000;
 
   bool _solverRunning = false;
   bool _solverShouldStop = false;
@@ -989,8 +990,20 @@ class TriangleProvider with ChangeNotifier {
     final List<List<int>> preSolverSubmit =
         _readSubmit().map((r) => List<int>.from(r)).toList();
 
+    // 정답 oracle 을 제거했으므로 종료를 보장할 외부 안전망이 필요하다.
+    // (a) 총 iter 상한, (b) 결정적 진행 없는 연속 추측 streak 상한.
+    const int kMaxIter = 20000;
+    const int kMaxNoProgress = 400;
+    int iterCount = 0;
+    int noProgressStreak = 0;
+
     try {
       while (!_solverShouldStop) {
+        if (++iterCount > kMaxIter || noProgressStreak > kMaxNoProgress) {
+          _solverStatus = "solver_stuck";
+          notifyListeners();
+          break;
+        }
         submit = _readSubmit();
         if (_isPuzzleSolvedLocal()) {
           _solverStatus = "solver_done";
@@ -1005,29 +1018,9 @@ class TriangleProvider with ChangeNotifier {
           continue;
         }
 
-        // 정답 oracle 우선 (fast path). updateEdge 의 직접규칙 propagation 이
-        // 보이는 자동 비활성(-1)을 처리하고, 비싼 per-edge contradiction 탐색과
-        // look-ahead 는 _solverFastApply 로 건너뛴다 — oracle 이 완주를
-        // 보장하므로 그 둘은 결과에 영향 없는 비용일 뿐이며 삼각형 자동풀기
-        // 런타임을 지배했다. 정답에 있는데 아직 안 그은 변을 차례로 그어 완주.
-        final List<int>? oracle = _solverNextOracleDraw();
-        if (oracle != null) {
-          _solverStatus = "solver_step";
-          notifyListeners();
-          _solverFastApply = true;
-          final ok = await _solverApplyAndCheck(
-              oracle[0], oracle[1], oracle[2], themeColor.getNormalRandom());
-          _solverFastApply = false;
-          if (_solverShouldStop) break;
-          if (!ok) {
-            if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
-          }
-          await Future.delayed(stepDelay);
-          continue;
-        }
-
-        // answer 부재 등 비정상 케이스의 안전망: 정답이 없으면 full deductive
-        // 솔버 (contradiction 기반 forced 추론 + look-ahead, 그 뒤 추측) 로 푼다.
+        // 정답을 보지 않고 화면 단서만으로 푼다 (사용자 관점). 모순 기반 forced
+        // 추론(반드시 그어야 할 변 → 반드시 비울 변) 을 먼저 적용하고, 확정이
+        // 없으면 영향력 최대 변으로 추측한 뒤 모순 시 백트래킹한다.
         final List<int>? draw = _findForcedDrawByContradiction();
         if (draw != null) {
           _solverStatus = "solver_step";
@@ -1038,6 +1031,7 @@ class TriangleProvider with ChangeNotifier {
           if (!ok) {
             if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           }
+          noProgressStreak = 0;
           await Future.delayed(stepDelay);
           continue;
         }
@@ -1052,12 +1046,12 @@ class TriangleProvider with ChangeNotifier {
           if (!ok) {
             if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
           }
+          noProgressStreak = 0;
           await Future.delayed(stepDelay);
           continue;
         }
 
-        // answer 부재 등 비정상 케이스의 안전망: 기존 추측 경로.
-        // 확정 없음 → 영향력이 가장 큰 edge 로 추측.
+        // 확정 없음 → 영향력이 가장 큰 edge 로 추측 후 백트래킹.
         if (guesses.length >= _solverMaxGuesses) {
           _solverStatus = "solver_labels_full";
           notifyListeners();
@@ -1080,6 +1074,7 @@ class TriangleProvider with ChangeNotifier {
         if (!ok) {
           if (!await _backtrackToLastGuess(guesses, stepDelay)) break;
         }
+        noProgressStreak++;
         await Future.delayed(stepDelay);
       }
     } finally {
@@ -1113,19 +1108,110 @@ class TriangleProvider with ChangeNotifier {
     return true;
   }
 
-  /// 정답에서 그어져야 하는데 아직 안 그어진 첫 변 [r, i, e]. 없으면 null.
-  /// 솔버 oracle: 이 변들을 차례로 그으면 항상 정답으로 수렴한다.
-  List<int>? _solverNextOracleDraw() {
-    for (int r = 0; r < rows; r++) {
-      for (int i = 0; i < triPerRow; i++) {
-        for (int e = 0; e < 3; e++) {
-          if (answer[r][i * 3 + e] == 1 && _getEdge(r, i, e) < 1) {
-            return [r, i, e];
-          }
-        }
+  /// 정답을 보지 않고, 보이는 단서만으로 추측 없이 끝까지 풀리는지(공정한 퍼즐
+  /// 검증). 직접규칙 전파 + 모순기반 forced draw/disable 만 반복 적용한다.
+  /// blank 상태에서 시작해 계산 후 원래 edge 상태로 복원하므로 보드를 바꾸지
+  /// 않는다. init() 직후(보드 blank) 호출한다.
+  bool isLogicSolvable() {
+    if (rows == 0) return false;
+    final snap = _snapshotEdges();
+    bool result = false;
+    const int maxIter = 100000;
+    for (int iter = 0; iter < maxIter; iter++) {
+      _propagateDirect();
+      if (!_isStateConsistent()) {
+        result = false;
+        break;
       }
+      if (_isPuzzleSolvedLocal()) {
+        result = true;
+        break;
+      }
+      final List<int>? draw = _findForcedDrawByContradiction();
+      if (draw != null) {
+        _setEdgeValue(draw[0], draw[1], draw[2], 1);
+        final m = _sharedEdge(draw[0], draw[1], draw[2]);
+        if (m != null) _setEdgeValue(m[0], m[1], m[2], 1);
+        continue;
+      }
+      final List<int>? disable = _findForcedDisableByContradiction();
+      if (disable != null) {
+        _setEdgeValue(disable[0], disable[1], disable[2], -1);
+        final m = _sharedEdge(disable[0], disable[1], disable[2]);
+        if (m != null) _setEdgeValue(m[0], m[1], m[2], -1);
+        continue;
+      }
+      result = false; // 확정 수 없음 → 추측 필요 → 불공정
+      break;
     }
-    return null;
+    _restoreEdges(snap);
+    return result;
+  }
+
+  void _setEdgeBoth(int r, int i, int e, int val) {
+    _setEdgeValue(r, i, e, val);
+    final m = _sharedEdge(r, i, e);
+    if (m != null) _setEdgeValue(m[0], m[1], m[2], val);
+  }
+
+  /// 백그라운드 검증용: 화면 자동풀기와 동일한 추측+백트래킹 완전탐색을
+  /// headless·동기로 돌려 풀리는지 확인한다. 정답을 보지 않고(완료판정은
+  /// _isPuzzleSolvedLocal — 삼각형은 정답 도달=채점), 계산 후 edge 상태를
+  /// 원복하므로 보드를 바꾸지 않는다.
+  bool canAutoSolve() {
+    if (rows == 0) return false;
+    final outer = _snapshotEdges();
+    final List<List<dynamic>> stack = []; // [snapshot, r, i, e]
+    bool result = false;
+    const int maxIter = 20000;
+    const int maxNoProg = 400;
+    int iter = 0;
+    int noProg = 0;
+    while (iter++ < maxIter && noProg <= maxNoProg) {
+      _propagateDirect();
+      if (!_isStateConsistent()) {
+        if (stack.isEmpty) {
+          result = false;
+          break;
+        }
+        final f = stack.removeLast();
+        _restoreEdges(f[0] as List<List<List<int>>>);
+        _setEdgeBoth(f[1] as int, f[2] as int, f[3] as int, -1);
+        continue;
+      }
+      if (_isPuzzleSolvedLocal()) {
+        result = true;
+        break;
+      }
+      final List<int>? draw = _findForcedDrawByContradiction();
+      if (draw != null) {
+        _setEdgeBoth(draw[0], draw[1], draw[2], 1);
+        noProg = 0;
+        continue;
+      }
+      final List<int>? dis = _findForcedDisableByContradiction();
+      if (dis != null) {
+        _setEdgeBoth(dis[0], dis[1], dis[2], -1);
+        noProg = 0;
+        continue;
+      }
+      final List<int>? guess = _pickHighestImpactGuess();
+      if (guess == null) {
+        if (stack.isEmpty) {
+          result = false;
+          break;
+        }
+        final f = stack.removeLast();
+        _restoreEdges(f[0] as List<List<List<int>>>);
+        _setEdgeBoth(f[1] as int, f[2] as int, f[3] as int, -1);
+        continue;
+      }
+      stack.add([_snapshotEdges(), guess[0], guess[1], guess[2]]);
+      _setEdgeBoth(guess[0], guess[1], guess[2], 1);
+      noProg++;
+    }
+    _restoreEdges(outer);
+    return result;
   }
 
   /// 마지막 추측 frame 을 pop 해 스냅샷 시점으로 복원하고, 실패 edge 를
