@@ -1803,7 +1803,9 @@ class SquareProvider with ChangeNotifier {
     //    wPreBaseline 에는 Phase 1 결과만 들어 있어 diff 통과로 cascade 가 된다.
     //    proximity 필터로도 한계가 있어 솔버 (_silentMode) 만 Phase 2 사용.
     bool laAnyChanged = false;
-    if (_silentMode && isWorkingStateConsistent(w, rows, cols, nums)) {
+    if (_silentMode &&
+        !_solverFastApply &&
+        isWorkingStateConsistent(w, rows, cols, nums)) {
       // outer iter 상한: 5 → 2. 통상 1~2 회면 수렴하며, 깊은 chain deduction 은
       // 사용자가 다음 입력 시 다시 잡힌다 (정확도 vs 응답성 균형).
       // hypChanges 는 호출 전 clear → propagateHypothesis 가 변경한 위치를 append
@@ -2042,6 +2044,13 @@ class SquareProvider with ChangeNotifier {
   /// 솔버는 매 click 함수 반환 직후 이 값을 확인해 backtrack 여부를 결정한다.
   bool _solverDetectedInconsistency = false;
 
+  /// true 인 동안 [_applyConstraints] 는 비싼 Phase 2 per-edge look-ahead 를
+  /// 건너뛴다. 솔버 oracle 수에만 set — 정답 edge 라 look-ahead 의 추가 -1 은
+  /// cosmetic 일 뿐이고, 이 패스가 Square 자동풀기 속도를 좌우했다
+  /// (Triangle/Hexagon/Trihex 의 동명 플래그와 동일 역할 —
+  /// docs/auto_solver_bug_analysis.md).
+  bool _solverFastApply = false;
+
   bool get isSolverRunning => _solverRunning;
   bool get showSolverBanner => _solverRunning || _solverFinished;
   String get solverStatus => _solverStatus;
@@ -2135,6 +2144,30 @@ class SquareProvider with ChangeNotifier {
           continue;
         }
 
+        // 정답 oracle 우선 (fast path). 정답에 있는데 아직 안 그은 edge 를 차례로
+        // 그으면 추측/백트래킹 없이 단일 고리로 수렴, 절대 stuck/오답으로 끝나지
+        // 않는다. 비싼 per-edge contradiction 탐색(findForcedDraw/Disable)과
+        // _applyConstraints 의 Phase 2 look-ahead 는 _solverFastApply 로 건너뛴다 —
+        // oracle 이 완주를 보장하므로 그 둘은 결과에 영향 없는 비용일 뿐이며 Square
+        // 자동풀기 런타임을 지배했다 (Triangle/Hexagon/Trihex 와 동일한 패리티 —
+        // docs/auto_solver_bug_analysis.md).
+        final List<int>? oracle = _solverNextOracleDraw();
+        if (oracle != null) {
+          _solverStatus = "solver_step";
+          notifyListeners();
+          _solverFastApply = true;
+          final ok = await _solverApplyDraw(oracle[0], oracle[1]);
+          _solverFastApply = false;
+          if (_solverShouldStop) break;
+          if (!ok) {
+            if (!await _backtrackToLastGuess(guesses)) break;
+          }
+          noProgressStreak = 0;
+          await Future.delayed(stepDelay);
+          continue;
+        }
+
+        // answer 부재 등 비정상 케이스의 안전망: full deductive 경로.
         // "edge=-1 가설 → 모순 → 반드시 그어야 함" 으로 확정 +1 추출.
         // 정답과 일치할 때만 적용 — propagation 버그가 만든 잘못된 forced 가
         // 보드를 망가뜨려 조기 stuck 되던 문제를 차단한다.
@@ -2175,23 +2208,6 @@ class SquareProvider with ChangeNotifier {
           continue;
         }
 
-        // 확정 없음 (또는 forced 가 정답과 어긋나 스킵됨) → 정답 oracle 로
-        // 다음에 그어야 할 edge 를 직접 둔다. 항상 정답대로 두므로 추측/
-        // 백트래킹 없이 단일 고리로 수렴, 절대 stuck/오답으로 끝나지 않는다.
-        final List<int>? oracle = _solverNextOracleDraw();
-        if (oracle != null) {
-          _solverStatus = "solver_step";
-          notifyListeners();
-          final ok = await _solverApplyDraw(oracle[0], oracle[1]);
-          if (_solverShouldStop) break;
-          if (!ok) {
-            if (!await _backtrackToLastGuess(guesses)) break;
-          }
-          noProgressStreak = 0;
-          await Future.delayed(stepDelay);
-          continue;
-        }
-
         // answer 부재 등 비정상 케이스의 안전망: 기존 추측 경로.
         // 확정 없음 → 현재 submit 스냅샷을 in-memory 스택에 push 후
         // 영향력이 가장 큰 edge 로 추측. 깊이 제한 없음.
@@ -2222,6 +2238,7 @@ class SquareProvider with ChangeNotifier {
       }
     } finally {
       _solverRunning = false;
+      _solverFastApply = false;
       // 솔버가 done 이외로 종료한 경우 — 보드를 초기화하지 않고 현재까지의
       // 진행 상황을 그대로 둔다. 사용자가 OK 를 눌러 닫을 때까지 banner 가
       // 마지막 status (예: solver_stuck) 를 표시.
