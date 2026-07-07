@@ -324,9 +324,11 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                   final Color textColor = (num >= 0 && active == num)
                       ? baseNumColor.withOpacity(0.35)
                       : baseNumColor;
-                  // 14 px wide transparent strips along each edge widen the
-                  // line tap zone into the box face — corners go to up/down
-                  // because they're stacked last (top of stack wins hits).
+                  // The whole 50×50 box face is a transparent tap zone: the two
+                  // diagonals split it into 4 triangular quadrants (top→up,
+                  // bottom→down, left→left, right→right), so a tap anywhere in
+                  // the cell registers on the nearest edge — no dead center.
+                  // The thin line GestureDetectors still catch direct line taps.
                   return SizedBox(
                     height: 50,
                     width: 50,
@@ -340,32 +342,24 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                             child: Text(num.toString(), style: TextStyle(color: textColor)),
                           ),
                         ),
-                        Positioned(
-                          left: 0, top: 0, bottom: 0, width: 14,
+                        Positioned.fill(
                           child: GestureDetector(
                             behavior: HitTestBehavior.translucent,
-                            onTap: () => _tapEdgeFromOverlay("left"),
-                          ),
-                        ),
-                        Positioned(
-                          right: 0, top: 0, bottom: 0, width: 14,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onTap: () => _tapEdgeFromOverlay("right"),
-                          ),
-                        ),
-                        Positioned(
-                          left: 0, right: 0, top: 0, height: 14,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onTap: () => _tapEdgeFromOverlay("up"),
-                          ),
-                        ),
-                        Positioned(
-                          left: 0, right: 0, bottom: 0, height: 14,
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onTap: () => _tapEdgeFromOverlay("down"),
+                            onTapUp: (d) {
+                              // a = dy − dx  (>0 → below main diagonal ↘)
+                              // b = dy + dx − 50 (>0 → below anti-diagonal ↙)
+                              final double a = d.localPosition.dy - d.localPosition.dx;
+                              final double b =
+                                  d.localPosition.dy + d.localPosition.dx - 50.0;
+                              final String dir = (a < 0 && b < 0)
+                                  ? "up"
+                                  : (a > 0 && b > 0)
+                                      ? "down"
+                                      : (a > 0)
+                                          ? "left"
+                                          : "right";
+                              _tapEdgeFromOverlay(dir);
+                            },
                           ),
                         ),
                       ],

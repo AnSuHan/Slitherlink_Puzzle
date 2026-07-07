@@ -966,7 +966,7 @@ bool _isCompleteSolution(
 /// "unsolved" result apart from a "gave up" one.
 class _SquareDfs {
   _SquareDfs(this.rows, this.cols, this.nums,
-      {required this.solutionCap, this.nodeLimit});
+      {required this.solutionCap, this.nodeLimit, this.timeBudget});
 
   final int rows;
   final int cols;
@@ -974,15 +974,29 @@ class _SquareDfs {
   final int solutionCap;
   final int? nodeLimit;
 
+  /// Wall-clock budget. When exceeded the search aborts and [budgetExhausted]
+  /// is set — callers treat that as "inconclusive" rather than "no solution",
+  /// so a slow big board never blocks the UI thread indefinitely.
+  final Duration? timeBudget;
+  final Stopwatch _sw = Stopwatch();
+
   final List<List<List<int>>> out = [];
   int _nodes = 0;
   bool budgetExhausted = false;
 
-  void run(List<List<int>> start) => _dfs(start);
+  void run(List<List<int>> start) {
+    if (timeBudget != null) _sw.start();
+    _dfs(start);
+  }
 
   void _dfs(List<List<int>> w) {
     if (out.length >= solutionCap || budgetExhausted) return;
-    if (nodeLimit != null && _nodes++ >= nodeLimit!) {
+    final int n = _nodes++;
+    if (nodeLimit != null && n >= nodeLimit!) {
+      budgetExhausted = true;
+      return;
+    }
+    if (timeBudget != null && (n & 0x3F) == 0 && _sw.elapsed > timeBudget!) {
       budgetExhausted = true;
       return;
     }
@@ -1025,10 +1039,28 @@ class _SquareDfs {
 /// budget was exhausted before one was found.
 List<List<int>>? solveSquareFromClues(
     List<List<int>> nums, int rows, int cols,
-    {int? nodeLimit}) {
-  final dfs = _SquareDfs(rows, cols, nums, solutionCap: 1, nodeLimit: nodeLimit);
+    {int? nodeLimit, Duration? timeBudget}) {
+  final dfs = _SquareDfs(rows, cols, nums,
+      solutionCap: 1, nodeLimit: nodeLimit, timeBudget: timeBudget);
   dfs.run(emptyWorkingGrid(rows, cols));
   return dfs.out.isEmpty ? null : dfs.out.first;
+}
+
+/// compute() 진입점 — solveSquareFromClues 를 백그라운드 isolate 에서 실행해
+/// 자동풀기의 동기 DFS 추론이 UI 스레드를 블로킹(앱 멈춤)하지 않게 한다.
+/// 큰 보드에서 nodeLimit/timeBudget 까지 도는 동안에도 화면이 응답을 유지한다.
+/// [timeBudgetMs] 는 방어용 백스톱 — 정상적으로는 검증을 통과한 보드만
+/// 자동풀기되므로 예산 안에 끝나지만, 이상 상황에서 isolate 가 무한정 도는 것을
+/// 막는다(초과 시 null → solver_stuck 으로 정상 종료).
+List<List<int>>? solveSquareFromCluesIsolate(Map<String, dynamic> params) {
+  final List<List<int>> nums = (params['nums'] as List)
+      .map((r) => List<int>.from(r as List))
+      .toList();
+  final int? tbMs = params['timeBudgetMs'] as int?;
+  return solveSquareFromClues(
+      nums, params['rows'] as int, params['cols'] as int,
+      nodeLimit: params['nodeLimit'] as int?,
+      timeBudget: tbMs == null ? null : Duration(milliseconds: tbMs));
 }
 
 /// Outcome of verifying a board against the visible clues.
@@ -1059,6 +1091,23 @@ SquareVerifyResult verifySquareFromClues(
   return dfs.budgetExhausted
       ? SquareVerifyResult.timeout
       : SquareVerifyResult.none;
+}
+
+/// 백그라운드 검증용: 시간 예산 내에서 자동풀기(추측+백트래킹 완전탐색)로
+/// 풀리는지. **예산 안에 해를 찾았을 때만 true** 다. 예산 초과(미결)는 false 로
+/// 본다 — 이 보드는 자동풀기가 예산 안에 못 끝낸다는 뜻이므로 씬이 재생성한다.
+/// 이렇게 통과한 보드는 (검증이 사용자 기기에서 돌므로) 그 기기에서 예산 내에
+/// 풀리는 게 보장되어, 사용자가 자동풀기를 눌렀을 때 항상 빠르게 끝난다.
+/// (과거엔 예산 초과도 true 로 수용했는데, 그 결과 20x20 normal 같은 보드가
+/// 새어 나와 자동풀기가 수십 초 걸렸다 — 분포상 절반가량은 빠르므로 재생성
+/// 으로 빠른 보드를 뽑는 편이 사용자 경험에 낫다.) 정답 비참조.
+bool canAutoSolveSquareFromClues(List<List<int>> nums, int rows, int cols,
+    {Duration timeBudget = const Duration(milliseconds: 400)}) {
+  final dfs = _SquareDfs(rows, cols, nums,
+      solutionCap: 1, timeBudget: timeBudget);
+  dfs.run(emptyWorkingGrid(rows, cols));
+  if (dfs.out.isNotEmpty) return true; // 예산 내 해 찾음 → 수용
+  return false; // 미결(예산 초과) 또는 해 없음 → 재생성
 }
 
 /// "공정한 퍼즐" 검증: 추측(branching) 없이 보이는 단서만으로 끝까지 풀리는지.

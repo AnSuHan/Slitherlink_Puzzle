@@ -15,6 +15,10 @@ import '../User/UserInfo.dart';
 import '../provider/SquareProvider.dart';
 import '../widgets/GameUI.dart';
 
+/// 퍼즐 생성 직후 자동풀기 검증(안 풀리면 재생성)을 켤지 여부.
+/// 사용자 요청으로 비활성화됨 — true 로 바꾸면 다시 매 생성마다 검증한다.
+bool _verifyOnGenerate = false;
+
 class GameSceneSquare extends StatefulWidget {
   //to access to parameter with Navigator push, variable should be final
   final bool isContinue;
@@ -263,7 +267,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     // 백그라운드 검증: 생성된 퍼즐이 자동풀기(추측+백트래킹 완전탐색)로 실제
     // 풀리는지 확인하고, 안 풀리면 풀리는 퍼즐이 나올 때까지 재생성한다.
     // 완전탐색 솔버라 정상 보드는 거의 항상 첫 시도에 통과한다.
-    if (isGenerate) {
+    if (_verifyOnGenerate && isGenerate) {
       final List<String> sp = tokens[2].split("x");
       final int gRows = int.parse(sp[0]);
       final int gCols = int.parse(sp[1]);
@@ -280,7 +284,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
         }
         // "검증 중" 오버레이가 먼저 그려지도록 한 프레임 양보.
         await Future.delayed(const Duration(milliseconds: 16));
-        if (_provider.canAutoSolve()) break;
+        if (await _provider.canAutoSolve()) break;
         regenerated = true;
         if (mounted) setState(() => _generationStatus = '재생성 중');
         answer = await compute(_generatePuzzleIsolate, {

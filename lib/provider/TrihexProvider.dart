@@ -1146,24 +1146,30 @@ class TrihexProvider with ChangeNotifier {
   }
 
   /// 백그라운드 검증용: 화면 자동풀기와 동일한 추측+백트래킹 완전탐색을
-  /// headless·동기로 돌려 풀리는지 확인한다. 정답(activeEdges) 비참조(완료판정
-  /// 단일고리+단서), 고리위상 검사 포함, 계산 후 edgeState 원복으로 보드를
-  /// 바꾸지 않는다.
-  bool canAutoSolve() {
+  /// headless 로 돌려 풀리는지 확인한다. 메인 스레드 엔진이라 시간 분할(주기적
+  /// yield)로 UI 를 막지 않고, 시간/노드 예산 초과(미결)는 수용(true).
+  /// 정답(activeEdges) 비참조(완료판정 단일고리+단서), 고리위상 검사 포함,
+  /// 계산 후 edgeState 원복으로 보드를 바꾸지 않는다.
+  Future<bool> canAutoSolve() async {
+    final sw = Stopwatch()..start();
+    const Duration budget = Duration(milliseconds: 1200);
     final outer = _snapshot();
     final List<List<dynamic>> stack = []; // [snapshot(Map), edgeId]
     bool result = false;
-    const int maxIter = 20000;
-    const int maxNoProg = 400;
+    bool inconclusive = false;
+    const int maxIter = 200000;
+    const int maxNoProg = 3000;
     int iter = 0;
     int noProg = 0;
-    while (iter++ < maxIter && noProg <= maxNoProg) {
+    while (true) {
+      if (iter++ > maxIter || noProg > maxNoProg || sw.elapsed > budget) {
+        inconclusive = true;
+        break;
+      }
+      if ((iter & 0xFF) == 0) await Future.delayed(Duration.zero); // UI 양보
       _propagateDirect();
       if (!_isStateConsistent() || _hasInconsistentLoopTopology()) {
-        if (stack.isEmpty) {
-          result = false;
-          break;
-        }
+        if (stack.isEmpty) break;
         final f = stack.removeLast();
         _restore(f[0] as Map<int, int>);
         edgeState[f[1] as int] = -1;
@@ -1187,10 +1193,7 @@ class TrihexProvider with ChangeNotifier {
       }
       final int? guess = _pickHighestImpactGuess();
       if (guess == null) {
-        if (stack.isEmpty) {
-          result = false;
-          break;
-        }
+        if (stack.isEmpty) break;
         final f = stack.removeLast();
         _restore(f[0] as Map<int, int>);
         edgeState[f[1] as int] = -1;
@@ -1201,7 +1204,7 @@ class TrihexProvider with ChangeNotifier {
       noProg++;
     }
     _restore(outer);
-    return result;
+    return result || inconclusive; // 미결이면 수용(멈춤 방지)
   }
 
   Future<bool> _backtrackToLastGuess(

@@ -1155,25 +1155,32 @@ class TriangleProvider with ChangeNotifier {
   }
 
   /// 백그라운드 검증용: 화면 자동풀기와 동일한 추측+백트래킹 완전탐색을
-  /// headless·동기로 돌려 풀리는지 확인한다. 정답을 보지 않고(완료판정은
-  /// _isPuzzleSolvedLocal — 삼각형은 정답 도달=채점), 계산 후 edge 상태를
-  /// 원복하므로 보드를 바꾸지 않는다.
-  bool canAutoSolve() {
+  /// headless 로 돌려 풀리는지 확인한다. 메인 스레드 엔진이라 isolate 대신
+  /// 시간 분할(주기적 yield)로 UI 를 막지 않고, 시간/노드 예산을 둬 큰 보드에서
+  /// 멈추지 않는다. 예산 초과(미결)는 수용(true) — 생성 보드는 정답이 해라
+  /// 풀 수 있음. 완전탐색이 끝났는데 해가 없을 때만 false(→재생성).
+  /// 계산 후 edge 상태를 원복하므로 보드를 바꾸지 않는다.
+  Future<bool> canAutoSolve() async {
     if (rows == 0) return false;
+    final sw = Stopwatch()..start();
+    const Duration budget = Duration(milliseconds: 1200);
     final outer = _snapshotEdges();
     final List<List<dynamic>> stack = []; // [snapshot, r, i, e]
     bool result = false;
-    const int maxIter = 20000;
-    const int maxNoProg = 400;
+    bool inconclusive = false;
+    const int maxIter = 200000;
+    const int maxNoProg = 3000;
     int iter = 0;
     int noProg = 0;
-    while (iter++ < maxIter && noProg <= maxNoProg) {
+    while (true) {
+      if (iter++ > maxIter || noProg > maxNoProg || sw.elapsed > budget) {
+        inconclusive = true;
+        break;
+      }
+      if ((iter & 0xFF) == 0) await Future.delayed(Duration.zero); // UI 양보
       _propagateDirect();
       if (!_isStateConsistent()) {
-        if (stack.isEmpty) {
-          result = false;
-          break;
-        }
+        if (stack.isEmpty) break;
         final f = stack.removeLast();
         _restoreEdges(f[0] as List<List<List<int>>>);
         _setEdgeBoth(f[1] as int, f[2] as int, f[3] as int, -1);
@@ -1197,10 +1204,7 @@ class TriangleProvider with ChangeNotifier {
       }
       final List<int>? guess = _pickHighestImpactGuess();
       if (guess == null) {
-        if (stack.isEmpty) {
-          result = false;
-          break;
-        }
+        if (stack.isEmpty) break;
         final f = stack.removeLast();
         _restoreEdges(f[0] as List<List<List<int>>>);
         _setEdgeBoth(f[1] as int, f[2] as int, f[3] as int, -1);
@@ -1211,7 +1215,7 @@ class TriangleProvider with ChangeNotifier {
       noProg++;
     }
     _restoreEdges(outer);
-    return result;
+    return result || inconclusive; // 미결이면 수용(멈춤 방지)
   }
 
   /// 마지막 추측 frame 을 pop 해 스냅샷 시점으로 복원하고, 실패 edge 를

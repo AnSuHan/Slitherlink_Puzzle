@@ -1,6 +1,7 @@
 // ignore_for_file: file_names
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../MakePuzzle/ReadSquare.dart';
@@ -647,13 +648,29 @@ class SquareProvider with ChangeNotifier {
   /// 보이는 단서만 갖고 풀리는지 확인한다. 정답 비참조, 보드 미변경.
   /// 풀리면 true (생성된 보드는 정답이 해이므로 거의 항상 통과), 안전망(node
   /// 상한) 초과 등으로 못 풀면 false → 씬이 재생성한다.
-  bool canAutoSolve() {
+  /// 검증을 백그라운드 isolate 에서 수행 (compute). Square 솔버는 순수 함수라
+  /// 그대로 직렬화해 별도 스레드에서 돌릴 수 있어 UI 가 전혀 멈추지 않는다.
+  Future<bool> canAutoSolve() async {
     if (puzzle.isEmpty || puzzle[0].isEmpty) return false;
     final int rows = puzzle.length;
     final int cols = puzzle[0].length;
     final List<List<int>> nums = List.generate(
         rows, (i) => List.generate(cols, (j) => puzzle[i][j].num));
-    return solveSquareFromClues(nums, rows, cols, nodeLimit: 2000000) != null;
+    return compute(
+        _canAutoSolveSquareIsolate, {'nums': nums, 'rows': rows, 'cols': cols});
+  }
+
+  /// compute() 진입점. isolate 안에서 시간 예산을 두고 검증한다. 예산 내에
+  /// 자동풀기가 끝나는 보드만 통과시킨다(초과 시 씬이 재생성). 예산이 곧
+  /// 사용자가 자동풀기 시 기다릴 최대 시간이므로, 응답성과 재생성 횟수
+  /// 사이의 균형으로 2.5s 로 둔다. 검증이 사용자 기기에서 돌기 때문에 느린
+  /// 기기일수록 더 엄격히 걸러져 자동풀기 체감 시간이 일정하게 유지된다.
+  static bool _canAutoSolveSquareIsolate(Map<String, dynamic> m) {
+    return canAutoSolveSquareFromClues(
+        (m['nums'] as List).map((r) => (r as List).cast<int>()).toList(),
+        m['rows'] as int,
+        m['cols'] as int,
+        timeBudget: const Duration(milliseconds: 2500));
   }
 
   List<List<SquareBox>> getPuzzle() {
@@ -2122,10 +2139,19 @@ class SquareProvider with ChangeNotifier {
       // 정답(answer)을 보지 않고, 화면에 보이는 단서만으로 해를 추론한다 —
       // 사용자 관점의 풀이. 직접규칙 + coloring 전파 → 막히면 추측 + 완전
       // 백트래킹 DFS (square_propagation_core.solveSquareFromClues). 추론은
-      // 동기 계산이라 한 번에 끝나고, 그 결과(단일 닫힌 고리)를 아래에서 한
-      // 변씩 그려 보여 준다. 정답은 이 경로에서 절대 참조하지 않는다.
-      final List<List<int>>? solution =
-          solveSquareFromClues(nums, rows, cols, nodeLimit: 2000000);
+      // 무거운 동기 DFS 라 메인 스레드에서 돌리면 UI 가 멈춘다 → compute() 로
+      // 백그라운드 isolate 에서 실행한다. 그 결과(단일 닫힌 고리)를 아래에서
+      // 한 변씩 그려 보여 준다. 정답은 이 경로에서 절대 참조하지 않는다.
+      final List<List<int>>? solution = await compute(
+          solveSquareFromCluesIsolate, <String, dynamic>{
+        'nums': nums,
+        'rows': rows,
+        'cols': cols,
+        'nodeLimit': 2000000,
+        // 방어용 백스톱: 생성 시 검증(2.5s 예산)을 통과한 보드만 자동풀기되므로
+        // 정상적으론 한참 안에 끝난다. 이상 상황에서의 무한 대기만 막는다.
+        'timeBudgetMs': 15000,
+      });
       if (_solverShouldStop) return;
       if (solution == null) {
         _solverStatus = "solver_stuck";

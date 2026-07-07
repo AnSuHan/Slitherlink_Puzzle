@@ -91,7 +91,7 @@ void main() {
         p.setSubmit(zerosLike(answer));
         await p.init();
         if (p.isLogicSolvable()) triPass++;
-        if (p.canAutoSolve()) triAuto++;
+        if (await p.canAutoSolve()) triAuto++;
       }
       debugPrint('Triangle 4x4 logic-solvable: $triPass / $n | canAutoSolve: $triAuto / $n');
       expect(triAuto, n, reason: 'Triangle: all generated boards must be auto-solvable');
@@ -105,7 +105,7 @@ void main() {
         p.setSubmit(zerosLike(answer));
         await p.init();
         if (p.isLogicSolvable()) hexPass++;
-        if (p.canAutoSolve()) hexAuto++;
+        if (await p.canAutoSolve()) hexAuto++;
       }
       debugPrint('Hexagon 4x4 logic-solvable: $hexPass / $n | canAutoSolve: $hexAuto / $n');
       expect(hexAuto, n, reason: 'Hexagon: all generated boards must be auto-solvable');
@@ -123,7 +123,7 @@ void main() {
           p.setSubmit(zerosLike(answer));
           await p.init();
           if (p.isLogicSolvable()) dPass++;
-          if (p.canAutoSolve()) dAuto++;
+          if (await p.canAutoSolve()) dAuto++;
         }
         debugPrint('Trihex 3x3 [$diff] logic-solvable: $dPass / $n | canAutoSolve: $dAuto / $n');
         if (diff == 'normal') {
