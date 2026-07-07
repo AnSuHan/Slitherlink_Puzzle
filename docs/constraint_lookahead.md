@@ -1,8 +1,23 @@
 # 제약 전파 (Constraint Propagation) 로직 — 상세
 
-본 문서는 Slitherlink 의 4종 도형(Square / Hexagon / Triangle / Trihex) 풀이 보조 시스템이 **자동으로 비활성(-1) 처리해야 하는 변** 과 그 추론 과정을 정의한다. Provider 코드 (`*Provider.dart` 의 `_applyConstraints` / `propagateLookAhead`) 는 본 문서의 규칙을 그대로 반영해야 한다.
+본 문서는 Slitherlink 의 4종 도형(Square / Hexagon / Triangle / Trihex) 풀이 보조 시스템이 **자동으로 비활성(-1) 처리해야 하는 변** 과 그 추론 과정을 정의한다. Provider 코드 (`*Provider.dart` 의 `_applyConstraints` / `_runLookAhead`, Square 는 `square_propagation_core.dart` 의 top-level 함수) 는 본 문서의 규칙을 그대로 반영해야 한다.
 
 처음 읽는 사람도 이해할 수 있도록, 각 규칙마다 **왜 그런지** 와 **어떻게 적용하는지** 를 그림과 함께 풀어 설명한다.
+
+> ## ⚠️ 2026-07-08 정책 — 라이브 플레이는 "클릭 파생만"
+> 본 문서의 규칙(직접 추론 + look-ahead)은 **자동풀기·공정성 검증(솔버)** 에서
+> 완전한 형태로 사용된다. 그러나 **사용자가 손으로 푸는 라이브 플레이**의 자동
+> 비활성(-1)은 "사용자가 그은 변에서 직접 파생되는 것만" 으로 제한한다:
+> - **유지(라이브):** 셀 규칙(그은 변 수==num → 나머지 -1, active≥1), 꼭짓점
+>   satisfied(그은 변 2개 → 나머지 -1).
+> - **제거(라이브):** look-ahead 전체(§3), 단서-only 비활성(§2-1 의 num=0),
+>   꼭짓점 starvation(§2-3).
+>
+> 구현: 각 Provider 의 `_liveClickDerivedOnly` 플래그와 `_propagateDirect
+> (clickDerivedOnly)` 파라미터. 라이브 진입점(`_applyConstraints`)만 켜지고,
+> 솔버(`canAutoSolve`/`isLogicSolvable`/on-screen 솔버)는 `_propagateDirect()`
+> (기본 false)로 아래 규칙을 완전히 사용한다. 즉 **아래 §2·§3 은 솔버 기준 전체
+> 규칙**이며, 라이브는 위 축소본만 적용된다.
 
 ---
 
@@ -321,10 +336,17 @@ UI 에는 사용자가 직접 만들 수 있는 두 가지 음수 마킹이 있�
 ## 5. Top-level Flow
 
 호출 시점:
-- 퍼즐 초기화 직후 (`init`).
-- 사용자가 변을 탭한 직후 (`updateEdge`).
+- 사용자가 변을 탭한 직후 (`updateEdge` / `updateSquareBox`).
 - Undo / redo / restart 직후.
 - Square 의 경우 `checkCurrentPath()` 의 끝에서 호출.
+- `HowToPlay` 튜토리얼 스텝.
+
+> **퍼즐 초기화(`init`)에서는 `applyConstraints`(look-ahead)를 돌리지 않는다.**
+> init 에서 look-ahead 까지 돌리면 정답에서 강제되는 `-1`/force 라인이 첫 화면에
+> 미리 드러나 스포일러가 된다. 따라서 Hexagon/Triangle/Trihex init 은 자명한
+> **직접 규칙(`_propagateDirect`)만** 적용하고, Square init 은 그것도 생략해
+> 단서만 보여준다. 깊은 추론은 사용자가 첫 변을 두는 순간 `updateEdge` →
+> `applyConstraints` 에서 처음 나타난다.
 
 ```
 applyConstraints():

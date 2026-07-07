@@ -110,11 +110,11 @@ class TriangleProvider with ChangeNotifier {
 
   Future<void> init() async {
     _buildPuzzle();
-    // 갓 로드된 보드는 단서만 보여준다. _applyConstraints 의 look-ahead 추론까지
-    // 돌리면 풀 수 없는 대량의 edge 가 즉시 -1 로 칠해지며 정답 라인이 첫
-    // 화면에 드러난다(스포일러). 자명한 직접규칙(_propagateDirect)만 적용하고,
-    // 깊은 추론은 사용자 첫 수에 updateEdge → _applyConstraints 에서 나타난다.
-    _propagateDirect();
+    // 갓 로드된 보드는 단서만 보여준다. 클릭이 0 이므로 클릭 파생 규칙만 도는
+    // _propagateDirect(clickDerivedOnly) 는 아무 -1 도 만들지 않는다(2026-07-08
+    // 정책). 단서-only·starvation·look-ahead 는 라이브에서 꺼져 있어 정답 라인이
+    // 첫 화면에 드러나지 않는다. 깊은 추론은 솔버 전용이다.
+    _propagateDirect(clickDerivedOnly: _liveClickDerivedOnly);
     notifyListeners();
   }
 
@@ -270,6 +270,12 @@ class TriangleProvider with ChangeNotifier {
   /// every undecided edge -1 and wipe the board. We snapshot the full
   /// edge grid at entry and restore it if the post-propagation state is
   /// inconsistent. See docs/constraint_lookahead.md §4 / §5.
+  /// 라이브 자동 비활성(-1)을 "사용자가 그은 변에서 파생되는 것만"으로 제한하는
+  /// 플래그(2026-07-08 정책). true 면 look-ahead·단서-only(num=0)·starvation 을
+  /// 라이브에서 끈다. 솔버(canAutoSolve/isLogicSolvable)는 _propagateDirect() 를
+  /// 기본값(false)으로 직접 호출해 완전 추론을 유지한다.
+  final bool _liveClickDerivedOnly = true;
+
   void _applyConstraints() {
     final List<List<int>> redSnapshot = [];
     for (int r = 0; r < rows; r++) {
@@ -293,7 +299,10 @@ class TriangleProvider with ChangeNotifier {
     // useful "you can't draw here" feedback — we keep those results.
     final bool entryConsistent = _isStateConsistent();
 
-    _propagateDirect();
+    // 라이브 사용자 탭만 클릭 파생 제한. 온스크린 솔버(_solverRunning) 는
+    // updateEdge → _applyConstraints 로 커밋하므로 완전 추론 유지(솔버 parity).
+    _propagateDirect(
+        clickDerivedOnly: _liveClickDerivedOnly && !_solverRunning);
 
     // Direct rule 결과는 단조적·건전한 deduction 이므로 보존한다.
     // 이후 look-ahead 가 hidden-clue 환경에서 잘못 발화해 모순을 만들면
@@ -310,7 +319,7 @@ class TriangleProvider with ChangeNotifier {
     // O(edges) 비용). oracle 이 정답을 보장하므로 look-ahead 의 추가 -1 표시는
     // cosmetic 일 뿐이고, 이 패스가 삼각형 자동풀기 속도를 좌우했다. 사용자 탭/
     // backtrack/init 등 _solverFastApply 가 꺼진 경로에서는 그대로 동작한다.
-    if (!_solverFastApply) {
+    if (!_solverFastApply && !_liveClickDerivedOnly) {
       for (int laIter = 0; laIter < 5; laIter++) {
         if (!_runLookAhead()) break;
         _propagateDirect();
@@ -339,11 +348,14 @@ class TriangleProvider with ChangeNotifier {
     }
   }
 
-  void _propagateDirect() {
+  /// [clickDerivedOnly] true 면 라이브 규칙(사용자가 그은 변에서 파생되는 -1)만
+  /// 적용: 셀 num=0 등 단서-only 비활성과 꼭짓점 starvation 을 끈다. 솔버는
+  /// false(기본)로 완전 추론을 쓴다.
+  void _propagateDirect({bool clickDerivedOnly = false}) {
     for (int iter = 0; iter < 30; iter++) {
       bool changed = false;
-      if (_runCellRule()) changed = true;
-      if (_runVertexRule()) changed = true;
+      if (_runCellRule(clickDerivedOnly)) changed = true;
+      if (_runVertexRule(clickDerivedOnly)) changed = true;
       if (!changed) break;
     }
   }
@@ -351,7 +363,7 @@ class TriangleProvider with ChangeNotifier {
   /// Cell rule: if drawn edge count (value ≥ 1) reaches the clue number,
   /// remaining undecided (value 0) edges become -1. Hidden clues (`num < 0`)
   /// carry no constraint and are skipped.
-  bool _runCellRule() {
+  bool _runCellRule(bool clickDerivedOnly) {
     bool anyChange = false;
     for (int r = 0; r < rows; r++) {
       for (int i = 0; i < triPerRow; i++) {
@@ -362,6 +374,8 @@ class TriangleProvider with ChangeNotifier {
           if (_getEdge(r, i, e) >= 1) active++;
         }
         if (active < num) continue;
+        // 클릭 파생만: 그은 변이 없으면(num=0 자동 비활성 등) 라이브에서 스킵.
+        if (clickDerivedOnly && active == 0) continue;
         for (int e = 0; e < 3; e++) {
           if (_getEdge(r, i, e) == 0) {
             _setEdgeValue(r, i, e, -1);
@@ -379,7 +393,7 @@ class TriangleProvider with ChangeNotifier {
   /// If two edges at a vertex are already drawn, remaining undecided edges
   /// become -1. If fewer than two edges can possibly be drawn (active +
   /// undecided < 2), the remaining undecided edges also become -1.
-  bool _runVertexRule() {
+  bool _runVertexRule(bool clickDerivedOnly) {
     bool anyChange = false;
     for (int vr = 0; vr <= rows; vr++) {
       for (int vi = 0; vi <= triPerRow + 1; vi++) {
@@ -398,7 +412,8 @@ class TriangleProvider with ChangeNotifier {
         }
 
         final bool satisfied = active >= 2;
-        final bool starved = active + undecided < 2;
+        // 클릭 파생만: starvation(그은 변 없이 미정<2)은 라이브에서 끈다.
+        final bool starved = !clickDerivedOnly && (active + undecided < 2);
         if (!satisfied && !starved) continue;
 
         for (final e in edges) {
