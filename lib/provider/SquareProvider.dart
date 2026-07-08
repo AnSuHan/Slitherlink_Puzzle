@@ -1499,20 +1499,10 @@ class SquareProvider with ChangeNotifier {
       }
     }
 
-    // 라이브 자동 비활성은 "사용자가 그은 변에서 파생되는 것만"(2026-07-08 정책,
-    // docs/constraint_lookahead.md 상단). 0-clue 셀 자동 -1(단서-only)은 클릭
-    // 파생이 아니므로 라이브에서 끈다. clearLineForStart 는 init/restart/undo 등
-    // 라이브에서만 호출되고 솔버는 부르지 않으므로 이 게이트로 충분하다.
-    if (!_liveClickDerivedOnly) {
-      await setDefaultLineStep1();
-    }
+    // 0-clue 셀 4 변은 직접 의미 (no edges) 라 자동 -1 마킹 유지.
+    // 추가 propagation -1 은 사용자 탭의 incremental diff 로만 시각화.
+    await setDefaultLineStep1();
   }
-
-  /// 라이브 자동 비활성(-1)을 "사용자가 그은 변에서 파생되는 것만"으로 제한하는
-  /// 플래그(2026-07-08 정책). true 면 0-clue 자동 -1(setDefaultLineStep1/2,
-  /// 단서-only)을 끈다. propagateDirectSquare 게이트(clickDerivedOnly: !_silentMode)
-  /// 와 함께 Square 라이브 경로 전체를 클릭 파생으로 제한한다. false 면 예전 동작.
-  final bool _liveClickDerivedOnly = true;
 
   ///find SquareBox(num is zero) and set color -1
   Future<void> setDefaultLineStep1() async {
@@ -1813,7 +1803,7 @@ class SquareProvider with ChangeNotifier {
         if (v == 0 || v == -1 || v == -2) return 0;
         return -1;
       }).toList()).toList();
-      propagateDirectSquare(wPre, rows, cols, nums, clickDerivedOnly: true);
+      propagateDirectSquare(wPre, rows, cols, nums);
       wPreBaseline = wPre;
     }
 
@@ -1830,9 +1820,7 @@ class SquareProvider with ChangeNotifier {
     //    탭 응답성을 확보한다. silentMode 라도 writeSubmit 은 그대로 수행해야
     //    Phase 2 가 아무 변화도 추가하지 않을 때 Phase 1 결과가 puzzle 에서
     //    누락되지 않는다. paint 는 _emitNotify 가 막아 한 클릭 = 한 paint 보장.
-    // 라이브 탭은 클릭 파생 -1 만(num=0 단서-only/starvation 제외). 솔버
-    // (_silentMode)는 완전 추론이 필요하므로 clickDerivedOnly=false.
-    propagateDirectSquare(w, rows, cols, nums, clickDerivedOnly: !_silentMode);
+    propagateDirectSquare(w, rows, cols, nums);
     _writeWorkingToEdge(edge, orig, w,
         preBaseline: wPreBaseline,
         proximityDist: proximityDist,

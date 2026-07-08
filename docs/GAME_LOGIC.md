@@ -88,36 +88,31 @@ Triangle/Hexagon/Trihex 도 `updateEdge` 안에서 동일하게 인접 변 색�
 
 ### 2.5 제약 자동 추론 (자동 비활성 `-1`)
 
-라인 계산의 핵심. 사용자가 변을 그으면 시스템이 슬리더링크 규칙으로 **더 이상
-그어질 수 없는 변을 `-1`로 자동 비활성화**한다. **라이브 플레이의 자동 비활성은
-"사용자가 그은 변에서 직접 파생되는 것만" 계산한다**(2026-07-08 정책). 정답을
-참조하지 않는다.
+라인 계산의 핵심. 시스템이 슬리더링크 규칙(셀 quota + 꼭짓점 차수 0/2)으로 **더
+이상 그어질 수 없는 변을 `-1`로 자동 비활성화**한다. 직접 추론(direct) + 1-step
+look-ahead(가설 시뮬레이션)로 구성되며, 정답을 참조하지 않는다. 규칙 전체 정의·
+안전 가드·도형별 자료구조 차이는 `docs/constraint_lookahead.md` 참조.
 
-**라이브에서 적용되는 -1 (사용자 클릭 파생):**
+**핵심 타이밍 규칙([[project_init_no_lookahead]]):**
 
-| 규칙 | 발화 조건 |
-|------|-----------|
-| 셀 규칙 | 사용자가 그은 변 수 == 단서(num), 남은 미정 변 → -1 (그은 변이 1개 이상일 때만) |
-| 꼭짓점 규칙(satisfied) | 사용자가 그은 변 2개가 한 꼭짓점에 모임 → 나머지 미정 변 -1 |
+- **첫 화면(init)은 단서만.** init 에서는 자명한 **직접 규칙(`_propagateDirect`
+  — 0-clue 셀/starved 꼭짓점 등)만** 적용하고 **look-ahead 는 절대 돌리지 않는다.**
+  init 에 look-ahead 를 넣으면 풀 수 없는 변이 대량으로 -1 이 되며 남은 후보(=정답
+  라인)가 첫 화면에 드러나는 스포일러가 된다. (Square init 은 직접 규칙도 생략하고
+  `clearLineForStart` 의 0-clue 프리마킹만.)
+- **사용자가 첫 수를 둔 뒤** `updateEdge`/`updateSquareBox` → `_applyConstraints`
+  에서 **직접 추론 + look-ahead** 가 함께 돌아, 그 수에서 논리적으로 따라오는
+  자동 비활성이 자연스럽게 나타난다. undo/redo/restart, `HowToPlay` 도 동일.
+- **4개 도형 모두 이 규칙을 지킨다 — init 에 `_applyConstraints`(look-ahead)를
+  다시 넣지 말 것.**
 
-**라이브에서 끈 -1 (클릭과 무관 — 솔버 전용):**
-
-- **look-ahead(가설 시뮬레이션):** 내가 그은 변과 무관한 먼 변까지 단서 논리로
-  -1 을 도출 → 라이브에서 끔.
-- **단서-only 비활성:** `num=0` 셀이 클릭 0에서 둘레 변을 자동 -1 → 끔.
-- **꼭짓점 starvation**(active==0, undecided<2 → -1): 클릭 0에서 발생 → 끔.
-
-각 Provider 의 `_liveClickDerivedOnly` 플래그로 제어한다. 규칙 전체 정의·안전
-가드·도형별 자료구조 차이는 `docs/constraint_lookahead.md` 참조.
-
-- **진입점:** 사용자 탭(`updateEdge`/`updateSquareBox`), undo/redo/restart,
-  `HowToPlay`. **첫 화면(init) 및 클릭 0 상태에서는 -1 이 하나도 생기지 않는다.**
-- **솔버는 예외 — 완전 추론 유지:** 자동풀기·공정성 검증(`canAutoSolve`,
-  `isLogicSolvable`, on-screen 솔버)은 정답을 푸는 기능이므로 look-ahead 를 뺀
-  완전한 직접 추론(단서-only 비활성 포함)을 `_propagateDirect()`(clickDerivedOnly
-  기본 false)로 그대로 사용한다.
+- **-2 는 propagation 의 hard premise 가 아니다:** 사용자가 -1 을 탭해 만든 빨강
+  (-2)은 전파 전 0 으로 clear 후, 재도출된 -1 자리에만 복원한다.
+- **hidden clue(`num < 0`)는 모든 propagator 에서 스킵**([[feedback_constraint_skip_masked_clues]]).
 - **force-draw 는 영구 기록하지 않는다** — 가설이 "반드시 그어야 함"을 도출해도
   자동으로 선을 그어 주지 않는다(풀이 경험 보존).
+- **솔버(`canAutoSolve`/`isLogicSolvable`/on-screen 솔버)** 도 같은 추론을 쓰되
+  정답을 참조하지 않고 추측+백트래킹으로 완주한다([[project_solver_answerfree_architecture]]).
 
 ---
 

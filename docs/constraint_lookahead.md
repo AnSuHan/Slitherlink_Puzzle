@@ -4,20 +4,24 @@
 
 처음 읽는 사람도 이해할 수 있도록, 각 규칙마다 **왜 그런지** 와 **어떻게 적용하는지** 를 그림과 함께 풀어 설명한다.
 
-> ## ⚠️ 2026-07-08 정책 — 라이브 플레이는 "클릭 파생만"
-> 본 문서의 규칙(직접 추론 + look-ahead)은 **자동풀기·공정성 검증(솔버)** 에서
-> 완전한 형태로 사용된다. 그러나 **사용자가 손으로 푸는 라이브 플레이**의 자동
-> 비활성(-1)은 "사용자가 그은 변에서 직접 파생되는 것만" 으로 제한한다:
-> - **유지(라이브):** 셀 규칙(그은 변 수==num → 나머지 -1, active≥1), 꼭짓점
->   satisfied(그은 변 2개 → 나머지 -1).
-> - **제거(라이브):** look-ahead 전체(§3), 단서-only 비활성(§2-1 의 num=0),
->   꼭짓점 starvation(§2-3).
+> ## 🚨 절대 규칙 — 자동 비활성 타이밍 (절대 어기지 말 것)
+> 이 프로젝트에서 **가장 자주 회귀되는 버그**다. 어기면 즉시 되돌려야 한다.
 >
-> 구현: 각 Provider 의 `_liveClickDerivedOnly` 플래그와 `_propagateDirect
-> (clickDerivedOnly)` 파라미터. 라이브 진입점(`_applyConstraints`)만 켜지고,
-> 솔버(`canAutoSolve`/`isLogicSolvable`/on-screen 솔버)는 `_propagateDirect()`
-> (기본 false)로 아래 규칙을 완전히 사용한다. 즉 **아래 §2·§3 은 솔버 기준 전체
-> 규칙**이며, 라이브는 위 축소본만 적용된다.
+> 1. **첫 화면(init)은 단서만 보인다.** init 에서는 **자명한 직접 규칙
+>    (`_propagateDirect` — 0-clue 셀/starved 꼭짓점 등)만** 적용한다. **init 에
+>    look-ahead(가설 전파, `_applyConstraints`)를 절대 돌리지 마라** — 풀 수 없는
+>    변이 대량 -1 이 되며 남은 후보(=정답 라인)가 첫 화면에 드러나는 스포일러가 된다.
+> 2. **사용자가 첫 수를 둔 뒤에야** `updateEdge`/`updateSquareBox` →
+>    `_applyConstraints` 에서 **직접 추론 + look-ahead(§3)** 가 함께 돌아, 그 수에서
+>    논리적으로 따라오는 자동 비활성이 나타난다. **look-ahead 는 라이브 플레이에서
+>    반드시 살아 있어야 한다** — 라이브에서 look-ahead 를 빼면 "선을 충분히 그었는데
+>    나머지 X 가 안 뜬다"는 회귀가 난다(2026-07-08 이 실수가 실제로 있었음).
+> 3. 4개 도형 모두 위 두 규칙을 지킨다. init 에 `_applyConstraints` 를 넣지 말고,
+>    `updateEdge` 경로에서 look-ahead 를 제거하지 마라.
+>
+> 근거·이력: 프로젝트 메모리 `project_init_no_lookahead`. 솔버(`canAutoSolve`/
+> `isLogicSolvable`/on-screen 솔버)는 정답을 참조하지 않고 같은 추론+백트래킹으로
+> 완주한다(`project_solver_answerfree_architecture`).
 
 ---
 

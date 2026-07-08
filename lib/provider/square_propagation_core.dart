@@ -22,14 +22,8 @@
 // derivation; the helpers here implement Sections 2 and 3.
 
 /// Direct-rule fixed-point propagation. Mutates `w` in place.
-///
-/// [clickDerivedOnly] true 면 "사용자가 그은 변에서 파생되는 -1" 만 만든다
-/// (2026-07-08 라이브 정책, docs/constraint_lookahead.md 상단 참조): 셀 num=0
-/// 같은 단서-only 비활성과 꼭짓점 starvation 을 건너뛴다. 솔버(solveSquareFromClues
-/// / applyConstraintsToEdgeGrid) 는 기본값 false 로 완전 추론을 유지해야 한다.
 void propagateDirectSquare(
-    List<List<int>> w, int rows, int cols, List<List<int>> nums,
-    {bool clickDerivedOnly = false}) {
+    List<List<int>> w, int rows, int cols, List<List<int>> nums) {
   bool changed = true;
   int iter = 0;
   while (changed && iter < 30) {
@@ -55,8 +49,6 @@ void propagateDirectSquare(
           }
         }
         if (un == 0) continue;
-        // 클릭 파생만: 그은 변이 없으면(num=0 자동 비활성 등) 라이브에서 스킵.
-        if (clickDerivedOnly && dr == 0) continue;
         if (dr == num) {
           for (final e in es) {
             if (w[e[0]][e[1]] == 0) {
@@ -96,7 +88,7 @@ void propagateDirectSquare(
               changed = true;
             }
           }
-        } else if (!clickDerivedOnly && dr == 0 && un == 1) {
+        } else if (dr == 0 && un == 1) {
           for (final e in ve) {
             if (w[e[0]][e[1]] == 0) {
               w[e[0]][e[1]] = -1;

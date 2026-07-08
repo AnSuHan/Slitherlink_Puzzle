@@ -101,11 +101,12 @@ class HexagonProvider with ChangeNotifier {
 
   Future<void> init() async {
     _buildPuzzle();
-    // 갓 로드된 보드는 단서만 보여준다. 클릭이 0 이므로 클릭 파생 규칙만 도는
-    // _propagateDirect(clickDerivedOnly) 는 아무 -1 도 만들지 않는다(2026-07-08
-    // 정책). 단서-only(0-clue)·starvation·look-ahead 는 모두 라이브에서 꺼져 있어,
-    // 정답 라인이 첫 화면에 드러나지 않는다. 깊은 추론은 솔버 전용이다.
-    _propagateDirect(clickDerivedOnly: _liveClickDerivedOnly);
+    // 갓 로드된 보드는 단서만 보여준다. 여기서 _applyConstraints 의 look-ahead
+    // 추론까지 돌리면, 풀 수 없는 대량의 edge 가 즉시 -1 로 칠해지면서 남은
+    // 후보(=정답 라인)가 첫 화면에 드러난다 (스포일러). 자명한 직접규칙
+    // (0-clue 셀, starved 꼭짓점)만 적용하고, 깊은 추론은 사용자가 첫 수를
+    // 두는 순간 updateEdge → _applyConstraints 에서 자연스럽게 나타나게 한다.
+    _propagateDirect();
     notifyListeners();
   }
 
@@ -392,13 +393,6 @@ class HexagonProvider with ChangeNotifier {
   /// entry; if the post-propagation state is locally inconsistent (caught
   /// by _isStateConsistent), we restore from snapshot — the user's tap is
   /// preserved, no cascade is applied. See docs §4 / §5.
-  /// 라이브 플레이 자동 비활성(-1)을 "사용자가 그은 변에서 파생되는 것만"으로
-  /// 제한하는 플래그(2026-07-08 정책, docs/constraint_lookahead.md 상단 참조).
-  /// true 면 look-ahead·단서-only(num=0)·starvation 비활성을 라이브에서 끈다.
-  /// 솔버(canAutoSolve/isLogicSolvable)는 _propagateDirect() 를 기본값(false)으로
-  /// 직접 호출하므로 영향받지 않는다. false 로 되돌리면 예전 완전 추론 복귀.
-  final bool _liveClickDerivedOnly = true;
-
   void _applyConstraints() {
     final List<List<int>> redSnapshot = [];
     for (int r = 0; r < rows; r++) {
@@ -422,11 +416,7 @@ class HexagonProvider with ChangeNotifier {
     // we keep those results.
     final bool entryConsistent = _isStateConsistent();
 
-    // 라이브 사용자 탭만 클릭 파생 제한. 온스크린 솔버(_solverRunning) 는
-    // updateEdge → _applyConstraints 로 커밋하므로, 여기서도 완전 추론을 유지해야
-    // direct -1 이 반복 간 보존되어 큰 보드에서 느려지지 않는다(솔버 parity).
-    _propagateDirect(
-        clickDerivedOnly: _liveClickDerivedOnly && !_solverRunning);
+    _propagateDirect();
 
     // Direct rule (셀/꼭짓점 disable) 만으로 도출된 -1 은 단조적·건전한
     // 결과이므로, 이후 look-ahead 가 잘못 발화해 모순을 만들더라도 이 단계
@@ -440,7 +430,7 @@ class HexagonProvider with ChangeNotifier {
     // O(edges) 비용). oracle 이 정답을 보장하므로 look-ahead 의 추가 -1 표시는
     // cosmetic 일 뿐이고, 이 패스가 육각형 자동풀기 속도를 좌우했다. 사용자 탭/
     // backtrack/init 등 _solverFastApply 가 꺼진 경로에서는 그대로 동작한다.
-    if (!_solverFastApply && !_liveClickDerivedOnly) {
+    if (!_solverFastApply) {
       for (int laIter = 0; laIter < 5; laIter++) {
         if (!_runLookAhead()) break;
         _propagateDirect();
@@ -472,14 +462,11 @@ class HexagonProvider with ChangeNotifier {
     }
   }
 
-  /// [clickDerivedOnly] true 면 라이브 규칙(사용자가 그은 변에서 파생되는 -1)만
-  /// 적용한다: 셀 num=0 등 단서-only 비활성과 꼭짓점 starvation 을 끈다. 솔버는
-  /// false(기본)로 호출해 완전 추론을 쓴다.
-  void _propagateDirect({bool clickDerivedOnly = false}) {
+  void _propagateDirect() {
     for (int iter = 0; iter < 30; iter++) {
       bool changed = false;
-      if (_runCellRule(clickDerivedOnly)) changed = true;
-      if (_runVertexRule(clickDerivedOnly)) changed = true;
+      if (_runCellRule()) changed = true;
+      if (_runVertexRule()) changed = true;
       if (!changed) break;
     }
   }
@@ -488,7 +475,7 @@ class HexagonProvider with ChangeNotifier {
   /// remaining undecided edges (value == 0) are auto-disabled (-1). Shared
   /// edges are synchronised to the neighbour cell. Clues with num < 0 are
   /// skipped (hidden hint).
-  bool _runCellRule(bool clickDerivedOnly) {
+  bool _runCellRule() {
     bool anyChange = false;
     for (int r = 0; r < rows; r++) {
       for (int c = 0; c < cols; c++) {
@@ -499,8 +486,6 @@ class HexagonProvider with ChangeNotifier {
           if (puzzle[r][c].edges[e] >= 1) active++;
         }
         if (active < num) continue;
-        // 클릭 파생만: 그은 변이 없으면(num=0 자동 비활성 등) 라이브에서 스킵.
-        if (clickDerivedOnly && active == 0) continue;
         for (int e = 0; e < 6; e++) {
           if (puzzle[r][c].edges[e] == 0) {
             puzzle[r][c].edges[e] = -1;
@@ -553,7 +538,7 @@ class HexagonProvider with ChangeNotifier {
   /// Vertex coords use integer (vx, vy) with unit = (W/2, R/2), letting the
   /// six vertices of every hex resolve to small integer pairs without any
   /// floating-point keying.
-  bool _runVertexRule(bool clickDerivedOnly) {
+  bool _runVertexRule() {
     final incident = _buildVertexIncidence();
 
     bool anyChange = false;
@@ -568,8 +553,7 @@ class HexagonProvider with ChangeNotifier {
         }
       }
       final bool satisfied = active >= 2;
-      // 클릭 파생만: starvation(그은 변 없이 미정<2)은 라이브에서 끈다.
-      final bool starved = !clickDerivedOnly && (active + undecided < 2);
+      final bool starved = active + undecided < 2;
       if (!satisfied && !starved) continue;
 
       for (final e in edges) {
