@@ -117,8 +117,8 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
   void _centerPuzzleAtScale(double scale) {
     if (!mounted) return;
     final size = MediaQuery.of(context).size;
-    final cellW = 50.0;
-    final cellH = 50.0 * 0.866;
+    const cellW = 50.0;
+    const cellH = 50.0 * 0.866;
     final double puzzleWidth = _provider.triPerRow * cellW / 2 + 40;
     final double puzzleHeight = _provider.rows * cellH + 40;
     final double availH = size.height - kToolbarHeight - 56;
@@ -190,10 +190,12 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
       }
       submit = await _loadSavedPuzzle("${widget.loadKey}_continue");
     } else {
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _isGenerating = true;
         _generationStatus = '20%';
       });
+      }
 
       List<String> sizeParts = tokens[2].split("x");
       int genRows = int.parse(sizeParts[0]);
@@ -286,10 +288,12 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
       }
     }
 
-    if (mounted) setState(() {
+    if (mounted) {
+      setState(() {
       _generationStatus = '100%';
       _isGenerating = false;
     });
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _fitToScreen());
   }
@@ -384,8 +388,8 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
   void _fitToScreen() {
     if (!mounted) return;
     final size = MediaQuery.of(context).size;
-    final cellW = 50.0;
-    final cellH = 50.0 * 0.866;
+    const cellW = 50.0;
+    const cellH = 50.0 * 0.866;
 
     double puzzleWidth = _provider.triPerRow * cellW / 2 + 40;
     double puzzleHeight = _provider.rows * cellH + 40;
@@ -497,7 +501,7 @@ class GameStateTriangle extends State<GameSceneTriangle> with WidgetsBindingObse
       onPopInvokedWithResult: (bool didPop, Object? result) async {
         if (didPop) return;
         final bool shouldPop = await _onWillPop();
-        if (shouldPop && mounted) {
+        if (shouldPop && context.mounted) {
           Navigator.of(context).pop();
         }
       },

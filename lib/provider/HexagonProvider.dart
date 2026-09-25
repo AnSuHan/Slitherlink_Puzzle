@@ -41,8 +41,8 @@ class HexagonProvider with ChangeNotifier {
   List<Widget> hexagonField = [];
 
   /// Undo/redo stacks
-  List<List<List<int>>> _undoStack = [];
-  List<List<List<int>>> _redoStack = [];
+  final List<List<List<int>>> _undoStack = [];
+  final List<List<List<int>>> _redoStack = [];
 
   /// Difficulty for hint masking ("easy" 0.80, "normal" 0.55, "hard" 0.35).
   String difficulty = "normal";
@@ -60,7 +60,7 @@ class HexagonProvider with ChangeNotifier {
   /// Padding(20).
   Offset _hexCenter(int r, int c) {
     const double R = HexagonBoxState.cellSize;
-    final double w = R * 1.7320508;
+    const double w = R * 1.7320508;
     const double scenePadding = 20.0;
     final double offsetX = (r & 1) == 1 ? w / 2 : 0;
     return Offset(
@@ -73,14 +73,14 @@ class HexagonProvider with ChangeNotifier {
   /// slanted, then clockwise.
   Offset _hexEdgeOffset(int e) {
     const double R = HexagonBoxState.cellSize;
-    final double w = R * 1.7320508;
+    const double w = R * 1.7320508;
     switch (e) {
-      case 0: return Offset(w / 4, -3 * R / 4);
-      case 1: return Offset(w / 2, 0);
-      case 2: return Offset(w / 4, 3 * R / 4);
-      case 3: return Offset(-w / 4, 3 * R / 4);
-      case 4: return Offset(-w / 2, 0);
-      case 5: return Offset(-w / 4, -3 * R / 4);
+      case 0: return const Offset(w / 4, -3 * R / 4);
+      case 1: return const Offset(w / 2, 0);
+      case 2: return const Offset(w / 4, 3 * R / 4);
+      case 3: return const Offset(-w / 4, 3 * R / 4);
+      case 4: return const Offset(-w / 2, 0);
+      case 5: return const Offset(-w / 4, -3 * R / 4);
     }
     return Offset.zero;
   }
@@ -141,9 +141,9 @@ class HexagonProvider with ChangeNotifier {
     // otherwise the rightmost odd-row hexagons are painted via Transform
     // but lie outside the Column's hit-test bounds, making their right
     // edges untappable.
-    final double hexR = HexagonBoxState.cellSize;
-    final double hexW = hexR * 1.732; // R·√3
-    final double rowOverlapY = hexR / 2;
+    const double hexR = HexagonBoxState.cellSize;
+    const double hexW = hexR * 1.732; // R·√3
+    const double rowOverlapY = hexR / 2;
     final double rowLayoutWidth = (cols + 0.5) * hexW;
 
     for (int r = 0; r < rows; r++) {

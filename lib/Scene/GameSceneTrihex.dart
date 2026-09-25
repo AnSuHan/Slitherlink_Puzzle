@@ -160,10 +160,12 @@ class GameStateTrihex extends State<GameSceneTrihex>
       }
       submit = await _loadSavedPuzzle("${widget.loadKey}_continue");
     } else {
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _isGenerating = true;
         _generationStatus = '20%';
       });
+      }
 
       List<String> sizeParts = tokens[2].split("x");
       int genRows = int.parse(sizeParts[0]);
@@ -245,10 +247,12 @@ class GameStateTrihex extends State<GameSceneTrihex>
       }
     }
 
-    if (mounted) setState(() {
+    if (mounted) {
+      setState(() {
       _generationStatus = '100%';
       _isGenerating = false;
     });
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _fitToScreen());
   }
@@ -395,7 +399,7 @@ class GameStateTrihex extends State<GameSceneTrihex>
       onPopInvokedWithResult: (bool didPop, Object? result) async {
         if (didPop) return;
         final bool shouldPop = await _onWillPop();
-        if (shouldPop && mounted) {
+        if (shouldPop && context.mounted) {
           Navigator.of(context).pop();
         }
       },

@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 /// Pre-generates Slitherlink puzzles and saves them as JSON asset files.
 /// Run: dart run tool/generate_puzzles.dart
 import 'dart:collection';
@@ -285,7 +286,7 @@ void main() {
     }
   }
 
-  final outPath = 'lib/Answer/Square_generate.json';
+  const outPath = 'lib/Answer/Square_generate.json';
   final jsonStr = const JsonEncoder.withIndent('  ').convert(allPuzzles);
   File(outPath).writeAsStringSync(jsonStr);
   print('\nWrote ${allPuzzles.length} puzzles to $outPath');

@@ -362,7 +362,9 @@ class _TrianglePainter extends CustomPainter {
     // rebuilt on.
     if (edge0 == -3 || edge0 == -5 ||
         edge1 == -3 || edge1 == -5 ||
-        edge2 == -3 || edge2 == -5) return true;
+        edge2 == -3 || edge2 == -5) {
+      return true;
+    }
     return old.edge0 != edge0 ||
         old.edge1 != edge1 ||
         old.edge2 != edge2 ||

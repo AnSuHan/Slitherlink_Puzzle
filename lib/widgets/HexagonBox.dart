@@ -96,9 +96,9 @@ class HexagonBoxState extends State<HexagonBox> with SingleTickerProviderStateMi
   @override
   Widget build(BuildContext context) {
     // Pointy-top hexagon: width = R·√3, height = 2R.
-    final r = cellSize;
+    const r = cellSize;
     final w = r * sqrt(3);
-    final h = r * 2;
+    const h = r * 2;
 
     return Consumer<HexagonProvider>(
       builder: (context, provider, child) {

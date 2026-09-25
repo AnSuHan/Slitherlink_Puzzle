@@ -1,3 +1,4 @@
+// ignore_for_file: avoid_print
 // Smoke test for TrihexGenerator. Run:
 //   dart run tool/trihex_smoke.dart
 // Expects to produce a valid puzzle for a few sizes and print stats.

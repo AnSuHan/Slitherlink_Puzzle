@@ -530,16 +530,16 @@ bool propagateHypothesisSquare(
         int dr = 0, un = 0;
         if (v0 == 1) {
           dr++;
-        } else if (v0 == 0) un++;
+        } else if (v0 == 0) { un++; }
         if (v1 == 1) {
           dr++;
-        } else if (v1 == 0) un++;
+        } else if (v1 == 0) { un++; }
         if (v2 == 1) {
           dr++;
-        } else if (v2 == 0) un++;
+        } else if (v2 == 0) { un++; }
         if (v3 == 1) {
           dr++;
-        } else if (v3 == 0) un++;
+        } else if (v3 == 0) { un++; }
 
         if (dr > num) return true;
         if (dr + un < num) return true;
@@ -608,16 +608,16 @@ bool propagateHypothesisSquare(
         int dr = 0, un = 0;
         if (vL == 1) {
           dr++;
-        } else if (vL == 0) un++;
+        } else if (vL == 0) { un++; }
         if (vR == 1) {
           dr++;
-        } else if (vR == 0) un++;
+        } else if (vR == 0) { un++; }
         if (vU == 1) {
           dr++;
-        } else if (vU == 0) un++;
+        } else if (vU == 0) { un++; }
         if (vD == 1) {
           dr++;
-        } else if (vD == 0) un++;
+        } else if (vD == 0) { un++; }
 
         if (dr > 2) return true;
         if (dr == 1 && un == 0) return true;

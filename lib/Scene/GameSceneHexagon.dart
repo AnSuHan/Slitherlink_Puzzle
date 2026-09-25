@@ -154,10 +154,12 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
       }
       submit = await _loadSavedPuzzle("${widget.loadKey}_continue");
     } else {
-      if (mounted) setState(() {
+      if (mounted) {
+        setState(() {
         _isGenerating = true;
         _generationStatus = '20%';
       });
+      }
 
       List<String> sizeParts = tokens[2].split("x");
       int genRows = int.parse(sizeParts[0]);
@@ -232,10 +234,12 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
       }
     }
 
-    if (mounted) setState(() {
+    if (mounted) {
+      setState(() {
       _generationStatus = '100%';
       _isGenerating = false;
     });
+    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _fitToScreen());
   }
@@ -263,9 +267,9 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
   void _fitToScreen() {
     if (!mounted) return;
     final size = MediaQuery.of(context).size;
-    final hexR = 40.0;
-    final hexW = hexR * 2;
-    final hexH = hexR * 1.732;
+    const hexR = 40.0;
+    const hexW = hexR * 2;
+    const hexH = hexR * 1.732;
 
     double puzzleWidth = _provider.cols * (hexW + 2) + hexR + 40;
     double puzzleHeight = _provider.rows * hexH * 0.75 + hexH * 0.25 + 40;
@@ -375,7 +379,7 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
       onPopInvokedWithResult: (bool didPop, Object? result) async {
         if (didPop) return;
         final bool shouldPop = await _onWillPop();
-        if (shouldPop && mounted) {
+        if (shouldPop && context.mounted) {
           Navigator.of(context).pop();
         }
       },

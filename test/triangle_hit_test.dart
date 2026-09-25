@@ -1,4 +1,3 @@
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:slitherlink_project/widgets/TriangleBox.dart';
 
@@ -13,19 +12,19 @@ void main() {
   group('TriangleBoxState.pickClosestEdge — Up', () {
     test('tap on base midpoint → e0', () {
       // Up: base goes p1(0,h)-p2(w,h); midpoint is (w/2, h).
-      expect(TriangleBoxState.pickClosestEdge(true, Offset(w / 2, h), w, h), 0);
+      expect(TriangleBoxState.pickClosestEdge(true, const Offset(w / 2, h), w, h), 0);
     });
 
     test('tap on left-diagonal midpoint → e1', () {
       // Up: left diag goes apex(w/2, 0) → p1(0, h); midpoint (w/4, h/2).
       expect(
-          TriangleBoxState.pickClosestEdge(true, Offset(w / 4, h / 2), w, h), 1);
+          TriangleBoxState.pickClosestEdge(true, const Offset(w / 4, h / 2), w, h), 1);
     });
 
     test('tap on right-diagonal midpoint → e2', () {
       // Up: right diag goes apex(w/2, 0) → p2(w, h); midpoint (3w/4, h/2).
       expect(
-          TriangleBoxState.pickClosestEdge(true, Offset(3 * w / 4, h / 2), w, h),
+          TriangleBoxState.pickClosestEdge(true, const Offset(3 * w / 4, h / 2), w, h),
           2);
     });
   });
@@ -33,20 +32,20 @@ void main() {
   group('TriangleBoxState.pickClosestEdge — Down', () {
     test('tap on top midpoint → e0', () {
       // Down: top goes p0(0, 0) - p1(w, 0); midpoint (w/2, 0).
-      expect(TriangleBoxState.pickClosestEdge(false, Offset(w / 2, 0), w, h), 0);
+      expect(TriangleBoxState.pickClosestEdge(false, const Offset(w / 2, 0), w, h), 0);
     });
 
     test('tap on left-diagonal midpoint → e1', () {
       // Down: left diag goes p0(0, 0) → apex(w/2, h); midpoint (w/4, h/2).
       expect(
-          TriangleBoxState.pickClosestEdge(false, Offset(w / 4, h / 2), w, h),
+          TriangleBoxState.pickClosestEdge(false, const Offset(w / 4, h / 2), w, h),
           1);
     });
 
     test('tap on right-diagonal midpoint → e2', () {
       // Down: right diag goes p1(w, 0) → apex(w/2, h); midpoint (3w/4, h/2).
       expect(
-          TriangleBoxState.pickClosestEdge(false, Offset(3 * w / 4, h / 2), w, h),
+          TriangleBoxState.pickClosestEdge(false, const Offset(3 * w / 4, h / 2), w, h),
           2);
     });
   });
@@ -54,7 +53,7 @@ void main() {
   group('TriangleBoxState.pointInTriangle — overlap pass-through', () {
     test('Up: center is inside', () {
       // Centroid of Up triangle is at (w/2, 2h/3).
-      expect(TriangleBoxState.pointInTriangle(true, Offset(w / 2, 2 * h / 3), w, h),
+      expect(TriangleBoxState.pointInTriangle(true, const Offset(w / 2, 2 * h / 3), w, h),
           isTrue);
     });
 
@@ -65,22 +64,22 @@ void main() {
     });
 
     test('Up: top-right corner of bounding box is outside', () {
-      expect(TriangleBoxState.pointInTriangle(true, Offset(w - 1, 1), w, h),
+      expect(TriangleBoxState.pointInTriangle(true, const Offset(w - 1, 1), w, h),
           isFalse);
     });
 
     test('Down: center is inside', () {
-      expect(TriangleBoxState.pointInTriangle(false, Offset(w / 2, h / 3), w, h),
+      expect(TriangleBoxState.pointInTriangle(false, const Offset(w / 2, h / 3), w, h),
           isTrue);
     });
 
     test('Down: bottom-left corner of bounding box is outside', () {
-      expect(TriangleBoxState.pointInTriangle(false, Offset(1, h - 1), w, h),
+      expect(TriangleBoxState.pointInTriangle(false, const Offset(1, h - 1), w, h),
           isFalse);
     });
 
     test('Down: bottom-right corner of bounding box is outside', () {
-      expect(TriangleBoxState.pointInTriangle(false, Offset(w - 1, h - 1), w, h),
+      expect(TriangleBoxState.pointInTriangle(false, const Offset(w - 1, h - 1), w, h),
           isFalse);
     });
   });

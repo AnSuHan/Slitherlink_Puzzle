@@ -203,10 +203,12 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
         answer = cached;
       } else {
         // No cache or forced new - generate with progress UI
-        if (mounted) setState(() {
+        if (mounted) {
+          setState(() {
           _isGenerating = true;
           _generationStatus = '0%';
         });
+        }
 
         if (mounted) setState(() => _generationStatus = '20%');
 
@@ -408,7 +410,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
       onPopInvokedWithResult: (bool didPop, Object? result) async {
         if (didPop) return;
         final bool shouldPop = await _onWillPop();
-        if (shouldPop && mounted) {
+        if (shouldPop && context.mounted) {
           Navigator.of(context).pop();
         }
       },
@@ -510,10 +512,10 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
                                       SizedBox(
                                         width: screenSize.width,
                                         height: screenSize.height,
-                                        child: Row(
+                                        child: const Row(
                                           mainAxisAlignment: MainAxisAlignment.center,
                                           crossAxisAlignment: CrossAxisAlignment.center,
-                                          children: const [CircularProgressIndicator()],
+                                          children: [CircularProgressIndicator()],
                                         ),
                                       ),
                                 ],
