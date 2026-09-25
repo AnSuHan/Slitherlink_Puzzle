@@ -133,9 +133,9 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     final cx = size.width / 2;
     final cy = size.height / 2;
     final updated = Matrix4.identity()
-      ..translate(cx, cy)
-      ..scale(factor)
-      ..translate(-cx, -cy)
+      ..translateByDouble(cx, cy, 0, 1)
+      ..scaleByDouble(factor, factor, factor, 1)
+      ..translateByDouble(-cx, -cy, 0, 1)
       ..multiply(old);
     _suppressZoomSync = true;
     _transformationController.value = updated;
@@ -156,8 +156,8 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     final tx = size.width / 2 - s * p.dx;
     final ty = ah / 2 - s * p.dy;
     final m = Matrix4.identity()
-      ..translate(tx, ty)
-      ..scale(s);
+      ..translateByDouble(tx, ty, 0, 1)
+      ..scaleByDouble(s, s, s, 1);
     _suppressZoomSync = true;
     _transformationController.value = m;
     _suppressZoomSync = false;
@@ -370,8 +370,8 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
     if (dy < 0) dy = 0;
 
     final matrix = Matrix4.identity()
-      ..translate(dx, dy)
-      ..scale(fitScale);
+      ..translateByDouble(dx, dy, 0, 1)
+      ..scaleByDouble(fitScale, fitScale, fitScale, 1);
     _transformationController.value = matrix;
   }
 
@@ -403,8 +403,15 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
       ui = uiNullable!;
     }
 
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
+        if (didPop) return;
+        final bool shouldPop = await _onWillPop();
+        if (shouldPop && mounted) {
+          Navigator.of(context).pop();
+        }
+      },
       child: ChangeNotifierProvider( // ChangeNotifierProvider 사용
         create: (context) => _provider, //ChangeNotifier class
         child: Consumer<SquareProvider>(
@@ -415,13 +422,13 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
 
             return Scaffold(
               appBar: !showAppbar ? null : ui.getGameAppBar(context, settingColor["appBar"]!, settingColor["appIcon"]!),
-              body: RawKeyboardListener(
+              body: KeyboardListener(
                 focusNode: _focusNode,
-                onKey: (RawKeyEvent event) {
+                onKeyEvent: (KeyEvent event) {
                   if(!useKeyInput) {
                     return;
                   }
-                  if (event is RawKeyDownEvent) {
+                  if (event is KeyDownEvent) {
                     //apply answer to field
                     if (event.logicalKey == LogicalKeyboardKey.keyA) {
                       setState(() {
@@ -745,8 +752,8 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
   ///move to position in "InteractiveViewer"
   Future<void> moveTo(List<double> pos, double scale) async {
     final matrix4 = Matrix4.identity()
-      //..translate(-screenSize.width / 2, -screenSize.height / 2)
-      ..scale(1);
+      //..translateByDouble(-screenSize.width / 2, -screenSize.height / 2, 0, 1)
+      ..scaleByDouble(1, 1, 1, 1);
     _transformationController.value = matrix4;
   }
 }

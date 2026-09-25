@@ -93,10 +93,10 @@ class HowToPlayState extends State<HowToPlay> {
 
   @override
   Widget build(BuildContext context) {
-    return RawKeyboardListener(
+    return KeyboardListener(
       focusNode: _focusNode,
-      onKey: (event) {
-        if(event is RawKeyDownEvent) {
+      onKeyEvent: (event) {
+        if(event is KeyDownEvent) {
           if(UserInfo.debugMode["use_KeyInput"]!) {
             if(event.logicalKey == LogicalKeyboardKey.keyW) {
               _provider.printSubmit();

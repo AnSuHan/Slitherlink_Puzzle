@@ -96,9 +96,9 @@ class GameStateTrihex extends State<GameSceneTrihex>
     final cx = size.width / 2;
     final cy = size.height / 2;
     final updated = Matrix4.identity()
-      ..translate(cx, cy)
-      ..scale(factor)
-      ..translate(-cx, -cy)
+      ..translateByDouble(cx, cy, 0, 1)
+      ..scaleByDouble(factor, factor, factor, 1)
+      ..translateByDouble(-cx, -cy, 0, 1)
       ..multiply(old);
     _suppressZoomSync = true;
     _transformationController.value = updated;
@@ -119,8 +119,8 @@ class GameStateTrihex extends State<GameSceneTrihex>
     final tx = size.width / 2 - s * p.dx;
     final ty = ah / 2 - s * p.dy;
     final m = Matrix4.identity()
-      ..translate(tx, ty)
-      ..scale(s);
+      ..translateByDouble(tx, ty, 0, 1)
+      ..scaleByDouble(s, s, s, 1);
     _suppressZoomSync = true;
     _transformationController.value = m;
     _suppressZoomSync = false;
@@ -300,8 +300,8 @@ class GameStateTrihex extends State<GameSceneTrihex>
     if (dy < 0) dy = 0;
 
     _transformationController.value = Matrix4.identity()
-      ..translate(dx, dy)
-      ..scale(fit);
+      ..translateByDouble(dx, dy, 0, 1)
+      ..scaleByDouble(fit, fit, fit, 1);
   }
 
   Future<bool> _onWillPop() async {
@@ -390,8 +390,15 @@ class GameStateTrihex extends State<GameSceneTrihex>
     final loc = AppLocalizations.of(context);
     final screenSize = MediaQuery.of(context).size;
 
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
+        if (didPop) return;
+        final bool shouldPop = await _onWillPop();
+        if (shouldPop && mounted) {
+          Navigator.of(context).pop();
+        }
+      },
       child: ChangeNotifierProvider(
         create: (_) => _provider,
         child: Consumer<TrihexProvider>(

@@ -515,6 +515,7 @@ class MainUI {
                                                         },
                                                       );
                                                       if (ok != true) return;
+                                                      if (!context.mounted) return;
 
                                                       auth.setScreenSize(screenSize);
                                                       errType = await auth.resetPasswordEmail(context, emailInput.text);
@@ -565,10 +566,10 @@ class MainUI {
         }
         else {
           await UserInfo.init();
+          if (!context.mounted) return;
           int errType = -1;
           String popupMsg = "";
 
-          // ignore: use_build_context_synchronously
           showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -737,6 +738,7 @@ class MainUI {
                                   },
                                 );
                                 if (confirm != true) return;
+                                if (!context.mounted) return;
 
                                 auth.setScreenSize(screenSize);
                                 errType = await auth.withdrawEmail(context);

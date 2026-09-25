@@ -106,11 +106,11 @@ class EnterSceneState extends State<EnterScene> {
             Locale('ko'),
           ],
           theme: ThemeData(useMaterial3: true),
-          home: RawKeyboardListener(
+          home: KeyboardListener(
             focusNode: _focusNode,
-            onKey: (RawKeyEvent event) {
+            onKeyEvent: (KeyEvent event) {
               if(!useKeyInput) return;
-              if (event is RawKeyDownEvent) {
+              if (event is KeyDownEvent) {
                 if (event.logicalKey == LogicalKeyboardKey.keyR) {
                   refreshContent();
                 }

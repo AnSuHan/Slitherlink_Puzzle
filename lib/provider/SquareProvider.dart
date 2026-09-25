@@ -1156,7 +1156,7 @@ class SquareProvider with ChangeNotifier {
     }
 
     //check puzzle completion after user input
-    checkCompletePuzzle(context);
+    if (context.mounted) checkCompletePuzzle(context);
   }
 
   /// 라인(row, col, dir)의 값을 읽는 헬퍼
