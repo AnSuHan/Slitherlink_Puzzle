@@ -47,7 +47,6 @@ class MainUI {
   Map<String, String> setting = {};
   List<String> _theme = [];
 
-  String prevLanguage = "";
 
   late Authentication auth;
   late Answer answer;
@@ -65,8 +64,8 @@ class MainUI {
     required this.context,
   }) {
     auth = Authentication();
-    //subscription of stream
-    checkLanguage().listen((event) {});
+    // 언어 변경은 설정 다이얼로그/디버그 키에서 changeLanguage 를 직접 호출하므로
+    // 1초 폴링 스트림(checkLanguage)은 불필요 → 제거(상시 웨이크업 제거)
     answer = Answer(context: context, loadPreset: true);
   }
 
@@ -76,22 +75,6 @@ class MainUI {
 
   void updateUI() {
     onUpdate();
-  }
-
-  ///check language per 1sec
-  Stream<void> checkLanguage() async* {
-    prevLanguage = "en";
-    while(true) {
-      await Future.delayed(const Duration(seconds: 1));
-      String lang = appLocalizations.locale.languageCode;
-      if(prevLanguage.compareTo(lang) != 0) {
-        enterSceneState.changeLanguage(lang);
-
-        prevLanguage = lang;
-        onUpdate();
-      }
-      yield null;
-    }
   }
 
   PopupMenuButton getMainMenu(BuildContext context) {

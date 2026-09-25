@@ -306,9 +306,9 @@ class TriangleGenerator {
     return count;
   }
 
-  /// True iff the inside region is a single connected piece. Mirror of
-  /// `_outsideConnected` — used when we grow the outside corridor to ensure
-  /// we never split the inside into two islands.
+  /// True iff the inside region is a single connected piece (BFS over inside
+  /// cells) — used when growing the outside corridor so we never split the
+  /// inside into two islands.
   bool _insideConnected(List<List<bool>> inside) {
     int startR = -1, startI = -1;
     for (int r = 0; r < rows && startR == -1; r++) {
