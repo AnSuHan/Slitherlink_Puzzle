@@ -401,86 +401,18 @@ class _MainScreenContent extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isDark ? palette['cardBg']!.withOpacity(0.75) : palette['cardBg']!.withOpacity(0.95),
+        color: isDark ? palette['cardBg']!.withValues(alpha: 0.75) : palette['cardBg']!.withValues(alpha: 0.95),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: palette['divider']!.withOpacity(0.2)),
+        border: Border.all(color: palette['divider']!.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.25 : 0.06),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
             blurRadius: 16,
             offset: const Offset(0, 3),
           ),
         ],
       ),
       child: child,
-    );
-  }
-
-  // Mode selector: Preset vs Generate
-  Widget _modeSelector(Map<String, Color> palette, bool isDark, AppLocalizations loc, MainScreenProvider prov) {
-    return Row(
-      children: [
-        _modeButton(
-          label: loc.translate('MainUI_puzzleSize_small'),
-          icon: Icons.list_alt_rounded,
-          isSelected: prov.selectedSize == "small",
-          palette: palette,
-          isDark: isDark,
-          onTap: () => prov.setSize("small"),
-        ),
-        const SizedBox(width: 10),
-        _modeButton(
-          label: loc.translate('MainUI_puzzleSize_generate'),
-          icon: Icons.auto_awesome_rounded,
-          isSelected: prov.selectedSize == "generate",
-          palette: palette,
-          isDark: isDark,
-          onTap: () => prov.setSize("generate"),
-        ),
-      ],
-    );
-  }
-
-  Widget _modeButton({
-    required String label,
-    required IconData icon,
-    required bool isSelected,
-    required Map<String, Color> palette,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: isSelected
-                ? palette['primary']!.withOpacity(0.15)
-                : (isDark ? const Color(0xFF2A2A4A) : const Color(0xFFF0F0F5)),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isSelected ? palette['primary']! : Colors.transparent,
-              width: 2,
-            ),
-          ),
-          child: Column(
-            children: [
-              Icon(icon, color: isSelected ? palette['primary'] : palette['onSurfaceDim'], size: 22),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400,
-                  color: isSelected ? palette['primary'] : palette['onSurfaceDim'],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -509,7 +441,7 @@ class _MainScreenContent extends StatelessWidget {
               margin: EdgeInsets.only(right: key != "trihex" ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: isSelected ? color.withOpacity(0.15) : (isDark ? const Color(0xFF2A2A4A) : const Color(0xFFF0F0F5)),
+                color: isSelected ? color.withValues(alpha: 0.15) : (isDark ? const Color(0xFF2A2A4A) : const Color(0xFFF0F0F5)),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: isSelected ? color : Colors.transparent,
@@ -560,7 +492,7 @@ class _MainScreenContent extends StatelessWidget {
               margin: EdgeInsets.only(right: key != "hard" ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: isSelected ? color.withOpacity(0.15) : (isDark ? const Color(0xFF2A2A4A) : const Color(0xFFF0F0F5)),
+                color: isSelected ? color.withValues(alpha: 0.15) : (isDark ? const Color(0xFF2A2A4A) : const Color(0xFFF0F0F5)),
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: isSelected ? color : Colors.transparent,
@@ -612,7 +544,7 @@ class _MainScreenContent extends StatelessWidget {
               activeTrackColor: palette['primary'],
               inactiveTrackColor: palette['divider'],
               thumbColor: palette['primary'],
-              overlayColor: palette['primary']!.withOpacity(0.08),
+              overlayColor: palette['primary']!.withValues(alpha: 0.08),
               trackHeight: 3,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
             ),

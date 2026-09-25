@@ -78,7 +78,7 @@ void main() {
     })));
 
     await tester.runAsync(() async {
-      int triPass = 0, hexPass = 0, triHexPass = 0;
+      int triPass = 0, hexPass = 0;
       int triAuto = 0, hexAuto = 0;
       const int n = 20;
 
@@ -127,7 +127,6 @@ void main() {
         }
         debugPrint('Trihex 3x3 [$diff] logic-solvable: $dPass / $n | canAutoSolve: $dAuto / $n');
         if (diff == 'normal') {
-          triHexPass = dPass;
           expect(dAuto, n, reason: 'Trihex normal: all generated boards must be auto-solvable');
         }
       }

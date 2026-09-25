@@ -65,9 +65,7 @@ class SlitherlinkGenerator {
   final int cols;
   final Random _random;
 
-  int get _nodeRows => rows + 1;
   int get _nodeCols => cols + 1;
-  int get _totalNodes => _nodeRows * _nodeCols;
 
   SlitherlinkGenerator(this.rows, this.cols, {int? seed})
       : _random = seed != null ? Random(seed) : Random();

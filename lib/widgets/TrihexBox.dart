@@ -465,7 +465,7 @@ class _TrihexPainter extends CustomPainter {
         int target) {
       if (clue < 0) return;
       final Color textColor = (target >= 0 && activeNeighbours == target)
-          ? numColor.withOpacity(0.35)
+          ? numColor.withValues(alpha: 0.35)
           : numColor;
       final textSpan = TextSpan(
         text: clue.toString(),

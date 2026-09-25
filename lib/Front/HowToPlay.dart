@@ -112,7 +112,6 @@ class HowToPlayState extends State<HowToPlay> {
               screenSize = MediaQuery.of(context).size;
 
               final palette = ThemeColor().getPalette();
-              final isDark = ThemeColor().isDark();
 
               return Scaffold(
                 backgroundColor: palette['background'],

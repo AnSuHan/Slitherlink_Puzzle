@@ -478,7 +478,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
                                       'Generating puzzle...',
                                       style: TextStyle(
                                         fontSize: 14,
-                                        color: (settingColor["number"] ?? Colors.white).withOpacity(0.6),
+                                        color: (settingColor["number"] ?? Colors.white).withValues(alpha: 0.6),
                                       ),
                                     ),
                                   ],
@@ -699,7 +699,7 @@ class GameStateSquare extends State<GameSceneSquare> with WidgetsBindingObserver
         : provider.solverStatus;
     final String statusText = l10n?.translate(statusKey) ?? statusKey;
     return Material(
-      color: Colors.black.withOpacity(0.72),
+      color: Colors.black.withValues(alpha: 0.72),
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),

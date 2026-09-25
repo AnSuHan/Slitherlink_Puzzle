@@ -448,7 +448,7 @@ class GameStateTrihex extends State<GameSceneTrihex>
                                         fontSize: 14,
                                         color:
                                             (settingColor["number"] ?? Colors.white)
-                                                .withOpacity(0.6))),
+                                                .withValues(alpha: 0.6))),
                               ],
                             ),
                           )

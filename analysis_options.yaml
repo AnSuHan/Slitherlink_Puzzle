@@ -9,6 +9,14 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  # 빌드 산출물/생성 파일은 정적 분석 대상에서 제외 (build/ 안의 복제된 에셋이
+  # 잘못된 상대경로 import 로 가짜 에러를 내던 문제 해결)
+  exclude:
+    - build/**
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

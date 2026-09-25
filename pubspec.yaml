@@ -75,7 +75,9 @@ flutter:
     - assets/images/
     - lib/l10n/en/strings_en.arb
     - lib/l10n/ko/strings_ko.arb
-    - lib/Answer/
+    # JSON 데이터만 번들 (폴더 전체를 넣으면 Answer.dart 소스까지 앱에 포함됨)
+    - lib/Answer/Square_small.json
+    - lib/Answer/Square_generate.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

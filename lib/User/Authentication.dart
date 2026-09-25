@@ -75,7 +75,6 @@ class Authentication {
       lastErrorCode = '';
       // 회원가입 직전 비로그인 상태에서 쌓인 로컬 완료 이력을 캡처해 새 계정으로 이관
       final Map<String, int> migrating = Map<String, int>.from(UserInfo.completed);
-      UserCredential userCredential =
       await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: email,
         password: password,
@@ -101,7 +100,6 @@ class Authentication {
     try {
       lastErrorMessage = '';
       lastErrorCode = '';
-      UserCredential userCredential =
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,

@@ -1,29 +1,24 @@
-// This is a basic Flutter widget test.
+// 기본 스모크 테스트.
 //
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// 원래 Flutter 템플릿의 "Counter increments" 테스트는 이 앱(카운터 아님, 슬리더링크)과
+// 맞지 않아 항상 실패했다. 앱 고유의 순수 데이터(ThemeColor)를 검증하는 테스트로 대체한다.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:slitherlink_project/Scene/GameSceneSquare.dart';
+import 'package:slitherlink_project/ThemeColor.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const GameSceneSquare(isContinue: false, loadKey: '',));
+  test('ThemeColor 는 15개 선 색상과 특수 선 상태 색을 제공한다', () {
+    final theme = ThemeColor();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // 사용자 선 색상 line_01 ~ line_15
+    for (var i = 1; i <= 15; i++) {
+      final key = 'line_${i.toString().padLeft(2, '0')}';
+      expect(theme.lineColor.containsKey(key), isTrue, reason: '$key 누락');
+    }
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // 특수 선 상태 색
+    for (final key in ['line_wrong', 'line_hint', 'line_disable', 'line_normal', 'line_x']) {
+      expect(theme.lineColor.containsKey(key), isTrue, reason: '$key 누락');
+    }
   });
 }

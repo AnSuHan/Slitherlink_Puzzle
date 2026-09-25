@@ -298,7 +298,7 @@ class _TrianglePainter extends CustomPainter {
       // Cell rule is satisfied → remaining edges are auto-disabled. Dim the
       // number so the player can see this cell is done.
       final Color textColor =
-          active == num ? numColor.withOpacity(0.35) : numColor;
+          active == num ? numColor.withValues(alpha: 0.35) : numColor;
       final textSpan = TextSpan(
         text: num.toString(),
         style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.w500),

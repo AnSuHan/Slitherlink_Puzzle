@@ -46,13 +46,6 @@ class MainUI {
   final GlobalKey<PopupMenuButtonState<int>> _mainMenuKey = GlobalKey<PopupMenuButtonState<int>>();
   Map<String, String> setting = {};
   List<String> _theme = [];
-  String _themeValue = "default";
-  List<String> _language = [];
-  String _languageValue = "english";
-  List<String> _appbar = [];
-  String _appbarValue = "fixed";
-  List<String> _btnAlignment = [];
-  String _btnAlignmentValue = "right";
 
   String prevLanguage = "";
 
@@ -170,7 +163,6 @@ class MainUI {
                                 : screenSize.width * 0.4;
                             double labelWidth = containerWidth * 0.2;
 
-                            double buttonHeight = 0;
                             // Create TextPainter for the 'sign up' and 'reset password' buttons
                             TextPainter createTextPainter(String text, double maxWidth) {
                               final textSpan = TextSpan(
@@ -189,13 +181,6 @@ class MainUI {
 
                               // 텍스트를 두 줄로 강제하기 위해 추가 설정
                               textPainter.layout(minWidth: maxWidth, maxWidth: maxWidth);
-
-                              // 한 줄의 높이 계산
-                              final double lineHeight = textPainter.preferredLineHeight;
-
-                              // 텍스트 높이가 두 줄 이상이 되도록 강제
-                              final double calculatedHeight = textPainter.height > lineHeight ? textPainter.height : lineHeight * 2;
-                              buttonHeight = calculatedHeight;
 
                               return textPainter;
                             }
@@ -908,60 +893,6 @@ class MainUI {
       appLocalizations.translate('ThemeName_03'),
     ];
 
-    switch (setting["theme"]) {
-      case "default":
-      case "midnight":
-        _themeValue = appLocalizations.translate('ThemeName_01');
-        break;
-      case "ocean":
-        _themeValue = appLocalizations.translate('ThemeName_02');
-        break;
-      case "sakura":
-        _themeValue = appLocalizations.translate('ThemeName_03');
-        break;
-    }
-
-    _language = [
-      appLocalizations.translate('language_en'),
-      appLocalizations.translate('language_ko')
-    ];
-
-    switch(setting["language"]) {
-      case "english":
-        _languageValue = appLocalizations.translate('language_en');
-        break;
-      case "korean":
-        _languageValue = appLocalizations.translate('language_ko');
-        break;
-    }
-
-    _appbar = [
-      appLocalizations.translate('appbar_mode01'),
-      appLocalizations.translate('appbar_mode02')
-    ];
-
-    switch(setting["appbar_mode"]) {
-      case "fixed":
-        _appbarValue = appLocalizations.translate('appbar_mode01');
-        break;
-      case "toggle":
-        _appbarValue = appLocalizations.translate('appbar_mode02');
-        break;
-    }
-
-    _btnAlignment = [
-      appLocalizations.translate('left'),
-      appLocalizations.translate('right')
-    ];
-
-    switch(setting["button_alignment"]) {
-      case "left":
-        _btnAlignmentValue = appLocalizations.translate('left');
-        break;
-      case "right":
-        _btnAlignmentValue = appLocalizations.translate('right');
-        break;
-    }
   }
 
   //about puzzle difficulty
@@ -1334,8 +1265,8 @@ class MainUI {
               avatar: Icon(shapeIcons[i], size: 18, color: isSelected ? palette['accent'] : palette['onSurfaceDim']),
               label: Text(shapeLabels[i]),
               selected: isSelected,
-              selectedColor: palette['accent']!.withOpacity(0.2),
-              backgroundColor: palette['surface']!.withOpacity(0.5),
+              selectedColor: palette['accent']!.withValues(alpha: 0.2),
+              backgroundColor: palette['surface']!.withValues(alpha: 0.5),
               labelStyle: TextStyle(
                 color: isSelected ? palette['accent'] : palette['onSurfaceDim'],
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
@@ -1357,43 +1288,6 @@ class MainUI {
     );
   }
 
-  Widget _buildLabel(String text, Map<String, Color> palette) {
-    return Chip(
-      label: Text(text, style: TextStyle(color: palette['buttonText'], fontWeight: FontWeight.w600)),
-      backgroundColor: palette['primary']!.withOpacity(0.8),
-      side: BorderSide.none,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    );
-  }
-
-  List<Widget> _buildChipGroup({
-    required List<String> items,
-    required List<String> labels,
-    required String selected,
-    required Map<String, Color> palette,
-    required Function(String) onSelected,
-  }) {
-    return List.generate(items.length, (i) {
-      bool isSelected = selected == items[i];
-      return ChoiceChip(
-        label: Text(labels[i]),
-        selected: isSelected,
-        selectedColor: palette['accent']!.withOpacity(0.2),
-        backgroundColor: palette['surface']!.withOpacity(0.5),
-        labelStyle: TextStyle(
-          color: isSelected ? palette['accent'] : palette['onSurfaceDim'],
-          fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-        ),
-        side: BorderSide(
-          color: isSelected ? palette['accent']! : palette['divider']!,
-          width: isSelected ? 1.5 : 1,
-        ),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        onSelected: (_) => onSelected(items[i]),
-      );
-    });
-  }
-
   /// Chip-style difficulty selector
   Widget getDifficultyChips(BuildContext context, VoidCallback onUpdate, Map<String, Color> palette) {
     List<String> difficulties = ["easy", "normal", "hard"];
@@ -1413,8 +1307,8 @@ class MainUI {
           avatar: Icon(icons[i], size: 18, color: isSelected ? palette['accent'] : palette['onSurfaceDim']),
           label: Text(labels[i]),
           selected: isSelected,
-          selectedColor: palette['accent']!.withOpacity(0.2),
-          backgroundColor: palette['surface']!.withOpacity(0.5),
+          selectedColor: palette['accent']!.withValues(alpha: 0.2),
+          backgroundColor: palette['surface']!.withValues(alpha: 0.5),
           labelStyle: TextStyle(
             color: isSelected ? palette['accent'] : palette['onSurfaceDim'],
             fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
@@ -1453,7 +1347,7 @@ class MainUI {
                   activeTrackColor: palette['primary'],
                   inactiveTrackColor: palette['divider'],
                   thumbColor: palette['primary'],
-                  overlayColor: palette['primary']!.withOpacity(0.1),
+                  overlayColor: palette['primary']!.withValues(alpha: 0.1),
                   trackHeight: 3,
                 ),
                 child: Slider(
@@ -1486,7 +1380,7 @@ class MainUI {
                   activeTrackColor: palette['primary'],
                   inactiveTrackColor: palette['divider'],
                   thumbColor: palette['primary'],
-                  overlayColor: palette['primary']!.withOpacity(0.1),
+                  overlayColor: palette['primary']!.withValues(alpha: 0.1),
                   trackHeight: 3,
                 ),
                 child: Slider(
@@ -1615,7 +1509,7 @@ class MainUI {
                     child: ListView.separated(
                       shrinkWrap: true,
                       itemCount: puzzles.length,
-                      separatorBuilder: (_, __) => Divider(height: 1, color: palette['divider']!.withOpacity(0.3)),
+                      separatorBuilder: (_, __) => Divider(height: 1, color: palette['divider']!.withValues(alpha: 0.3)),
                       itemBuilder: (context, index) {
                         final key = puzzles[index];
                         final tokens = key.split("_");
@@ -1851,7 +1745,7 @@ class MainUI {
               margin: EdgeInsets.only(right: i < 2 ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
-                color: isSelected ? color.withOpacity(0.15) : (isDark ? const Color(0xFF2A2A4A) : const Color(0xFFF5F5F5)),
+                color: isSelected ? color.withValues(alpha: 0.15) : (isDark ? const Color(0xFF2A2A4A) : const Color(0xFFF5F5F5)),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: isSelected ? color : Colors.transparent,
@@ -1898,7 +1792,7 @@ class MainUI {
               padding: const EdgeInsets.symmetric(vertical: 12),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? palette['primary']!.withOpacity(0.15)
+                    ? palette['primary']!.withValues(alpha: 0.15)
                     : (isDark ? const Color(0xFF2A2A4A) : const Color(0xFFF5F5F5)),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(

@@ -322,7 +322,7 @@ class SquareBoxStateProvider extends State<SquareBox> with SingleTickerProviderS
                   // entirely (text isn't rendered for them either).
                   final Color baseNumColor = settingColor["number"] ?? Colors.black;
                   final Color textColor = (num >= 0 && active == num)
-                      ? baseNumColor.withOpacity(0.35)
+                      ? baseNumColor.withValues(alpha: 0.35)
                       : baseNumColor;
                   // The whole 50×50 box face is a transparent tap zone: the two
                   // diagonals split it into 4 triangular quadrants (top→up,

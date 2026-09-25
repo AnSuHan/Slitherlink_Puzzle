@@ -420,7 +420,7 @@ class GameStateHexagon extends State<GameSceneHexagon> with WidgetsBindingObserv
                               const SizedBox(height: 8),
                               Text('Generating puzzle...',
                                 style: TextStyle(fontSize: 14,
-                                  color: (settingColor["number"] ?? Colors.white).withOpacity(0.6))),
+                                  color: (settingColor["number"] ?? Colors.white).withValues(alpha: 0.6))),
                             ],
                           ),
                         )
